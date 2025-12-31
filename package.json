@@ -1,0 +1,16 @@
+{
+  "name": "infintrix_atlas",
+  "version": "1.0.0",
+  "description": "A Project Management Software Built Specifically for the Software Development Teams",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "cd atlas && yarn install",
+    "dev": "cd atlas && yarn dev",
+    "build": "cd atlas && yarn build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
