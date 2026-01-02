@@ -1,5 +1,5 @@
 import { Filter, Plus, Search } from 'lucide-react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import Card from '../components/ui/Card'
 import { INITIAL_TASKS, TASK_PRIORITY_COLORS, TASK_STATUS_COLORS } from '../data/constants'
 import Badge from '../components/ui/Badge'
@@ -9,22 +9,25 @@ import Assignee from '../components/widgets/Assignee'
 import Priority from '../components/widgets/Priority'
 import DocModal from '../components/form/FormRender'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import useDoctypeSchema from '../hooks/doctype'
+import { useDoctypeSchema } from '../hooks/doctype'
 import TaskDetail from '../modals/TaskDetail'
 import ListView from '../views/ListView'
 import KanbanView from '../views/KanbanView'
+import LinkField from '../components/form/LinkField'
+import { Input, Select } from 'antd'
 const Tasks = () => {
 
     const [isOpen, setIsOpen] = React.useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const params = useParams()
+
     const view = params.view || "list"
-    const selectedTask = searchParams.get("task") || null;
+    const selectedTask = searchParams.get("selected_task") || null;
+    const project = searchParams.get("project") || null;
     const navigate = useNavigate();
 
     const query = useDoctypeSchema("Task")
-    const tasks_query = useFrappeGetCall("infintrix_atlas.api.v1.get_tasks")
-
+    const tasks_query = useFrappeGetCall(`infintrix_atlas.api.v1.get_tasks?project=${project}`)
     const schema = query.data || {}
 
     const tabs = [
@@ -54,7 +57,9 @@ const Tasks = () => {
                                 <button
                                     key={tab.id}
                                     onClick={() => {
+                                        const oldSearchParams = new URLSearchParams(searchParams.toString());
                                         navigate(`/tasks/${tab.id}`)
+                                        setSearchParams(oldSearchParams);
                                     }}
                                     className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${view === tab.id ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
                                         }`}
@@ -73,7 +78,7 @@ const Tasks = () => {
                         <button className="p-2 md:p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-all">
                             <Filter size={18} className="md:w-5 md:h-5" />
                         </button>
-                        <button 
+                        <button
                             onClick={() => {
                                 if (schema.quick_entry) {
                                     setIsOpen(true)
@@ -92,14 +97,40 @@ const Tasks = () => {
                 {/* Search and Filters Section */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     {/* Search Bar */}
-                    <div className="relative flex-1 max-w-full md:max-w-xs">
-                        <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <div className="relative flex max-w-full space-x-2">
+                        {/* <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                             type="text"
                             placeholder="Search Tasks"
                             className="w-full pl-9 pr-3 py-1.5 md:py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                        /> */}
+                        <Input
+                            placeholder="Search"
+                            
+                            style={{ width: 200 }}
+                            onChange={(e) => {
+                                searchParams.set("search", e.target.value)
+                                setSearchParams(searchParams)
+                            }}
+
+                        />
+                        <Select
+                            placeholder="Filter by Project"
+                            style={{ width: 200 }}
+                            defaultValue={project}
+                            onChange={(value) => {
+                                searchParams.set("project", value)
+                                setSearchParams(searchParams)
+                            }}
+                            options={[
+                                { label: 'Project Alpha', value: 'PROJ-0001' },
+                                { label: 'Project Beta', value: 'PROJ-0002' },
+                                { label: 'Project Gamma', value: 'PROJ-0003' },
+                            ]}
+
                         />
                     </div>
+
 
                     {/* User Avatars and Filter Options */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
@@ -113,7 +144,7 @@ const Tasks = () => {
                                 +1
                             </div>
                         </div>
-                        
+
                         <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-slate-600 font-medium">
                             <button className="hover:text-blue-600 transition-colors whitespace-nowrap">Only my issues</button>
                             <button className="hover:text-blue-600 transition-colors whitespace-nowrap">Recently updated</button>
@@ -124,7 +155,7 @@ const Tasks = () => {
                 {/* View Content */}
                 <div className="overflow-x-auto">
                     {view === "list" && <ListView tasks={tasks} />}
-                    {view === "kanban" && <KanbanView />}
+                    {view === "kanban" && <KanbanView tasks={tasks} />}
                 </div>
             </div>
         </>

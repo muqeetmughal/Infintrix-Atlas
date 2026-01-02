@@ -3,7 +3,7 @@ import Card from '../components/ui/Card';
 import Priority from '../components/widgets/Priority';
 import Badge from '../components/ui/Badge';
 import Assignee from '../components/widgets/Assignee';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { TASK_STATUS_COLORS } from '../data/constants';
 
 const ListView = ({
@@ -30,12 +30,11 @@ const ListView = ({
                         {tasks.map(t => (
                             <tr key={t.name} className="hover:bg-slate-50/50 transition-colors group">
                                 <td className="p-6">
-                                    <div className="cursor-pointer font-bold text-slate-900" onClick={
-                                        () => {
-                                            setSearchParams({ "selected_task": t.name })
-                                        }
-                                    }>{t.subject}</div>
-                                    <div className="text-[10px] text-slate-400 font-mono">{t.name}</div>
+                                    {/* <div className="cursor-pointer font-bold text-slate-900">{t.subject}</div> */}
+                                    <div onClick={()=>{
+                                        searchParams.set("selected_task", t.name)
+                                        setSearchParams(searchParams)
+                                    }} className="text-slate-400 font-mono">{t.title}</div>
                                 </td>
                                 <td className="p-6 text-sm font-medium text-slate-600">{t.project_name}</td>
                                 <td className="p-6">

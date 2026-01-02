@@ -31,7 +31,7 @@ export const router = createBrowserRouter(
                 },
                 {
                     path: "tasks",
-                    element: <Navigate to={`list`} />,
+                    element: <Tasks />,
                 },
                 {
                     path: "dashboard",

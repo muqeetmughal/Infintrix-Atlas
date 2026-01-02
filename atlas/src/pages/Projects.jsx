@@ -6,8 +6,8 @@ import { INITIAL_PROJECTS, PROJECT_STATUS_COLORS } from '../data/constants'
 import { useFrappeGetDocList } from 'frappe-react-sdk'
 import Assignee from '../components/widgets/Assignee'
 import DocModal from '../components/form/FormRender'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import useDoctypeSchema from '../hooks/doctype'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import {useDoctypeSchema} from '../hooks/doctype'
 
 const Projects = () => {
     // const [projects] = useState(INITIAL_PROJECTS);
@@ -55,7 +55,9 @@ const Projects = () => {
                                 <Badge className={PROJECT_STATUS_COLORS[p.status]}>{p.status}</Badge>
                                 <button className="text-slate-300 hover:text-slate-600"><MoreVertical size={20} /></button>
                             </div>
+                            <Link to={`/tasks?project=${p.name}`}>
                             <h3 className="text-xl font-bold text-slate-900 mb-1">{p.project_name}</h3>
+                            </Link>
                             <p className="text-xs text-slate-400 mb-6">{p.name} • {p.project_type}</p>
 
                             <div className="space-y-2 mb-6">

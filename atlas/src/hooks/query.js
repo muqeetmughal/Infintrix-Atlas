@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { createAvatar } from "@dicebear/core";
 import { initials } from "@dicebear/collection";
+import { useFrappeGetDocList } from "frappe-react-sdk";
+import { db } from "../lib/frappeClient";
 export const useAvatarQuery = (name) => {
   return useQuery({
     queryKey: ["avatar", name],
@@ -37,3 +39,16 @@ export const useAvatarQuery = (name) => {
     enabled: !!name,
   });
 };
+
+export const useListQuery = (doctype, filters, fields,options) => {
+
+  return useQuery({
+    queryKey: ["tasks"],
+    queryFn: () =>
+      db.getDocList(doctype, {
+        filters: filters,
+        fields: fields,
+      }),
+    ...options,
+  });
+}

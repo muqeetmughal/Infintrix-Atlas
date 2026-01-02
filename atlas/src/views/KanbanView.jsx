@@ -1,103 +1,165 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Maximize2, 
-  Share2, 
-  MoreHorizontal, 
-  Eye, 
-  Lock, 
-  Plus, 
-  Settings, 
-  Check, 
-  ChevronDown, 
-  User, 
-  Zap, 
-  Monitor, 
-  GitBranch,
-  Filter,
-  ArrowUpRight,
-  Search,
-  Layout,
-  Clock,
-  ChevronRight,
-  HelpCircle,
-  Bell,
-  Menu,
-  MoreVertical,
-  AlertCircle,
-  Bookmark
-} from 'lucide-react';
-import Card from '../components/ui/Card';
-const IssueCard = ({ issue, onClick, onDragStart }) => (
-  <div 
-    draggable
-    onDragStart={(e) => onDragStart(e, issue.id)}
-    onClick={() => onClick(issue)}
-    className="bg-white p-3 rounded shadow-sm border border-slate-200 mb-2 cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-all group animate-in slide-in-from-top-1 duration-200"
-  >
-    <p className="text-sm text-slate-800 mb-3 line-clamp-2 leading-relaxed group-hover:text-blue-600 select-none">{issue.title}</p>
-    <div className="flex items-center justify-between mt-auto">
-      <div className="flex items-center space-x-2">
-        {issue.type === 'story' ? (
-          <div className="w-3.5 h-3.5 bg-green-500 rounded-sm flex items-center justify-center"><Bookmark size={8} className="text-white" fill="white" /></div>
-        ) : (
-          <div className="w-3.5 h-3.5 bg-red-500 rounded-sm flex items-center justify-center"><AlertCircle size={8} className="text-white" /></div>
-        )}
-        <span className="text-[11px] text-slate-500 font-medium uppercase tracking-tighter">{issue.id}</span>
+import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { Plus, MoreHorizontal, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  defaultDropAnimationSideEffects,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useFrappeGetCall, useFrappeGetDocList, useFrappePostCall, useFrappeUpdateDoc } from "frappe-react-sdk";
+import { useGetDoctypeField } from "../hooks/doctype";
+// --- Components ---
+
+/**
+ * The purely visual representation of an Issue Card.
+ * Used both in the list and inside the DragOverlay.
+ */
+const IssueCard = React.forwardRef(
+  (
+    { issue, isDragging, isOverlay, listeners, attributes, style, ...props },
+    ref
+  ) => {
+    return (
+      <div
+        ref={ref}
+        style={style}
+        className={`
+        group bg-white p-4 rounded-lg border shadow-sm mb-3 select-none transition-shadow
+        ${isDragging
+            ? "opacity-40 border-blue-400 ring-2 ring-blue-100"
+            : "border-slate-200 hover:border-slate-300 hover:shadow-md"
+          }
+        ${isOverlay
+            ? "shadow-xl cursor-grabbing ring-2 ring-blue-500 border-blue-500 scale-105 transition-transform"
+            : "cursor-grab"
+          }
+      `}
+        {...attributes}
+        {...listeners}
+        {...props}
+      >
+        <div className="flex items-start justify-between mb-2">
+          <p className="text-sm font-medium text-slate-800 leading-snug">
+            {issue.title}
+          </p>
+          <div className="text-slate-300 group-hover:text-slate-500 transition-colors p-1 -mr-2">
+            <GripVertical size={16} />
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center mt-4">
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-3 h-3 rounded-sm ${issue.type === "story" ? "bg-emerald-500" : "bg-rose-500"
+                }`}
+            />
+            <span className="text-[11px] text-slate-500 font-bold tracking-tight uppercase">
+              {issue.id}
+            </span>
+          </div>
+          <div
+            className={`w-7 h-7 rounded-full ${issue.assigneeColor} text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-sm`}
+          >
+            {issue.assigneeInitials}
+          </div>
+        </div>
       </div>
-      <div className={`w-6 h-6 rounded-full ${issue.assigneeColor || 'bg-slate-200'} text-white flex items-center justify-center text-[9px] font-bold shadow-sm`}>
-        {issue.assigneeInitials}
-      </div>
-    </div>
-  </div>
+    );
+  }
 );
 
-const Column = ({ title, issues, onCardClick, onDragStart, onDrop }) => {
-  const [isOver, setIsOver] = useState(false);
+/**
+ * The Sortable wrapper for the Issue Card.
+ */
+const SortableIssue = ({ issue }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: issue.id,
+    data: {
+      type: "Issue",
+      issue,
+    },
+  });
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsOver(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsOver(false);
-  };
-
-  const handleDrop = (e) => {
-    setIsOver(false);
-    onDrop(e, title);
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
   };
 
   return (
-    <div 
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={`flex-1 min-w-[280px] max-w-[320px] rounded-lg p-3 flex flex-col h-full transition-colors duration-200 ${
-        isOver ? 'bg-blue-50' : 'bg-slate-100/50'
-      }`}
+    <IssueCard
+      ref={setNodeRef}
+      issue={issue}
+      isDragging={isDragging}
+      style={style}
+      attributes={attributes}
+      listeners={listeners}
+    />
+  );
+};
+
+/**
+ * A Column containing a sortable list of issues.
+ */
+const Column = ({ id, title, issues }) => {
+  const { setNodeRef } = useSortable({
+    id: id,
+    data: {
+      type: "Column",
+    },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className="flex flex-col w-80 bg-slate-100/80 rounded-xl p-3 max-h-full border border-slate-200/50"
     >
       <div className="flex items-center justify-between mb-4 px-1">
-        <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center">
-          {title} <span className="ml-2 bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full text-[10px]">{issues.length}</span>
+        <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
+          {title}
+          <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-[10px]">
+            {issues.length}
+          </span>
         </h3>
-        <div className="flex space-x-1">
-          <button className="p-1 hover:bg-slate-200 rounded text-slate-500"><Plus size={14} /></button>
-          <button className="p-1 hover:bg-slate-200 rounded text-slate-500"><MoreHorizontal size={14} /></button>
-        </div>
+        <button className="text-slate-400 hover:text-slate-600">
+          <MoreHorizontal size={18} />
+        </button>
       </div>
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {issues.map(issue => (
-          <IssueCard 
-            key={issue.id} 
-            issue={issue} 
-            onClick={onCardClick} 
-            onDragStart={onDragStart}
-          />
-        ))}
-        <button className="w-full text-left py-2 px-3 text-slate-500 hover:bg-slate-200 rounded text-sm flex items-center transition-colors">
-          <Plus size={16} className="mr-2" /> Create Task
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-[150px]">
+        <SortableContext
+          items={issues.map((i) => i.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {issues.map((issue) => (
+            <SortableIssue key={issue.id} issue={issue} />
+          ))}
+        </SortableContext>
+
+        <button onClick={()=>{
+          console.log("Create Work Item");
+          
+        }} className="cursor-pointer w-full mt-2 py-2 flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-200/50 rounded-lg text-sm font-medium transition-colors">
+          <Plus size={16} />
+          Create Work Item
         </button>
       </div>
     </div>
@@ -105,98 +167,170 @@ const Column = ({ title, issues, onCardClick, onDragStart, onDrop }) => {
 };
 
 
-export default function KanbanView() {
-  const [selectedIssue, setSelectedIssue] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [issues, setIssues] = useState([
-    { id: 'IT-1', title: 'Connect to ERPNext API instead of WordPress', status: 'To Do', assignee: 'John Doe', assigneeInitials: 'JD', assigneeColor: 'bg-indigo-500', type: 'story' },
-    { id: 'IT-2', title: 'Implement dynamic dashboard widgets', status: 'To Do', assignee: 'Muqeet Mughal', assigneeInitials: 'MM', assigneeColor: 'bg-cyan-600', type: 'story' },
-    { id: 'IT-3', title: 'Fix CSS layout break on Safari 14', status: 'In Progress', assignee: 'Sara Khan', assigneeInitials: 'SK', assigneeColor: 'bg-rose-500', type: 'bug' },
-    { id: 'IT-4', title: 'Setup CI/CD pipeline with GitHub Actions', status: 'In Progress', assignee: 'JD', assigneeInitials: 'JD', assigneeColor: 'bg-indigo-500', type: 'story' },
-    { id: 'IT-5', title: 'Convert Blog to ERPnext instead of wordpress api', status: 'Done', assignee: 'MM', assigneeInitials: 'MM', assigneeColor: 'bg-cyan-600', type: 'story' },
-    { id: 'IT-6', title: 'Database optimization for large queries', status: 'Done', assignee: 'SK', assigneeInitials: 'SK', assigneeColor: 'bg-rose-500', type: 'story' },
-  ]);
+export default function KanbanView({
+  tasks = [],
+}) {
+  const [issues, setIssues] = useState(tasks);
 
-  const handleIssueClick = (issue) => {
-    setSelectedIssue(issue);
-    setIsModalOpen(true);
+  // const issues_query = useFrappeGetDocList("Task", {
+  //   fields: ["name as id", "subject as title", "status", "type", "priority"],
+  // });
+
+  const updateTaskMutation = useFrappeUpdateDoc("Task");
+
+  const columns_query = useGetDoctypeField("Task", "status", "options");
+  const [activeIssue, setActiveIssue] = useState(null);
+  const columnOptions = columns_query.data || [];
+
+  const COLUMNS =
+    columnOptions.length > 0
+      ? columnOptions.map((option) => ({
+        id: option,
+        title: option,
+      }))
+      : [];
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+
+  // Find issue by ID
+  const findIssue = useCallback(
+    (id) => issues.find((i) => i.id === id),
+    [issues]
+  );
+
+  const handleDragStart = (event) => {
+    const { active } = event;
+    setActiveIssue(findIssue(active.id));
   };
 
-  const handleDragStart = (e, issueId) => {
-    e.dataTransfer.setData('issueId', issueId);
-    e.dataTransfer.effectAllowed = 'move';
+  /**
+   * onDragOver handles the real-time movement between columns
+   */
+  const handleDragOver = (event) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    if (activeId === overId) return;
+
+    const isActiveAnIssue = active.data.current?.type === "Issue";
+    const isOverAnIssue = over.data.current?.type === "Issue";
+    const isOverAColumn = over.data.current?.type === "Column";
+
+    if (!isActiveAnIssue) return;
+
+    // 1. Dragging an Issue over another Issue
+    if (isActiveAnIssue && isOverAnIssue) {
+      setIssues((prev) => {
+        const activeIndex = prev.findIndex((i) => i.id === activeId);
+        const overIndex = prev.findIndex((i) => i.id === overId);
+
+        if (prev[activeIndex].status !== prev[overIndex].status) {
+          const updatedIssues = [...prev];
+          updatedIssues[activeIndex] = {
+            ...updatedIssues[activeIndex],
+            status: updatedIssues[overIndex].status,
+          };
+          return arrayMove(updatedIssues, activeIndex, overIndex);
+        }
+
+        return arrayMove(prev, activeIndex, overIndex);
+      });
+    }
+
+    // 2. Dragging an Issue over an empty Column
+    if (isActiveAnIssue && isOverAColumn) {
+      setIssues((prev) => {
+        const activeIndex = prev.findIndex((i) => i.id === activeId);
+        const updatedIssues = [...prev];
+        updatedIssues[activeIndex] = {
+          ...updatedIssues[activeIndex],
+          status: overId,
+        };
+        return arrayMove(updatedIssues, activeIndex, activeIndex);
+      });
+    }
   };
 
-  const handleDrop = (e, targetStatus) => {
-    const issueId = e.dataTransfer.getData('issueId');
-    setIssues(prevIssues => 
-      prevIssues.map(issue => 
-        issue.id === issueId ? { ...issue, status: targetStatus } : issue
-      )
-    );
+  const handleDragEnd = (event) => {
+    setActiveIssue(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    if (activeId !== overId) {
+      setIssues((prev) => {
+        const activeIndex = prev.findIndex((i) => i.id === activeId);
+        const overIndex = prev.findIndex((i) => i.id === overId);
+        return arrayMove(prev, activeIndex, overIndex);
+      });
+    }
+
+    const columnName = issues.find((i) => i.id === activeId)?.status || overId;
+
+    console.log("Mutating status", activeId,columnName);
+
+    mutate(activeId, columnName);
+
+
+  };
+  const mutate = async (taskName, newStatus) => {
+    try {
+      await updateTaskMutation.updateDoc("Task", taskName, {
+        status: newStatus,
+      });
+
+      console.log("Status updated:", newStatus);
+    } catch (err) {
+      console.error("Failed to update task", err);
+    }
+  };
+
+  const dropAnimation = {
+    sideEffects: defaultDropAnimationSideEffects({
+      styles: {
+        active: {
+          opacity: "0.5",
+        },
+      },
+    }),
   };
 
   return (
-     <Card className="p-0">
- 
-      {/* --- Main Board Content --- */}
-      <main className="flex-1 flex flex-col min-w-0 bg-white">
- 
-        {/* Board Columns */}
-        <div className="flex-1 px-6 pb-6 overflow-x-auto overflow-y-hidden custom-scrollbar">
-          <div className="flex space-x-4 h-full">
-            <Column 
-              title="To Do" 
-              issues={issues.filter(i => i.status === 'To Do')} 
-              onCardClick={handleIssueClick}
-              onDragStart={handleDragStart}
-              onDrop={handleDrop}
+    <div className="text-slate-900">
+      <div className="mx-auto flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-180px)] items-start">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          {COLUMNS.map((col) => (
+            <Column
+              key={col.id}
+              id={col.id}
+              title={col.title}
+              issues={issues.filter((i) => i.status === col.id)}
             />
-            <Column 
-              title="In Progress" 
-              issues={issues.filter(i => i.status === 'In Progress')} 
-              onCardClick={handleIssueClick}
-              onDragStart={handleDragStart}
-              onDrop={handleDrop}
-            />
-            <Column 
-              title="Done" 
-              issues={issues.filter(i => i.status === 'Done')} 
-              onCardClick={handleIssueClick}
-              onDragStart={handleDragStart}
-              onDrop={handleDrop}
-            />
-          </div>
-        </div>
-      </main>
+          ))}
 
- 
-
-      {/* Issue Detail Modal Overlay */}
-   
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f8fafc;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 10px;
-          border: 2px solid #f8fafc;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;  
-          overflow: hidden;
-        }
-      `}</style>
-    </Card>
+          {/* This is the secret to smoothness: The Overlay follows the mouse */}
+          <DragOverlay dropAnimation={dropAnimation}>
+            {activeIssue ? (
+              <IssueCard issue={activeIssue} isOverlay={true} />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </div>
+    </div>
   );
 }

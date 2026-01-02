@@ -13,7 +13,16 @@ def get_tasks():
     # Step 1: Fetch all tasks
     tasks = (
         frappe.qb.from_(Task)
-        .select("*")
+        .select(
+            Task.name.as_("id"),
+            Task.name,
+            Task.subject.as_("title"),
+            Task.type,
+            Task.priority,
+            Task.status,
+            Task.project,
+            Task.modified,
+        )
         .orderby(Task.modified, order=frappe.qb.desc)
         .run(as_dict=True)
     )

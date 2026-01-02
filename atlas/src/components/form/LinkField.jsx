@@ -1,7 +1,7 @@
 import { useFrappeGetDocList } from 'frappe-react-sdk'
 import React, { useMemo } from 'react'
 import { Controller } from 'react-hook-form'
-import useDoctypeSchema from '../../hooks/doctype'
+import {useDoctypeSchema} from '../../hooks/doctype'
 
 const LinkField = ({
     control,

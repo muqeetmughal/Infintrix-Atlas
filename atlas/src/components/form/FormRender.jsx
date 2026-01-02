@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { FormField } from "./FormField";
 import { Link } from "react-router-dom";
 import { useFrappeCreateDoc, useFrappeGetCall } from "frappe-react-sdk";
-import useDoctypeSchema from "../../hooks/doctype";
+import {useDoctypeSchema} from "../../hooks/doctype";
 import { X } from "lucide-react";
 
 export default function FormRender({

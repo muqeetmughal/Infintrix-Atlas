@@ -20,7 +20,7 @@ import {
 import { useSearchParams } from "react-router-dom";
 import { useFrappeGetDoc } from "frappe-react-sdk";
 import dayjs from "dayjs";
-import Assignee from "../components/widgets/Assignee";
+// import Assignee from "../components/widgets/Assignee";
 import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import TextWidget from "../components/widgets/TextWidget";
 import RichTextWidget from "../components/widgets/RichTextWidget";
@@ -38,7 +38,8 @@ const TaskDetail = () => {
   // Handle escape key to close
 
   const onClose = () => {
-    setSearchParams({});
+    searchParams.delete("selected_task");
+    setSearchParams(searchParams);
   };
   useEffect(() => {
     const handleEsc = (e) => {
