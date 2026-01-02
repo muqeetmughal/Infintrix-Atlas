@@ -246,6 +246,13 @@ app_license = "mit"
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
+
+doc_events = {
+    "Task": {
+        "validate": "infintrix_atlas.task.validate_task_hierarchy",
+        "before_save": "infintrix_atlas.task.before_task_save"
+    }
+}
 fixtures = [
 
     {"dt": "Custom Field", "filters": [

@@ -96,7 +96,7 @@ const Tasks = () => {
                         <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="Search this board"
+                            placeholder="Search Tasks"
                             className="w-full pl-9 pr-3 py-1.5 md:py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                         />
                     </div>

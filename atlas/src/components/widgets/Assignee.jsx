@@ -1,3 +1,4 @@
+import React from 'react';
 const Assignee = ({ assignees = [] }) => {
     if (!assignees.length) {
         return null;
