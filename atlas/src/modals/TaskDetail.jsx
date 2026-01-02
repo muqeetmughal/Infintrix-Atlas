@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Maximize2,
@@ -10,32 +10,70 @@ import {
   Settings,
   Check,
   ChevronDown,
-  User,
   Zap,
-  Monitor,
-  GitBranch,
   Filter,
-  ArrowUpRight,
+  Edit,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { useFrappeGetDoc } from "frappe-react-sdk";
+import {
+  useFrappeGetDoc,
+  useFrappeGetDocList,
+  useFrappePostCall,
+  useFrappeUpdateDoc,
+} from "frappe-react-sdk";
 import dayjs from "dayjs";
-// import Assignee from "../components/widgets/Assignee";
 import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import TextWidget from "../components/widgets/TextWidget";
 import RichTextWidget from "../components/widgets/RichTextWidget";
+import { TagsSelectWidget } from "../components/widgets/TagsSelectWidget";
+import StatusWidget from "../components/widgets/StatusWidget";
+import { Button, Dropdown, Space } from "antd";
+import { IconPicker } from "../components/widgets/IconPIcker";
 const TaskDetail = () => {
+  const [width, setWidth] = useState({
+    left : 200,
+    right : 20
+  })
   const [activeTab, setActiveTab] = useState("comments");
-  const [status, setStatus] = useState("Done");
-  const [isClosing, setIsClosing] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const updateMutation = useFrappeUpdateDoc();
   const selectedTask = searchParams.get("selected_task") || null;
 
   const task_details_query = useFrappeGetDoc("Task", selectedTask || "");
-
+  const task_type_query = useFrappeGetDocList("Task Type", {
+    fields: ["*"],
+    limit_page_length: 100,
+  })
+  
+  const assignee_of_task_query = useFrappeGetDocList("ToDo", {
+    filters: [
+      ["reference_type", "=", "Task"],
+      ["reference_name", "=", selectedTask || ""],
+      ["status", "=", "Open"],
+    ],
+    fields: ["allocated_to"],
+    limit_page_length: 1,
+    // asDict :false
+  });
+  const assignee_mutation = useFrappePostCall(
+    "infintrix_atlas.api.v1.switch_assignee_of_task"
+  );
+  
+  const assignees_of_task = (assignee_of_task_query?.data || []).map((todo) => {
+    return todo.allocated_to;
+  });
+  
+  const task_types = (task_type_query?.data || []).map((task_type)=>{
+    return {
+      label : task_type.name,
+      key : task_type.name
+    }
+  })
   const task = task_details_query.data || {};
 
-  // Handle escape key to close
+  const labels_of_task = ((task?._user_tags || "").split(",") || []).filter(
+    (tag) => tag.trim() !== ""
+  );
 
   const onClose = () => {
     searchParams.delete("selected_task");
@@ -56,31 +94,13 @@ const TaskDetail = () => {
     { id: "worklog", label: "Work log" },
   ];
 
-  const metadata = [
-    {
-      label: "Assignee",
-      value: "Assign to me",
-      isUser: true,
-      icon: <User size={14} className="text-gray-500" />,
-    },
-    { label: "Labels", value: "None", italic: true },
-    { label: "Sprint", value: "IT Sprint 1", color: "text-blue-600" },
-    { label: "Story point estimate", value: "None" },
-    {
-      label: "Reporter",
-      value: "Muqeet Mughal",
-      userInitial: "MM",
-      bgColor: "bg-cyan-600",
-    },
-  ];
-
-  if (task_details_query.isLoading) {
+  if (task_details_query.isLoading || assignee_of_task_query.isLoading) {
     return <div>Loading...</div>;
   }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       {/* Modal Container */}
+      
       <div
         className="bg-white w-full max-w-6xl h-[90vh] rounded-lg shadow-2xl flex flex-col overflow-hidden text-slate-800 animate-in zoom-in-95 duration-300"
         onClick={(e) => e.stopPropagation()}
@@ -88,14 +108,64 @@ const TaskDetail = () => {
         {/* Navigation Header */}
         <header className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white">
           <div className="flex items-center space-x-2 text-sm text-slate-500">
-            <button className="hover:bg-slate-100 px-2 py-1 rounded transition-colors">
-              Add epic
-            </button>
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    label: (
+                      <a
+                        href="https://www.antgroup.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        1st menu item
+                      </a>
+                    ),
+                    key: "0",
+                  },
+                  {
+                    label: (
+                      <a
+                        href="https://www.aliyun.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        2nd menu item
+                      </a>
+                    ),
+                    key: "1",
+                  },
+                  {
+                    type: "divider",
+                  },
+                  {
+                    label: "3rd menu item",
+                    key: "3",
+                  },
+                ],
+              }}
+              trigger={["click"]}
+            >
+              <Button variant="text" size="small" icon={<Edit size={16} />}>
+                Add epic
+              </Button>
+            </Dropdown>
+
             <span className="text-slate-300">/</span>
             <div className="flex items-center text-blue-600 font-medium cursor-pointer hover:underline">
               <div className="w-4 h-4 bg-blue-600 rounded-sm mr-2 flex items-center justify-center">
-                <Check size={10} className="text-white" strokeWidth={4} />
+                <Dropdown
+                  menu={{
+                    items: task_types,
+                  }}
+                  trigger={["click"]}
+                >
+                  <a onClick={(e) => e.preventDefault()}>
+                    <Check size={10} className="text-white" strokeWidth={4} />
+                  </a>
+                </Dropdown>
               </div>
+
               <span>{task.name}</span>
             </div>
           </div>
@@ -132,13 +202,25 @@ const TaskDetail = () => {
         <div className="flex flex-1 overflow-hidden flex-col lg:flex-row">
           {/* Main Content (Left) */}
           <main className="flex-1 p-6 sm:p-10 overflow-y-auto custom-scrollbar border-r border-slate-100">
+            <h1 className="text-3xl font-semibold mb-6 leading-tight">
+              <TextWidget
+                style={{
+                  fontSize: "2rem",
+                }}
+                value={task.subject}
+                onSubmit={(newValue) => {
+                  updateMutation
+                    .updateDoc("Task", task.name, {
+                      subject: newValue,
+                    })
+                    .then(() => {
+                      task_details_query.mutate();
+                    });
+                }}
+              />
+            </h1>
 
-             <h1 className="text-3xl font-semibold mb-6 leading-tight">
-
-            <TextWidget value={task.subject} onChange={(newValue) => {
-              // Handle subject change
-            }} />
-             </h1>
+            <IconPicker/>
 
             <div className="flex space-x-2 mb-10">
               <button className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded transition-all active:scale-95">
@@ -156,11 +238,18 @@ const TaskDetail = () => {
                   Description
                 </h3>
                 <div className="group relative">
-
-                     <RichTextWidget value={task.description} onChange={(newValue) => {
-                      // Handle description change
-                    }} />
-                 
+                  <RichTextWidget
+                    value={task.description}
+                    onSubmit={(newValue) => {
+                      updateMutation
+                        .updateDoc("Task", task.name, {
+                          description: newValue,
+                        })
+                        .then(() => {
+                          task_details_query.mutate();
+                        });
+                    }}
+                  />
                 </div>
               </section>
 
@@ -209,7 +298,7 @@ const TaskDetail = () => {
                 </div>
 
                 <div className="flex space-x-3">
-                  <div className="w-8 h-8 flex-shrink-0 rounded-full bg-cyan-600 text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
+                  <div className="w-8 h-8 shrink-0 rounded-full bg-cyan-600 text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
                     MM
                   </div>
                   <div className="flex-1 space-y-3">
@@ -248,19 +337,55 @@ const TaskDetail = () => {
             </div>
           </main>
 
+          <div
+            onMouseDown={(e) => {
+              const startX = e.clientX;
+              const main = e.target.previousElementSibling;
+              const startWidth = main.offsetWidth;
+
+              const handleMouseMove = (moveEvent) => {
+                const diff = moveEvent.clientX - startX;
+                main.style.width = startWidth + diff + "px";
+              };
+
+              const handleMouseUp = () => {
+                document.removeEventListener("mousemove", handleMouseMove);
+                document.removeEventListener("mouseup", handleMouseUp);
+              };
+
+              document.addEventListener("mousemove", handleMouseMove);
+              document.addEventListener("mouseup", handleMouseUp);
+            }}
+            className="w-1 bg-slate-200 hover:bg-blue-400 cursor-col-resize transition-colors hover:shadow-md"
+          />
+
           {/* Sidebar (Right) */}
-          <aside className="w-full lg:w-80 p-6 sm:p-8 bg-white overflow-y-auto">
+          <aside className="w-full lg:w-90 p-6 sm:p-8 bg-white overflow-y-auto">
             {/* Status Section */}
             <div className="flex items-center space-x-2 mb-8">
               <div className="relative group">
-                <button className="bg-green-600 hover:bg-green-700 text-white pl-3 pr-2 py-1.5 rounded flex items-center text-xs font-bold transition-colors shadow-sm">
+                {/* <button className="bg-green-600 hover:bg-green-700 text-white pl-3 pr-2 py-1.5 rounded flex items-center text-xs font-bold transition-colors shadow-sm">
                   {status} <ChevronDown size={14} className="ml-1" />
-                </button>
+                </button> */}
+                <StatusWidget
+                  value={task.status}
+                  onChange={(v) => {
+                    updateMutation
+                      .updateDoc("Task", task.name, {
+                        status: v,
+                      })
+                      .then(() => {
+                        task_details_query.mutate();
+                      });
+                  }}
+                />
               </div>
 
-              <div className="flex items-center text-green-700 px-2.5 py-1 bg-green-50 rounded text-xs font-bold border border-green-100">
-                <Check size={12} className="mr-1.5" strokeWidth={3} /> {status}
-              </div>
+              {task.status === "Completed" && (
+                <div className="flex items-center text-green-700 px-2.5 py-1 bg-green-50 rounded text-xs font-bold border border-green-100">
+                  <Check size={12} className="mr-1.5" strokeWidth={3} /> Done
+                </div>
+              )}
 
               <button className="text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-slate-200 rounded p-1.5 transition-colors">
                 <Zap size={14} />
@@ -287,11 +412,42 @@ const TaskDetail = () => {
                     Assignee
                   </div>
                   <div className="flex items-center space-x-2 py-1 group cursor-pointer">
-                   <AssigneeSelectWidget mode={undefined} value={["Administrator"]} onChange={(v) => {console.log(v)}} />
+                    <AssigneeSelectWidget
+                      mode={undefined}
+                      value={assignees_of_task || []}
+                      onChange={(v) => {
+                        assignee_mutation.call({
+                          task_name: task.name,
+                          new_assignee: v,
+                        });
+                      }}
+                    />
+                  </div>
+                </>
+                <>
+                  <div className="text-slate-500 font-medium py-1">Labels</div>
+                  <div className="flex items-center space-x-2 py-1 group cursor-pointer">
+                    <TagsSelectWidget
+                      mode={"multiple"}
+                      docname={task.name}
+                      value={labels_of_task || []}
+                    />
+                  </div>
+                </>
+                <>
+                  <div className="text-slate-500 font-medium py-1">
+                    Reporter
+                  </div>
+                  <div className="flex items-center space-x-2 py-1 group cursor-pointer">
+                    <AssigneeSelectWidget
+                      mode={undefined}
+                      value={[task.owner]}
+                      onChange={(v) => {}}
+                    />
                   </div>
                 </>
 
-                {metadata.map((item, index) => (
+                {/* {metadata.map((item, index) => (
                   <React.Fragment key={index}>
                     <div className="text-slate-500 font-medium py-1">
                       {item.label}
@@ -320,7 +476,7 @@ const TaskDetail = () => {
                       </span>
                     </div>
                   </React.Fragment>
-                ))}
+                ))} */}
 
                 {/* Development Rows */}
                 {/* <div className="text-slate-500 font-medium py-1 mt-2">Development</div>

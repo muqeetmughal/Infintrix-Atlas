@@ -1,5 +1,5 @@
 import { Select, Tag } from "antd";
-import { useFrappeGetDocList } from "frappe-react-sdk";
+import { useFrappeGetDocList, useFrappePostCall } from "frappe-react-sdk";
 import { useState } from "react";
 import AvatarGen from "../AvatarGen";
 // import AvatarGen from "../common/AvatarGen";
@@ -7,6 +7,7 @@ import AvatarGen from "../AvatarGen";
 export const AssigneeSelectWidget = (props) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value || []);
+
   const collegues_list_query = useFrappeGetDocList("User", {
     fields: ["name as const", "full_name as title"],
     filters: [["enabled", "=", 1]],
@@ -26,6 +27,7 @@ export const AssigneeSelectWidget = (props) => {
   };
 
   if (collegues_list_query.isLoading) return null;
+  
 
   return (
     <Select
@@ -42,6 +44,7 @@ export const AssigneeSelectWidget = (props) => {
       value={selected}
       onChange={(v)=>{
         setSelected(v);
+       
         props.onChange && props.onChange(v);
       }}
       optionRender={(props) => (

@@ -1,21 +1,18 @@
 import { Button, Input } from "antd";
 import { Check, X } from "lucide-react";
 import React from "react";
-import { set } from "react-hook-form";
 
 const TextWidget = (props) => {
   const [editable, setEditable] = React.useState(false);
   const [newValue, setNewValue] = React.useState(props.value);
 
-  const mutateValue = (newValue) => {
-    setNewValue(newValue);
-    props.onChange(newValue);
-  }
+
 
   return (
    
       <>
         <Input
+        {...props}
           value={newValue}
           variant={editable ? undefined : "borderless"}
           onClick={() => setEditable(true)}
@@ -24,7 +21,7 @@ const TextWidget = (props) => {
           }}
           onKeyDown={(e)=>{
             if (e.key === "Enter") {
-              mutateValue(newValue);
+              props.onSubmit(newValue);
               setEditable(false);
             } else if (e.key === "Escape") {
               setNewValue(props.value);
@@ -43,7 +40,7 @@ const TextWidget = (props) => {
               icon={<Check />}
               type="primary"
               onClick={() => {
-                mutateValue(newValue);
+                props.onSubmit(newValue);
                 setEditable(false);
               }}
             />

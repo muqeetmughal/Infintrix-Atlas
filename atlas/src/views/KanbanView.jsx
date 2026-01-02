@@ -18,52 +18,69 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useFrappeGetCall, useFrappeGetDocList, useFrappePostCall, useFrappeUpdateDoc } from "frappe-react-sdk";
+import { useFrappeUpdateDoc } from "frappe-react-sdk";
 import { useGetDoctypeField } from "../hooks/doctype";
-// --- Components ---
+import { useSearchParams } from "react-router-dom";
 
-/**
- * The purely visual representation of an Issue Card.
- * Used both in the list and inside the DragOverlay.
- */
 const IssueCard = React.forwardRef(
   (
     { issue, isDragging, isOverlay, listeners, attributes, style, ...props },
     ref
   ) => {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const handleTitleClick = (e) => {
+      e.stopPropagation();
+      if (issue.id === "new_item") return;
+      console.log("Issue clicked:", issue, issue);
+      searchParams.set("selected_task", issue.id);
+      setSearchParams(searchParams);
+    };
+
     return (
       <div
         ref={ref}
         style={style}
         className={`
         group bg-white p-4 rounded-lg border shadow-sm mb-3 select-none transition-shadow
-        ${isDragging
+        ${
+          isDragging
             ? "opacity-40 border-blue-400 ring-2 ring-blue-100"
             : "border-slate-200 hover:border-slate-300 hover:shadow-md"
-          }
-        ${isOverlay
+        }
+        ${
+          isOverlay
             ? "shadow-xl cursor-grabbing ring-2 ring-blue-500 border-blue-500 scale-105 transition-transform"
             : "cursor-grab"
-          }
+        }
       `}
         {...attributes}
         {...listeners}
         {...props}
       >
         <div className="flex items-start justify-between mb-2">
-          <p className="text-sm font-medium text-slate-800 leading-snug">
+          <p
+            onClick={handleTitleClick}
+            className="text-sm font-medium text-slate-800 leading-snug cursor-pointer hover:text-blue-600"
+          >
             {issue.title}
           </p>
-          <div className="text-slate-300 group-hover:text-slate-500 transition-colors p-1 -mr-2">
-            <GripVertical size={16} />
-          </div>
+          {issue.id !== "new_item" && (
+            <div
+              className="text-slate-300 group-hover:text-slate-500 transition-colors p-1 -mr-2"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical size={16} />
+            </div>
+          )}
         </div>
 
         <div className="flex justify-between items-center mt-4">
           <div className="flex items-center gap-2">
             <div
-              className={`w-3 h-3 rounded-sm ${issue.type === "story" ? "bg-emerald-500" : "bg-rose-500"
-                }`}
+              className={`w-3 h-3 rounded-sm ${
+                issue.type === "story" ? "bg-emerald-500" : "bg-rose-500"
+              }`}
             />
             <span className="text-[11px] text-slate-500 font-bold tracking-tight uppercase">
               {issue.id}
@@ -80,9 +97,6 @@ const IssueCard = React.forwardRef(
   }
 );
 
-/**
- * The Sortable wrapper for the Issue Card.
- */
 const SortableIssue = ({ issue }) => {
   const {
     attributes,
@@ -116,16 +130,37 @@ const SortableIssue = ({ issue }) => {
   );
 };
 
-/**
- * A Column containing a sortable list of issues.
- */
 const Column = ({ id, title, issues }) => {
+  const [addNew, setAddNew] = useState(false);
+  const [createItem, setCreateItem] = useState({
+    subject: "",
+    status: id,
+  });
   const { setNodeRef } = useSortable({
     id: id,
     data: {
       type: "Column",
     },
   });
+
+  const handleClickOutside = useCallback(() => {
+    setCreateItem({ subject: "", status: id });
+    setAddNew(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (!addNew) return;
+
+    const handleMouseDown = (e) => {
+      const target = e.target.closest("[data-create-item]");
+      if (!target) {
+        handleClickOutside();
+      }
+    };
+
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [addNew, handleClickOutside]);
 
   return (
     <div
@@ -154,29 +189,58 @@ const Column = ({ id, title, issues }) => {
           ))}
         </SortableContext>
 
-        <button onClick={()=>{
-          console.log("Create Work Item");
-          
-        }} className="cursor-pointer w-full mt-2 py-2 flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-200/50 rounded-lg text-sm font-medium transition-colors">
-          <Plus size={16} />
-          Create Work Item
-        </button>
+        {addNew ? (
+          <div data-create-item>
+            <IssueCard
+              issue={{
+                title: (
+                  <input
+                    type="text"
+                    className="w-full border-0 bg-transparent focus:ring-0 p-0 m-0 outline-none"
+                    placeholder="Enter work item title"
+                    value={createItem.subject}
+                    onChange={(e) =>
+                      setCreateItem({ ...createItem, subject: e.target.value })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        console.log("Creating work item:", createItem);
+                        setCreateItem({ subject: "", status: id });
+                        setAddNew(false);
+                      } else if (e.key === "Escape") {
+                        setCreateItem({ subject: "", status: id });
+                        setAddNew(false);
+                      }
+                    }}
+                    autoFocus
+                  />
+                ),
+                id: "new_item",
+                assigneeInitials: "",
+                assigneeColor: "bg-slate-400",
+              }}
+            />
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              setAddNew(true);
+            }}
+            className="cursor-pointer w-full mt-2 py-2 flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-200/50 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus size={16} />
+            Create Work Item
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
-
-export default function KanbanView({
-  tasks = [],
-}) {
+export default function KanbanView({ tasks = [] }) {
   const [issues, setIssues] = useState(tasks);
 
-  // const issues_query = useFrappeGetDocList("Task", {
-  //   fields: ["name as id", "subject as title", "status", "type", "priority"],
-  // });
-
-  const updateTaskMutation = useFrappeUpdateDoc("Task");
+  const updateTaskMutation = useFrappeUpdateDoc();
 
   const columns_query = useGetDoctypeField("Task", "status", "options");
   const [activeIssue, setActiveIssue] = useState(null);
@@ -185,16 +249,15 @@ export default function KanbanView({
   const COLUMNS =
     columnOptions.length > 0
       ? columnOptions.map((option) => ({
-        id: option,
-        title: option,
-      }))
+          id: option,
+          title: option,
+        }))
       : [];
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-
 
   // Find issue by ID
   const findIssue = useCallback(
@@ -276,11 +339,9 @@ export default function KanbanView({
 
     const columnName = issues.find((i) => i.id === activeId)?.status || overId;
 
-    console.log("Mutating status", activeId,columnName);
+    console.log("Mutating status", activeId, columnName);
 
     mutate(activeId, columnName);
-
-
   };
   const mutate = async (taskName, newStatus) => {
     try {

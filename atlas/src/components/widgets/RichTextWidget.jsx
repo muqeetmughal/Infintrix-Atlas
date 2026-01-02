@@ -4,10 +4,8 @@ import "react-quill-new/dist/quill.snow.css";
 import { Button } from "antd";
 import { X, Check } from "lucide-react";
 const RichTextWidget = (props) => {
-  console.log("RichTextWidget props.value", props.value);
   const [value, setValue] = useState(props.value || "");
   const [editable, setEditable] = useState(false);
-  console.log("RichTextWidget props.value", editable);
   if (!props.value && !editable) {
     return (
       <p
@@ -40,7 +38,7 @@ const RichTextWidget = (props) => {
             // icon={<Check />}
             onClick={() => {
               setValue(value);
-              props.onChange && props.onChange(value);
+              props.onSubmit && props.onSubmit(value);
               setEditable(false);
             }}
           >
