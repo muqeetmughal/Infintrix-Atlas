@@ -1,42 +1,83 @@
-import * as Icons from "lucide-react";
-import { useState } from "react";
+import { Select, Input } from "antd";
+import * as AllIcons from "@ant-design/icons/lib/icons";
+import { useMemo, useState } from "react";
 
-const iconNames = Object.keys(Icons);
-// console.log(iconNames)
-export function IconPicker({ value, onChange }) {
+const Icons = Object.fromEntries(
+  Object.entries(AllIcons).filter(([name]) => name.includes("Outlined"))
+);
+
+export const IconPicker = ({ value, onChange }) => {
   const [search, setSearch] = useState("");
 
+  const filteredIcons = useMemo(() => {
+    return Object.keys(Icons).filter((name) =>
+      name.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [search]);
+
+  const SelectedIcon = value ? Icons[value] : null;
+
   return (
-    <div className="space-y-2">
-      <input
-        className="border px-2 py-1 w-full"
-        placeholder="Search icon..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+    <Select
+      value={value}
+      style={{ width: 260 }}
+      placeholder="Select an icon"
+      dropdownRender={() => (
+        <div style={{ padding: 8 }}>
+          {/* Search */}
+          <Input
+            placeholder="Search icon"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ marginBottom: 8 }}
+          />
 
-      <div className="grid grid-cols-6 gap-2 max-h-64 overflow-auto">
-        {iconNames
-          .filter(name =>
-            name.toLowerCase().includes(search.toLowerCase())
-          )
-          .map(name => {
-            const Icon = Icons[name];
-
-            return (
-              <button
-                key={name}
-                type="button"
-                onClick={() => onChange(name)}
-                className={`p-2 border rounded hover:bg-slate-100 ${
-                  value === name ? "ring-2 ring-blue-500" : ""
-                }`}
-              >
-                <Icon size={20} />
-              </button>
-            );
-          })}
-      </div>
-    </div>
+          {/* Grid */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(6, 1fr)",
+              gap: 8,
+              maxHeight: 240,
+              overflowY: "auto",
+            }}
+          >
+            {filteredIcons.map((iconName) => {
+              const Icon = Icons[iconName];
+              return (
+                <div
+                  key={iconName}
+                  onClick={() => onChange(iconName)}
+                  title={iconName}
+                  style={{
+                    cursor: "pointer",
+                    padding: 6,
+                    borderRadius: 6,
+                    border:
+                      value === iconName
+                        ? "1px solid #1677ff"
+                        : "1px solid transparent",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    background:
+                      value === iconName ? "#e6f4ff" : "transparent",
+                  }}
+                >
+                  <Icon />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    >
+      {/* Dummy option just to satisfy Select */}
+      {value && (
+        <Select.Option value={value}>
+          {SelectedIcon && <SelectedIcon />}
+        </Select.Option>
+      )}
+    </Select>
   );
-}
+};

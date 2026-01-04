@@ -7,29 +7,38 @@ import {
   TASK_STATUS_COLORS,
 } from "../data/constants";
 import Badge from "../components/ui/Badge";
-import { useFrappeGetCall, useFrappeGetDocList } from "frappe-react-sdk";
+import {
+  useFrappeGetCall,
+  useFrappeGetDoc,
+  useFrappeGetDocList,
+} from "frappe-react-sdk";
 import dayjs from "dayjs";
 import Assignee from "../components/widgets/Assignee";
 import Priority from "../components/widgets/PriorityWidget";
-import DocModal from "../components/form/FormRender";
+import FormRender from "../components/form/FormRender";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useDoctypeSchema } from "../hooks/doctype";
 import TaskDetail from "../modals/TaskDetail";
-import ListView from "../views/ListView";
+import TableView from "../views/TableView";
 import KanbanView from "../views/KanbanView";
 import LinkField from "../components/form/LinkField";
 import { Input, Select } from "antd";
+import BacklogView from "../views/BacklogView/BacklogView";
+import { set } from "react-hook-form";
+import AIArchitect from "./AIArchitect";
 const Tasks = () => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
 
-  const view = params.view || "list";
+  const view = params.view || "table";
+  const project = params.project || null;
   const selectedTask = searchParams.get("selected_task") || null;
-  const project = searchParams.get("project") || null;
+  // const project = searchParams.get("project") || null;
   const navigate = useNavigate();
 
   const query = useDoctypeSchema("Task");
+  const project_query = useFrappeGetDoc("Project", project);
   const tasks_query = useFrappeGetCall(
     `infintrix_atlas.api.v1.get_tasks?project=${project}`
   );
@@ -38,33 +47,47 @@ const Tasks = () => {
     limit_page_length: 100,
   });
   const schema = query.data || {};
-
+  
   const tabs = [
+    { id: "ai-architect", label: "AI Architect" },
     { id: "list", label: "List" },
+    { id: "backlog", label: "Backlog" },
+    { id: "table", label: "Table" },
     { id: "kanban", label: "Kanban" },
   ];
-
-  const tasks = tasks_query?.data?.message || [];
-
-  if (tasks_query.isLoading) {
+  
+  
+  if (tasks_query.isLoading && project_query.isLoading) {
     return <div>Loading...</div>;
   }
-
+  
+  const tasks = tasks_query?.data?.message || [];
+  const project_data = project_query?.data || {};
+  console.log(project_data)
   return (
     <>
       {
-        <DocModal
+        <FormRender
           doctype="Task"
           open={isOpen}
           onClose={() => setIsOpen(false)}
           full_form={false}
+          defaultValues={{
+            project: project || "",
+          }}
         />
       }
       <TaskDetail />
-      <div className="space-y-4 md:space-y-6">
+      <div className="space-y-2 md:space-y-1">
         {/* Header Section */}
+        {project_data.project_name && (
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+            {project_data.project_name}
+          </h1>
+        )}
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
           {/* Tabs */}
+
           <div className="flex items-center border-b border-slate-100 overflow-x-auto">
             <div className="flex space-x-4 md:space-x-6 min-w-max">
               {tabs.map((tab) => (
@@ -74,7 +97,7 @@ const Tasks = () => {
                     const oldSearchParams = new URLSearchParams(
                       searchParams.toString()
                     );
-                    navigate(`/tasks/${tab.id}`);
+                    navigate(`/tasks/${project}/${tab.id}`);
                     setSearchParams(oldSearchParams);
                   }}
                   className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${
@@ -137,8 +160,11 @@ const Tasks = () => {
               defaultValue={project}
               value={project}
               onChange={(value) => {
-                searchParams.set("project", value);
-                setSearchParams(searchParams);
+                const oldSearchParams = new URLSearchParams(
+                  searchParams.toString()
+                );
+                navigate(`/tasks/${value}/${view}`);
+                setSearchParams(oldSearchParams);
               }}
               // allowClear
               // onClear={()=>{
@@ -181,8 +207,10 @@ const Tasks = () => {
 
         {/* View Content */}
         <div className="overflow-x-auto">
-          {view === "list" && <ListView tasks={tasks} />}
+          {view === "ai-architect" && <AIArchitect />}
+          {view === "table" && <TableView tasks={tasks} />}
           {view === "kanban" && <KanbanView tasks={tasks} />}
+          {view === "backlog" && <BacklogView initialTasks={tasks} project={project_data} />}
         </div>
       </div>
     </>

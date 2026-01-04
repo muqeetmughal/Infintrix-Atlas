@@ -8,7 +8,7 @@ import PriorityWidget from "../components/widgets/PriorityWidget";
 import StatusWidget from "../components/widgets/StatusWidget";
 import { useFrappeUpdateDoc } from "frappe-react-sdk";
 
-const ListView = ({ tasks }) => {
+const TableView = ({ tasks }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedTask = searchParams.get("task") || null;
   const navigate = useNavigate();
@@ -109,4 +109,4 @@ const ListView = ({ tasks }) => {
   );
 };
 
-export default ListView;
+export default TableView;

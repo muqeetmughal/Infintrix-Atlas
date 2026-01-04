@@ -1,50 +1,69 @@
-import { Select } from "antd";
+import { Select, Spin } from "antd";
 import React, { useState } from "react";
-import { useGetDoctypeField } from "../../hooks/doctype";
+// import { LoadingOutlined } from '@ant-design/icons';
+import { useFrappeGetDocList } from "frappe-react-sdk";
+import { IconRenderer } from "../IconRenderer";
 
 const WorkItemTypeWidget = (props) => {
   // const {
   // } = props
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(props.value || []);
+  const [selected, setSelected] = useState(props.value || null);
+  const task_type_query = useFrappeGetDocList("Task Type", {
+    fields: ["name", "custom_icon", "custom_color"],
+    limit_page_length: 100,
+  });
+  const task_types = (task_type_query?.data || []).map((task_type) => {
+    return {
+      label: task_type.name,
+      key: task_type.name,
+      icon: <IconRenderer name={task_type.custom_icon || "QuestionOutlined"} />,
+      color: task_type.custom_color || "#000000",
+    };
+  });
+  if (task_type_query.isLoading) return <Spin />;
 
-  const status_query = useGetDoctypeField("Task", "status", "options");
-  console.log(status_query.data)
 
-  if (status_query.isLoading) return "Loading"
+  // if (props.only_icon){
+  //   const selected_type = task_types.find((t)=> t.key === selected)
+  //   console.log("selected_type", selected_type);
+  //   return selected_type.icon
+  // }
 
   return (
     <>
-    <Select
-          
-          
-          variant="borderless"
-        //   className="min-w-24"
-        //   placeholder="Assignees"
-          open={open}
-          onDropdownVisibleChange={(visible) => setOpen(visible)}
-          onSelect={() => setOpen(false)}
-          {...props}
-          value={selected}
-          onChange={(v)=>{
-            setSelected(v);
-           
-            props.onChange && props.onChange(v);
-          }}
-          optionRender={(props) => (
-            <div className="flex items-center" style={{ width: "100%" }}>
-              <span className="ml-2">{props.label}</span>
-            </div>
-          )}
-          dropdownStyle={{ width: 300, overflowX: "auto" }}
-          maxTagCount="responsive"
-        >
-          {status_query.data.map((option, index) => (
-            <Select.Option key={option} value={option}>
-              {option}
-            </Select.Option>
-          ))}
-        </Select>
+      <Select
+        variant="borderless"
+        {...props}
+        open={open}
+        onDropdownVisibleChange={(visible) => setOpen(visible)}
+        onSelect={() => setOpen(false)}
+        value={selected}
+      
+        onChange={(v) => {
+          setSelected(v);
+
+          props.onChange && props.onChange(v);
+        }}
+        // optionRender={(props) => (
+        //   <div className="flex items-center" style={{ width: "100%" }}>
+        //     <span className="ml-2">{props.label}</span>
+        //   </div>
+        // )}
+        dropdownStyle={{ width: 150, overflowX: "auto" }}
+        // maxTagCount="responsive"
+      >
+        {task_types.map((option, index) => (
+          <Select.Option key={option.key} value={option.label}>
+            <IconRenderer name={option.icon ? option.icon.props.name : "QuestionOutlined"} 
+            style={{ color: option.color }}
+            />
+            <span className="ml-2" style={{
+              color : option.color
+            }}>{option.label}</span>
+          </Select.Option>
+        ))}
+      </Select>
     </>
   );
 };

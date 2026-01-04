@@ -29,10 +29,10 @@ export const router = createBrowserRouter(
                     path: "",
                     element: <Navigate to={`dashboard`} />,
                 },
-                {
-                    path: "tasks",
-                    element: <Tasks />,
-                },
+                // {
+                //     path: "tasks",
+                //     element: <Tasks />,
+                // },
                 {
                     path: "dashboard",
                     element: <Dashboard />,
@@ -48,7 +48,7 @@ export const router = createBrowserRouter(
                     path: "ai-gen",
                     element: <AIArchitect />
                 }, {
-                    path: "tasks/:view",
+                    path: "tasks/:project/:view",
                     element: <Tasks />
                 }
 
