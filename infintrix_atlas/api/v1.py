@@ -3,6 +3,7 @@ import frappe
 
 import frappe
 from frappe.query_builder import DocType
+from datetime import datetime, timedelta
 
 
 @frappe.whitelist()
@@ -12,7 +13,7 @@ def get_tasks():
     print("Fetching tasks for project:", project)
     Task = DocType("Task")
     ToDo = DocType("ToDo")
-    
+
     # Step 1: Fetch all tasks
     if project != "null" and project:
         tasks = (
@@ -97,6 +98,8 @@ def get_doctype_meta(doctype_name):
         return meta.as_dict()
     except Exception as e:
         frappe.throw(f"Error fetching metadata: {e}")
+
+
 @frappe.whitelist()  # Adjust permissions as needed
 def switch_assignee_of_task(task_name, new_assignee):
     # task_name = frappe.request.args.get("task")
@@ -111,24 +114,136 @@ def switch_assignee_of_task(task_name, new_assignee):
         {
             "reference_type": "Task",
             "reference_name": task_name,
-            "status": ["!=", "Cancelled"]
+            "status": ["!=", "Cancelled"],
         },
-        "name"
+        "name",
     )
-    
+
     if existing_todo:
         frappe.db.set_value("ToDo", existing_todo, "allocated_to", new_assignee)
     else:
-        frappe.get_doc({
-            "doctype": "ToDo",
-            "reference_type": "Task",
-            "reference_name": task_name,
-            "allocated_to": new_assignee,
-            "description": f"Task assigned to {new_assignee}",
-            "status": "Open",
-            "due_date": None,
-            "assigned_by": frappe.session.user
-        }).insert()
+        frappe.get_doc(
+            {
+                "doctype": "ToDo",
+                "reference_type": "Task",
+                "reference_name": task_name,
+                "allocated_to": new_assignee,
+                "description": f"Task assigned to {new_assignee}",
+                "status": "Open",
+                "due_date": None,
+                "assigned_by": frappe.session.user,
+            }
+        ).insert()
 
     frappe.db.commit()
     return {"success": True, "message": "Assignee updated"}
+
+
+@frappe.whitelist()
+def get_project_flow_metrics(project):
+    """
+    Returns execution efficiency (%) and backlog health label
+    for a project.
+
+    Output:
+    {
+        "efficiency": int (0–100),
+        "health": "Optimized" | "At Risk" | "Unhealthy",
+        "message": str (tip to improve)
+    }
+    """
+
+    project_doc = frappe.get_doc("Project", project)
+    execution_mode = project_doc.custom_execution_mode or "Kanban"
+
+    tasks = frappe.get_all(
+        "Task",
+        filters={"project": project},
+        fields=["status", "custom_cycle as cucle", "modified", "creation"],
+    )
+
+    open_tasks = []
+    in_progress_count = 0
+    backlog_tasks = []
+
+    now = datetime.today()
+    stale_cutoff = now - timedelta(days=14)
+
+    # -----------------------------
+    # Classify tasks
+    # -----------------------------
+
+    for t in tasks:
+        status = t.status
+
+        if status in ("Working", "Pending Review"):
+            in_progress_count += 1
+
+        elif status == "Open":
+            open_tasks.append(t)
+
+            if execution_mode == "Scrum":
+                if not t.cycle:
+                    backlog_tasks.append(t)
+            else:
+                backlog_tasks.append(t)
+
+    # -----------------------------
+    # Efficiency calculation
+    # -----------------------------
+
+    flow_denominator = in_progress_count + len(open_tasks)
+
+    if flow_denominator == 0:
+        efficiency = 100
+    else:
+        efficiency = round((in_progress_count / flow_denominator) * 100)
+
+    # -----------------------------
+    # Backlog health calculation
+    # -----------------------------
+
+    backlog_count = len(backlog_tasks)
+
+    if backlog_count == 0:
+        health = "Optimized"
+    else:
+        stale_count = sum(
+            1 for t in backlog_tasks if (t.modified or t.creation) < stale_cutoff
+        )
+
+        stale_ratio = stale_count / backlog_count
+
+        if backlog_count <= 10 and stale_ratio < 0.3:
+            health = "Optimized"
+        elif backlog_count <= 25 and stale_ratio < 0.6:
+            health = "At Risk"
+        else:
+            health = "Unhealthy"
+
+    if efficiency < 40 and health == "Optimized":
+        health = "At Risk"
+
+    # Generate improvement message
+    message = ""
+    if health == "Unhealthy":
+        message = "Reduce backlog size and address stale tasks to improve health."
+    elif health == "At Risk":
+        if efficiency < 40:
+            message = "Increase tasks in progress and reduce backlog to improve efficiency and health."
+        else:
+            message = "Address stale backlog items to optimize project health."
+    else:  # Optimized
+        if efficiency < 40:
+            message = "Increase work in progress to improve efficiency."
+        else:
+            message = "Great! Your project is running smoothly."
+
+    return {
+        "efficiency": efficiency,
+        "health": health,
+        "message": message,
+        "color": {"Optimized": "green", "At Risk": "orange", "Unhealthy": "red"}[
+            health
+        ],
+    }

@@ -260,6 +260,12 @@ fixtures = [
             "Infintrix Atlas"
         ]]
     ]},
+     {"dt": "Property Setter", "filters": [
+        ["module", "in", [
+            "Infintrix Atlas"
+        ]]
+    ]},
+    {"dt": "Task Type"},
 ]
 
 

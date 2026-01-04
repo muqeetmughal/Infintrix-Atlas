@@ -4,7 +4,7 @@ import frappe
 def validate_task_hierarchy(doc, method):
     print("Validating task hierarchy...", doc, method)
 
-    if not doc.parent_task or not doc.task_type:
+    if not doc.parent_task or not doc.type:
         return
 
     parent = frappe.get_doc("Task", doc.parent_task)

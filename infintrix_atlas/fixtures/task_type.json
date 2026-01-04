@@ -1,0 +1,82 @@
+[
+ {
+  "custom_allowed_child_type": [],
+  "custom_color": "#00b81c",
+  "custom_icon": "UserSwitchOutlined",
+  "custom_is_container": 0,
+  "description": null,
+  "docstatus": 0,
+  "doctype": "Task Type",
+  "modified": "2026-01-03 17:48:28.667530",
+  "name": "Story",
+  "weight": 0.0
+ },
+ {
+  "custom_allowed_child_type": [],
+  "custom_color": "#449CF0",
+  "custom_icon": "CheckSquareOutlined",
+  "custom_is_container": 0,
+  "description": null,
+  "docstatus": 0,
+  "doctype": "Task Type",
+  "modified": "2026-01-03 17:45:26.737185",
+  "name": "Task",
+  "weight": 0.0
+ },
+ {
+  "custom_allowed_child_type": [
+   {
+    "parent": "Feature",
+    "parentfield": "custom_allowed_child_type",
+    "parenttype": "Task Type",
+    "task_type": "Task"
+   }
+  ],
+  "custom_color": "#e08a00",
+  "custom_icon": "StarOutlined",
+  "custom_is_container": 0,
+  "description": null,
+  "docstatus": 0,
+  "doctype": "Task Type",
+  "modified": "2026-01-03 17:48:59.864219",
+  "name": "Feature",
+  "weight": 0.0
+ },
+ {
+  "custom_allowed_child_type": [],
+  "custom_color": "#CB2929",
+  "custom_icon": "BugOutlined",
+  "custom_is_container": 0,
+  "description": null,
+  "docstatus": 0,
+  "doctype": "Task Type",
+  "modified": "2026-01-03 17:45:58.871560",
+  "name": "Bug",
+  "weight": 0.0
+ },
+ {
+  "custom_allowed_child_type": [
+   {
+    "parent": "Epic",
+    "parentfield": "custom_allowed_child_type",
+    "parenttype": "Task Type",
+    "task_type": "Feature"
+   },
+   {
+    "parent": "Epic",
+    "parentfield": "custom_allowed_child_type",
+    "parenttype": "Task Type",
+    "task_type": "Task"
+   }
+  ],
+  "custom_color": "#449CF0",
+  "custom_icon": "RocketOutlined",
+  "custom_is_container": 1,
+  "description": null,
+  "docstatus": 0,
+  "doctype": "Task Type",
+  "modified": "2026-01-03 17:11:49.558565",
+  "name": "Epic",
+  "weight": 0.0
+ }
+]
