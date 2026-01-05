@@ -128,15 +128,7 @@ const Tasks = () => {
               onClick={() => {
                 searchParams.set("doctype", "Task");
                 searchParams.set("mode", "create" || "");
-                // searchParams.set("docname", task || "");
                 setSearchParams(searchParams);
-                // navigate(`/tasks/${project}/ai-architect`);
-                // setIsOpen(true);
-                // if (schema.quick_entry) {
-                //   setIsOpen(true);
-                // } else {
-                //   navigate("/tasks/create");
-                // }
               }}
               className="cursor-pointer bg-slate-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-slate-800 transition-colors"
             >

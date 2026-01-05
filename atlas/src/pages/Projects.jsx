@@ -34,15 +34,15 @@ const Projects = () => {
 
     return (
         <>
-            {
-                <DocModal doctype="Project" open={isOpen} onClose={() => setIsOpen(false)} full_form={false} />
-            }
+        
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">Project Hub</h2>
-                    <button onClick={()=>{
-                        setIsOpen(true)
-                    }} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center space-x-2 shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-200 active:scale-95 transition-all duration-200">
+                    <button onClick={() => {
+                                    searchParams.set("doctype", "Project");
+                                    searchParams.set("mode", "create" || "");
+                                    setSearchParams(searchParams);
+                                  }} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center space-x-2 shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-200 active:scale-95 transition-all duration-200">
                         <Plus size={20} className="group-hover:rotate-90 transition-transform" />
                         <span>Create Project</span>
                     </button>
