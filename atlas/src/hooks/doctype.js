@@ -7,7 +7,9 @@ export const useDoctypeSchema = (doctype) => {
 
     const query = useFrappeGetCall("infintrix_atlas.api.v1.get_doctype_meta", {
         doctype_name: doctype
-    })
+    } , "doctype-schema-" + doctype, {
+        isPaused: ()=> !doctype,
+    });
 
     const schema = query.data?.message || {}
     return {

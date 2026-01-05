@@ -442,7 +442,6 @@ export default function ListView() {
 
   const statuses = Object.keys(STATUS_CONFIG);
 
-  console.log("statuses:", statuses);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -461,7 +460,7 @@ export default function ListView() {
     return;
   }, [selectedGroupByField]);
 
-  console.log("groups:", groups);
+  // console.log("groups:", groups);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {

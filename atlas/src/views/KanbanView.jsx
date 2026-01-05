@@ -238,17 +238,18 @@ const Column = ({ id, title, issues }) => {
 };
 
 export default function KanbanView({ tasks = [] }) {
+
   const [issues, setIssues] = useState(tasks);
 
   const updateTaskMutation = useFrappeUpdateDoc();
 
   const columns_query = useGetDoctypeField("Task", "status", "options");
   const [activeIssue, setActiveIssue] = useState(null);
-  const columnOptions = columns_query.data || [];
+  const {options} = columns_query.data || [];
 
   const COLUMNS =
-    columnOptions.length > 0
-      ? columnOptions.map((option) => ({
+    options.length > 0
+      ? options.map((option) => ({
           id: option,
           title: option,
         }))
@@ -364,7 +365,7 @@ export default function KanbanView({ tasks = [] }) {
       },
     }),
   };
-
+console.log("KanbanView COLUMNS:", COLUMNS, issues);
   return (
     <div className="text-slate-900">
       <div className="mx-auto flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-180px)] items-start">

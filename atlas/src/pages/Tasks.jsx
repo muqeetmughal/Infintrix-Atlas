@@ -54,8 +54,8 @@ const Tasks = () => {
 
   const tabs = [
     { id: "ai-architect", label: "AI Architect" },
-    { id: "list", label: "List" },
     { id: "backlog", label: "Backlog" },
+    { id: "list", label: "List" },
     { id: "table", label: "Table" },
     { id: "kanban", label: "Kanban" },
   ];
@@ -67,6 +67,7 @@ const Tasks = () => {
   const tasks = tasks_query?.data?.message || [];
   const project_data = project_query?.data || {};
   const assignees = (project_data?.users || []).map((u) => u.user);
+
   return (
     <>
       {/* {
@@ -126,7 +127,7 @@ const Tasks = () => {
             <button
               onClick={() => {
                 searchParams.set("doctype", "Task");
-                searchParams.set("modal_type", "create" || "");
+                searchParams.set("mode", "create" || "");
                 // searchParams.set("docname", task || "");
                 setSearchParams(searchParams);
                 // navigate(`/tasks/${project}/ai-architect`);
@@ -140,7 +141,7 @@ const Tasks = () => {
               className="cursor-pointer bg-slate-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-slate-800 transition-colors"
             >
               <Plus size={18} className="md:w-5 md:h-5" />
-              <span className="text-sm md:text-base">Add Task</span>
+              <span className="text-sm md:text-base">Create Task</span>
             </button>
           </div>
         </div>

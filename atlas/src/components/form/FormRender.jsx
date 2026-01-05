@@ -8,13 +8,13 @@ import { Button, Checkbox, Collapse, Divider, Form, Input, Modal } from "antd";
 import { useMemo } from "react";
 import { Row, Col } from "antd";
 function FormRender({
-  doctype = "Task",
+  doctype = null,
+  mode="create",
   open = true,
   onClose,
   full_form = true,
   defaultValues = {},
 }) {
-
   const [form] = Form.useForm();
   const [quickEntry, setQuickEntry] = React.useState(true);
   const query = useDoctypeSchema(doctype);
@@ -83,9 +83,24 @@ function FormRender({
   // if (query.isLoading)
   //   return <div className="text-center">Loading...</div>;
 
+  // if (mode != "Create" || mode != "Edit" || doctype == null) {
+  //   return <Modal
+  //     title={`Unsupported Mode`}
+  //     closable={{ 'aria-label': 'Custom Close Button' }}
+  //     open={open}
+  //     onOk={() => { }}
+  //     width={800}
+  //     onCancel={onClose}
+  //   >
+  //     <div className="p-4">
+  //       <p>Failed</p>
+  //     </div>
+  //   </Modal>
+  // }
+
 
   return (<Modal
-    title={`New ${doctype}`}
+    title={`${mode.charAt(0).toUpperCase() + mode.slice(1)} ${doctype}`}
     closable={{ 'aria-label': 'Custom Close Button' }}
     open={open}
     onOk={() => { }}
@@ -122,15 +137,12 @@ function FormRender({
       name={schema.name}
       initialValues={defaultValues}
       onFinish={(values) => {
-        console.log("Success:", values)
         createMutation.createDoc(doctype, values).then(res => {
-          console.log("Created:", res);
           onClose();
         })
       }}
     >
       {sections.map((section, sIdx) => {
-        // console.log("SECTION:", section);
         if (section.label == "") {
           return (
             <Row gutter={[32, 16]}>
@@ -142,7 +154,6 @@ function FormRender({
                   md={Math.floor(24 / section.columns.length)}
                   lg={Math.floor(24 / section.columns.length)}
                 >
-                  {console.log("COLUMN:", column)}
                   {column.map((field) => (
                     <FormField key={field.fieldname} field={field} />
                   ))}

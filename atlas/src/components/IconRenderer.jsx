@@ -5,8 +5,6 @@ const iconModules = import.meta.glob(
   "/node_modules/@ant-design/icons/es/icons/*.js"
 );
 
-// console.log("iconModules", iconModules);
-
 export const IconRenderer = ({ name, ...props }) => {
   const LazyIcon = useMemo(() => {
     if (!name) return null;

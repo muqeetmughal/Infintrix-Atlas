@@ -8,8 +8,6 @@ const TaskForm = () => {
 
   const doctype_plural = params.doctype_plural
   const doctype = doctype_plural.slice(0, -1).charAt(0).toUpperCase() + doctype_plural.slice(1, -1)
-
-  console.log(doctype)
   
   return (
     <div><FormRender doctype={doctype}/></div>
