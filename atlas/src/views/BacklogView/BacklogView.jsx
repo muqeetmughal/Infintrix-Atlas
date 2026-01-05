@@ -29,6 +29,7 @@ import {
   DeleteIcon,
   Delete,
   Trash,
+  MenuIcon,
 } from "lucide-react";
 import {
   useFrappeCreateDoc,
@@ -40,8 +41,9 @@ import {
 } from "frappe-react-sdk";
 import dayjs from "dayjs";
 import { useParams } from "react-router-dom";
-import { Button, Spin } from "antd";
+import { Button, Dropdown, Space, Spin } from "antd";
 import BacklogHealth from "./BacklogHealth";
+import FormRender from "../../components/form/FormRender";
 // --- Constants ---
 
 const TASK_STATUS_COLORS = {
@@ -138,7 +140,7 @@ const Badge = ({ children, className }) => (
 );
 
 const TaskCard = ({ task, isOverlay = false }) => {
-  console.log("Rendering TaskCard", task);
+  // console.log("Rendering TaskCard", task);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,
@@ -219,21 +221,25 @@ const DroppableZone = ({ id, children, className, isOverColor }) => {
 const BacklogView = () => {
   //   const [tasks, setTasks] = useState(initialTasks);
   const params = useParams();
+  const [cycleModal, setCycleModal] = React.useState({
+    open: false,
+    data: null,
+  });
 
   const project_id = params.project;
   const updateMutation = useFrappeUpdateDoc();
   const createMutation = useFrappeCreateDoc();
   const deleteMutation = useFrappeDeleteDoc();
   const [activeId, setActiveId] = useState(null);
-  const [isBacklogExpanded, setIsBacklogExpanded] = useState(false);
+  const [isBacklogExpanded, setIsBacklogExpanded] = useState(true);
   const project_query = useFrappeGetDoc("Project", project_id);
 
   const cycles_query = useFrappeGetDocList("Cycle", {
     filters: { project: project_id },
     fields: ["*"],
     orderBy: {
-      field: "status, modified",
-      order: "asc", // Sort from newest to oldest
+      field: "creation",
+      order: "desc", // Sort from newest to oldest
     },
     limit: 1000,
     limit_start: 0,
@@ -281,7 +287,7 @@ const BacklogView = () => {
   };
 
   const handleMoveTask = useCallback((taskId, targetId) => {
-    console.log(`Move Task ${taskId} to ${targetId}`);
+    // console.log(`Move Task ${taskId} to ${targetId}`);
     updateMutation
       .updateDoc("Task", taskId, {
         custom_cycle: targetId === "Open" ? null : targetId,
@@ -410,28 +416,26 @@ const BacklogView = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {
-              isExpanded &&  <Button
-              type="text"
+            {isExpanded && cycle.status=="Planned" && (
+              <Button
+                type="text"
                 size="small"
-                icon={<Trash size={16}/>}
+                icon={<Trash size={16} />}
                 danger
                 onClick={() => {
-                  deleteMutation
-                    .deleteDoc("Cycle", cycle.name)
-                    .then(() => {
-                      cycles_query.mutate();
-                    });
+                  deleteMutation.deleteDoc("Cycle", cycle.name).then(() => {
+                    cycles_query.mutate();
+                  });
                 }}
               >
-               Delete
+                Delete
               </Button>
-            }
-            
+            )}
+
             {(hasActiveCycle && cycle.status !== "Active") ||
-            cycle.status == "Completed"? null : (
+            cycle.status == "Completed" ? null : (
               <Button
-              disabled={hasNoWorkItems}
+                disabled={hasNoWorkItems}
                 size="small"
                 type={cycle.status === "Active" ? "default" : "primary"}
                 onClick={() => {
@@ -449,6 +453,41 @@ const BacklogView = () => {
               </Button>
             )}
 
+            <Dropdown
+          
+            trigger={'click'}
+              menu={{
+                onClick: ({ key }) => {
+                  if (key === "Edit Cycle") {
+                    setCycleModal({ open: true, data: cycle });
+                  }
+                },
+                items: [
+                  {
+                    key: "Edit Cycle",
+                    label: "Edit Cycle",
+                    // disabled: true,
+                  },
+                  // {
+                  //   type: "divider",
+                  // },
+                  // {
+                  //   key: "2",
+                  //   label: "Profile",
+                  //   extra: "⌘P",
+                  // },
+                  // {
+                  //   key: "3",
+                  //   label: "Billing",
+                  //   extra: "⌘B",
+                  // },
+                ],
+              }}
+            >
+              <a onClick={(e) => e.preventDefault()}>
+                <Button type="text" icon={<MenuIcon />}></Button>
+              </a>
+            </Dropdown>
           </div>
         </div>
 
@@ -472,16 +511,30 @@ const BacklogView = () => {
     return <div>Loading...</div>;
 
   const cycles = cycles_query.data || [];
-  console.log("Tasks", tasks);
+  // console.log("Tasks", tasks);
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="max-w-8xl mx-auto space-y-8 animate-in fade-in duration-500 pb-32">
-        {/* Header */}
-        {/* <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-8">
+    <>
+      {
+        <FormRender
+          doctype="Cycle"
+          open={cycleModal.open}
+          onClose={() => setCycleModal({ open: false, data: null })}
+          full_form={false}
+          // defaultValues={
+          //   {
+          //     // project: project || "",
+          //   }
+          // }
+        />
+      }
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="max-w-8xl mx-auto space-y-8 animate-in fade-in duration-500 pb-32">
+          {/* Header */}
+          {/* <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-8">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
               {isScrum ? <RotateCcw size={28} /> : <Trello size={28} />}
@@ -512,105 +565,107 @@ const BacklogView = () => {
           </div>
         </header> */}
 
-        {/* Main Viewport */}
-        <div
-          className={`grid gap-8 ${
-            isScrum ? "grid-cols-1 lg:grid-cols-1" : "max-w-2xl mx-auto"
-          }`}
-        >
-          {isScrum && (
+          {/* Main Viewport */}
+          <div
+            className={`grid gap-8 ${
+              isScrum ? "grid-cols-1 lg:grid-cols-1" : "max-w-2xl mx-auto"
+            }`}
+          >
+           
             <div className="lg:col-span-8 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
-              {cycles.map((cycle) => {
-                // const [isExpanded, setIsExpanded] = useState(false);
-
-                return <Cycle key={cycle.name} cycle={cycle} tasks={tasks} />;
-              })}
-            </div>
-          )}
-          <div className="lg:col-span-8 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
-            <DroppableZone
-              // key={cycle.name}
-              id="Open"
-              isOverColor="bg-indigo-50 ring-2 ring-indigo-400"
-              className="bg-white border border-slate-200 rounded-xl p-2 shadow-sm group hover:border-indigo-200 transition-all"
-            >
-              <div className="flex items-center justify-between cursor-pointer">
-                <div className="flex items-center gap-2 flex-1 space-y-1">
+              <DroppableZone
+                // key={cycle.name}
+                id="Open"
+                isOverColor="bg-indigo-50 ring-2 ring-indigo-400"
+                className="bg-white border border-slate-200 rounded-xl p-2 shadow-sm group hover:border-indigo-200 transition-all"
+              >
+                <div className="flex items-center justify-between cursor-pointer">
+                  <div className="flex items-center gap-2 flex-1 space-y-1">
+                    <div className="flex items-center gap-4">
+                      <ChevronRight
+                        onClick={() => setIsBacklogExpanded(!isBacklogExpanded)}
+                        size={20}
+                        className={`text-slate-400 transition-transform ${
+                          isBacklogExpanded ? "rotate-90" : ""
+                        }`}
+                      />
+                    </div>
+                    <div
+                      className={`p-2 rounded-xl bg-indigo-600 text-white shadow-lg`}
+                    >
+                      <Package size={20} />
+                    </div>
+                    <div className="flex items-center">
+                      <h3 className="font-semibold text-slate-900 leading-none">
+                        Backlog{" "}
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                          {/* {cycle.start_date} — {cycle.end_date} */}
+                        </span>
+                        <small className="text-xs font-light">
+                          ({backlogTasks.length} Work Items)
+                        </small>
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge
+                          className={
+                            "bg-indigo-50 text-indigo-700 border-indigo-100"
+                          }
+                        >
+                          Backlog
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-4">
+                    <Button
+                      onClick={() => {
+                        createMutation
+                          .createDoc("Cycle", {
+                            project: project_id,
+                            name: `New Cycle ${dayjs().format("MM-DD")}`,
+                          })
+                          .then(() => {
+                            cycles_query.mutate();
+                          });
+                      }}
+                    >
+                      Create Cycle
+                    </Button>
                     <ChevronRight
-                      onClick={() => setIsBacklogExpanded(!isBacklogExpanded)}
                       size={20}
                       className={`text-slate-400 transition-transform ${
                         isBacklogExpanded ? "rotate-90" : ""
                       }`}
                     />
                   </div>
-                  <div
-                    className={`p-2 rounded-xl bg-indigo-600 text-white shadow-lg`}
-                  >
-                    <Package size={20} />
-                  </div>
-                  <div className="flex items-center">
-                    <h3 className="font-semibold text-slate-900 leading-none">
-                      Backlog{" "}
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                        {/* {cycle.start_date} — {cycle.end_date} */}
-                      </span>
-                      <small className="text-xs font-light">
-                        ({backlogTasks.length} Work Items)
-                      </small>
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge
-                        className={
-                          "bg-indigo-50 text-indigo-700 border-indigo-100"
-                        }
-                      >
-                        Backlog
-                      </Badge>
-                    </div>
-                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <Button
-                    onClick={() => {
-                      createMutation
-                        .createDoc("Cycle", {
-                          project: project_id,
-                          name: `New Cycle ${dayjs().format("MM-DD")}`,
-                        })
-                        .then(() => {
-                          cycles_query.mutate();
-                        });
-                    }}
-                  >
-                    Create Cycle
-                  </Button>
-                  <ChevronRight
-                    size={20}
-                    className={`text-slate-400 transition-transform ${
-                      isBacklogExpanded ? "rotate-90" : ""
-                    }`}
-                  />
-                </div>
-              </div>
 
-              {isBacklogExpanded && (
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-4 animate-in fade-in duration-200">
-                  {backlogTasks.map((t) => (
-                    <TaskCard key={t.id} task={t} />
-                  ))}
-                  <button className="border-2 border-dashed border-slate-100 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 hover:text-indigo-500 hover:border-indigo-100 transition-all">
-                    <Plus size={16} />
-                    <span className="text-[10px] font-black uppercase">
-                      Plan Task
-                    </span>
-                  </button>
-                </div>
-              )}
-            </DroppableZone>
-          </div>
-          {/* <div className={`w-full`}>
+                {isBacklogExpanded && (
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-4 animate-in fade-in duration-200">
+                    {backlogTasks.map((t) => (
+                      <TaskCard key={t.id} task={t} />
+                    ))}
+                    <button className="border-2 border-dashed border-slate-100 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 hover:text-indigo-500 hover:border-indigo-100 transition-all">
+                      <Plus size={16} />
+                      <span className="text-[10px] font-black uppercase">
+                        Plan Task
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </DroppableZone>
+            </div>
+
+             {isScrum && (
+              <div className="lg:col-span-8 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
+                {cycles.map((cycle) => {
+                  // const [isExpanded, setIsExpanded] = useState(false);
+
+                  return <Cycle key={cycle.name} cycle={cycle} tasks={tasks} />;
+                })}
+              </div>
+            )}
+            {/* <div className={`w-full`}>
             {(() => {
               const [isExpanded, setIsExpanded] = useState(true);
 
@@ -664,17 +719,18 @@ const BacklogView = () => {
               );
             })()}
           </div> */}
+          </div>
+
+          <DragOverlay>
+            {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+          </DragOverlay>
+
+          {/* Footer Stats */}
+
+          <BacklogHealth project_id={project_id} />
         </div>
-
-        <DragOverlay>
-          {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
-        </DragOverlay>
-
-        {/* Footer Stats */}
-
-        <BacklogHealth project_id={project_id} />
-      </div>
-    </DndContext>
+      </DndContext>
+    </>
   );
 };
 export default BacklogView;

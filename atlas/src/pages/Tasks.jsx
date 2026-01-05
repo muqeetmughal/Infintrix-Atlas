@@ -22,10 +22,13 @@ import TaskDetail from "../modals/TaskDetail";
 import TableView from "../views/TableView";
 import KanbanView from "../views/KanbanView";
 import LinkField from "../components/form/LinkField";
-import { Input, Select } from "antd";
+import { Avatar, Input, Select, Tooltip } from "antd";
 import BacklogView from "../views/BacklogView/BacklogView";
 import { set } from "react-hook-form";
 import AIArchitect from "./AIArchitect";
+import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
+import AvatarGen from "../components/AvatarGen";
+
 const Tasks = () => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -47,7 +50,7 @@ const Tasks = () => {
     limit_page_length: 100,
   });
   const schema = query.data || {};
-  
+
   const tabs = [
     { id: "ai-architect", label: "AI Architect" },
     { id: "list", label: "List" },
@@ -55,15 +58,14 @@ const Tasks = () => {
     { id: "table", label: "Table" },
     { id: "kanban", label: "Kanban" },
   ];
-  
-  
+
   if (tasks_query.isLoading && project_query.isLoading) {
     return <div>Loading...</div>;
   }
-  
+
   const tasks = tasks_query?.data?.message || [];
   const project_data = project_query?.data || {};
-  console.log(project_data)
+  const assignees = (project_data?.users || []).map((u) => u.user);
   return (
     <>
       {
@@ -179,7 +181,14 @@ const Tasks = () => {
           {/* User Avatars and Filter Options */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
             <div className="flex -space-x-2">
-              {["JD", "MM", "SK"].map((initials, i) => (
+              <Avatar.Group>
+                {assignees.map((assignee) => {
+                  return (
+                    <AvatarGen name={assignee} enable_tooltip={true} />
+                  );
+                })}
+              </Avatar.Group>
+              {/* {["JD", "MM", "SK"].map((initials, i) => (
                 <div
                   key={i}
                   className={`w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-sm cursor-pointer hover:-translate-y-1 transition-transform ${
@@ -188,10 +197,10 @@ const Tasks = () => {
                 >
                   {initials}
                 </div>
-              ))}
-              <div className="w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm cursor-pointer hover:bg-slate-300 transition-colors">
+              ))} */}
+              {/* <div className="w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm cursor-pointer hover:bg-slate-300 transition-colors">
                 +1
-              </div>
+              </div> */}
             </div>
 
             <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-slate-600 font-medium">
@@ -210,7 +219,9 @@ const Tasks = () => {
           {view === "ai-architect" && <AIArchitect />}
           {view === "table" && <TableView tasks={tasks} />}
           {view === "kanban" && <KanbanView tasks={tasks} />}
-          {view === "backlog" && <BacklogView initialTasks={tasks} project={project_data} />}
+          {view === "backlog" && (
+            <BacklogView initialTasks={tasks} project={project_data} />
+          )}
         </div>
       </div>
     </>

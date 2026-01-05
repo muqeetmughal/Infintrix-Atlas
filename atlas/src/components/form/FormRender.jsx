@@ -1,134 +1,175 @@
-import { useForm } from "react-hook-form";
 import { FormField } from "./FormField";
 import { Link } from "react-router-dom";
 import { useFrappeCreateDoc, useFrappeGetCall } from "frappe-react-sdk";
-import {useDoctypeSchema} from "../../hooks/doctype";
+import { useDoctypeSchema } from "../../hooks/doctype";
 import { X } from "lucide-react";
-
-export default function FormRender({
-  doctype = null,
-  open = false,
+import { Button, Checkbox, Collapse, Divider, Form, Input } from "antd";
+import { useMemo } from "react";
+import { Row, Col } from "antd";
+function FormRender({
+  doctype = "Task",
+  open = true,
   onClose,
   full_form = true,
   defaultValues = {},
 }) {
-  // console.log(doctype, open, full_form, defaultValues);
-  const form = useForm({ defaultValues });
-  const {
-    handleSubmit,
-    control,
-    formState: { errors, isSubmitting, ...formData },
-  } = form;
-
   const query = useDoctypeSchema(doctype);
-
-  const mutation = useFrappeCreateDoc();
-
-  // if (query.isLoading || (!open && !full_form && !Object.keys(defaultValues).length) || !schema?.fields) return null;
-
-  if (query.isLoading) return <div>Loading...</div>;
-
   const schema = query.data || {};
-    // console.log("SCHEMA:", schema);
-  let fields = schema?.fields || [];
-  //   .filter(
-  //     (f) => !["Section Break", "Column Break"].includes(f.fieldtype)
-  //     // && f.allow_in_quick_entry === 1
-  //   );
+  const fields = schema?.fields || [];
 
+  const sections = useMemo(() => {
+    const result = [];
+    let currentSection = {
+      label: "",
+      columns: [[]],
+    };
+    let currentColumnIndex = 0;
 
-  if (schema.quick_entry && !full_form){
-    fields = fields.filter(f => f.allow_in_quick_entry === 1);
-  }
-
-
-  const onSubmit = (data) => {
-    console.log("FORM DATA:", data);
-    mutation.createDoc(doctype, data).then((res) => {
-      console.log("CREATED:", res);
-      onClose();
+    fields.forEach((field) => {
+      // Logic for Section Break
+      if (field.fieldtype === "Section Break") {
+        if (
+          currentSection.columns.some((col) => col.length > 0) ||
+          currentSection.label
+        ) {
+          result.push(currentSection);
+        }
+        currentSection = {
+          label: field.label || "",
+          columns: [[]],
+        };
+        currentColumnIndex = 0;
+      }
+      // Logic for Column Break
+      else if (field.fieldtype === "Column Break") {
+        currentSection.columns.push([]);
+        currentColumnIndex++;
+      }
+      // Logic for standard fields
+      else if (!field.hidden) {
+        currentSection.columns[currentColumnIndex].push(field);
+      }
     });
-  };
 
-  const form_render = (
-    <div className="bg-white w-full max-w-7xl rounded-xl shadow-lg p-6 max-h-[90vh] overflow-y-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">
-          {Object.keys(defaultValues).length ? "Edit" : "Create"} {schema.name}
-        </h2>
-        <button onClick={onClose} className="cursor-pointer text-gray-500">
-          ✕
+    if (
+      currentSection.columns.some((col) => col.length > 0) ||
+      currentSection.label
+    ) {
+      result.push(currentSection);
+    }
+
+    return result;
+  }, [fields]);
+
+  if (query.isLoading)
+    return <div className="text-center">Loading...</div>;
+
+  const form_content = (
+    <div className="bg-white w-full max-w-7xl rounded-xl shadow-2xl p-4 ">
+      <div className="flex justify-between items-center mb-6 border-b pb-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">
+            {Object.keys(defaultValues).length ? "Edit" : "New"} {schema.name}
+          </h2>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-gray-100 rounded-full text-gray-400"
+        >
+          <X size={24} />
         </button>
       </div>
 
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className={`grid grid-cols-3 gap-4`}
+      <Form
+        layout="vertical"
+        name={schema.name}
+        initialValues={defaultValues}
+        onFinish={(values) => console.log("Success:", values)}
       >
-        {fields.map((field) => {
-          // console.log("FIELD:", field.fieldname,field.fieldtype);
-          // if (field.fieldtype === "Column Break") {
-          //     return null;
-          // }
+        {sections.map((section, sIdx) => {
+          console.log("SECTION:", section);
+          if (section.label == "") {
+            return (
+              <Row gutter={[32, 16]}>
+                {section.columns.map((column, cIdx) => (
+                  <Col
+                    key={`col-${sIdx}-${cIdx}`}
+                    xs={24}
+                    sm={24}
+                    md={Math.floor(24 / section.columns.length)}
+                    lg={Math.floor(24 / section.columns.length)}
+                  >
+                    {column.map((field) => (
+                      <FormField key={field.idx} field={field} />
+                    ))}
+                  </Col>
+                ))}
+              </Row>
+            );
+          }
           return (
-            <div key={field.name}>
-              <FormField key={field.name} field={field} control={control} errors={errors} />
-
-              {/* <button
-                  type="button"
-                  onClick={() => control._reset({ [field.fieldname]: '' })}
-                  className="relative top-0  bg-gray-100 hover:bg-gray-150 cursor-pointer text-xs text-gray-500 hover:text-gray-700 underline mt-1"
-                >
-                  <X size={12} className=" rounded-full"/>
-                </button> */}
-
-              {errors[field.fieldname] && (
-                <span className="text-red-500 text-sm">
-                  {errors[field.fieldname]?.message}
-                </span>
-              )}
-            </div>
+            <Collapse
+              defaultActiveKey={[]}
+              bordered={false}
+              key={`section-${sIdx}`}
+            >
+              <Collapse.Panel
+                header={
+                  section.label ? (
+                    <span className="text-lg font-semibold text-gray-700">
+                      {section.label}
+                    </span>
+                  ) : (
+                    <Divider className="my-4" />
+                  )
+                }
+                key={"section-" + section.label}
+              >
+                <Row gutter={[32, 16]}>
+                  {section.columns.map((column, cIdx) => (
+                    <Col
+                      key={`col-${sIdx}-${cIdx}`}
+                      xs={24}
+                      sm={24}
+                      md={Math.floor(24 / section.columns.length)}
+                      lg={Math.floor(24 / section.columns.length)}
+                    >
+                      {column.map((field) => (
+                        <FormField key={field.idx} field={field} />
+                      ))}
+                    </Col>
+                  ))}
+                </Row>
+              </Collapse.Panel>
+            </Collapse>
           );
         })}
-        {!full_form && (
-          <div className="col-span-2 flex justify-end gap-3 mt-4">
-            <Link
-              to={`/${String(doctype).toLowerCase()}s/create`}
-              onClick={onClose}
-              className="px-4 py-2 border rounded"
-            >
-              Full Form
-            </Link>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border rounded"
-            >
-              Cancel
-            </button>
 
-            <button
-              type="submit"
-              // disabled={isSubmitting}
-              className={`w-40 bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 uppercase tracking-widest text-sm transition-all active:scale-[0.98] hover:bg-blue-700 hover:shadow-blue-300`}
-            >
-              Submit
-            </button>
-          </div>
-        )}
-      </form>
+        <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
+          <Button onClick={onClose} size="large">
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            htmlType="submit"
+            size="large"
+            className="bg-blue-600 px-8"
+          >
+            Save
+          </Button>
+        </div>
+      </Form>
     </div>
   );
 
-  if (full_form) {
-    return form_render;
-  }
-
-  if (open && !full_form) {
-    return (
-      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-        {form_render}
-      </div>
-    );
-  }
+  return full_form ? (
+    <div className="min-h-screen bg-gray-100 p-4 md:p-10 flex justify-center items-start">
+      {form_content}
+    </div>
+  ) : (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {form_content}
+    </div>
+  );
 }
+export default FormRender;

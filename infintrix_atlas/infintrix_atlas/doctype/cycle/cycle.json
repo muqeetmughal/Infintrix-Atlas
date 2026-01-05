@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "project",
+  "duration",
   "start_date",
   "end_date",
   "status"
@@ -36,12 +37,18 @@
    "fieldtype": "Select",
    "label": "Status",
    "options": "Planned\nActive\nCompleted\nArchived"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Select",
+   "label": "Duration",
+   "options": "1 Week\n2 Week\n3 Week\n4 Week\nCustom"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-04 04:21:17.668261",
+ "modified": "2026-01-04 16:35:46.456691",
  "modified_by": "Administrator",
  "module": "Infintrix Atlas",
  "name": "Cycle",

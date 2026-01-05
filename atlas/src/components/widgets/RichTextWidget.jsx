@@ -75,3 +75,19 @@ const RichTextWidget = (props) => {
 };
 
 export default RichTextWidget;
+
+
+export const RichTextWidgetForm = (props) => {
+  
+  return (
+      <ReactQuill
+          theme="snow"
+          value={props.value}
+          onChange={(value) => {
+            setValue(value);
+            props.onChange && props.onChange(value);
+          }}
+        />
+
+  );
+};
