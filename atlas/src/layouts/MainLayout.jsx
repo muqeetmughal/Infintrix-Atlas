@@ -11,6 +11,7 @@ import Sidebar from "../components/Sidebar";
 import { useFrappeAuth } from "frappe-react-sdk";
 import { useLocation } from "react-router-dom";
 import { menuItems } from "../data/menu";
+import ModalGenerator from "../components/ModalGenerator";
 
 const MainLayout = () => {
   const location = useLocation();
@@ -49,7 +50,7 @@ const MainLayout = () => {
           <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
             <div className="max-w-8xl mx-auto">
               <Outlet />
-
+              <ModalGenerator/>
             </div>
           </div>
         </main>

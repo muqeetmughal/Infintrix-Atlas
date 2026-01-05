@@ -68,7 +68,7 @@ const Tasks = () => {
   const assignees = (project_data?.users || []).map((u) => u.user);
   return (
     <>
-      {
+      {/* {
         <FormRender
           doctype="Task"
           open={isOpen}
@@ -78,7 +78,7 @@ const Tasks = () => {
             project: project || "",
           }}
         />
-      }
+      } */}
       <TaskDetail />
       <div className="space-y-2 md:space-y-1">
         {/* Header Section */}
@@ -124,11 +124,17 @@ const Tasks = () => {
             </button>
             <button
               onClick={() => {
-                if (schema.quick_entry) {
-                  setIsOpen(true);
-                } else {
-                  navigate("/tasks/create");
-                }
+                searchParams.set("doctype", "Task");
+                searchParams.set("modal_type", "create" || "");
+                // searchParams.set("docname", task || "");
+                setSearchParams(searchParams);
+                // navigate(`/tasks/${project}/ai-architect`);
+                // setIsOpen(true);
+                // if (schema.quick_entry) {
+                //   setIsOpen(true);
+                // } else {
+                //   navigate("/tasks/create");
+                // }
               }}
               className="cursor-pointer bg-slate-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-slate-800 transition-colors"
             >
