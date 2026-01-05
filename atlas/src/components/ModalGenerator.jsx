@@ -10,7 +10,7 @@ const ModalGenerator = () => {
 
     return (
         <div>
-            <FormRender
+            {/* <FormRender
                 doctype={doctype}
                 open={false}
                 onClose={() => {
@@ -21,7 +21,7 @@ const ModalGenerator = () => {
                 }}
                 full_form={false}
                 defaultValues={document_name ? { name: document_name } : {}}
-            />
+            /> */}
         </div>
     )
 }

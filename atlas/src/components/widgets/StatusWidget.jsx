@@ -11,6 +11,7 @@ const StatusWidget = (props) => {
   const [selected, setSelected] = useState(props.value || []);
 
   const status_query = useGetDoctypeField("Task", "status", "options");
+  const { options } = status_query.data || {};
 
   if (status_query.isLoading) return "Loading";
 
@@ -38,7 +39,7 @@ const StatusWidget = (props) => {
         dropdownStyle={{ width: 150, overflowX: "auto" }}
         maxTagCount="responsive"
       >
-        {status_query.data.map((option, index) => (
+        {options.map((option, index) => (
           <Select.Option key={option} value={option}>
             <Badge className={TASK_STATUS_COLORS[option]}>
                 {/* <span>{priorityIcons[option]}</span> */}

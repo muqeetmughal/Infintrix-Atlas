@@ -28,6 +28,7 @@ import { set } from "react-hook-form";
 import AIArchitect from "./AIArchitect";
 import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import AvatarGen from "../components/AvatarGen";
+import ListView from "../views/ListView";
 
 const Tasks = () => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -223,6 +224,7 @@ const Tasks = () => {
         {/* View Content */}
         <div className="overflow-x-auto">
           {view === "ai-architect" && <AIArchitect />}
+          {view === "list" && <ListView tasks={tasks} />}
           {view === "table" && <TableView tasks={tasks} />}
           {view === "kanban" && <KanbanView tasks={tasks} />}
           {view === "backlog" && (

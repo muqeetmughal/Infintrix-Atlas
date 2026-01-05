@@ -1,8 +1,5 @@
 import frappe
-
-
-import frappe
-from frappe.query_builder import DocType
+from frappe.query_builder import DocType, functions as fn
 from datetime import datetime, timedelta
 
 
@@ -247,3 +244,25 @@ def get_project_flow_metrics(project):
             health
         ],
     }
+
+
+@frappe.whitelist()
+def list_doctype_group_by(doctype, group_by__field, filters=None):
+    Project = DocType("Project")
+    Task = DocType("Task")
+
+    query = (
+        frappe.qb
+        .from_(Project)
+        .left_join(Task)
+        .on(Task.project == Project.name)
+        .select(
+            Project.name,
+            fn.Count(Task.name).as_("task_count")
+        )
+        .groupby(Project.name)
+    )
+
+    data = query.run(as_dict=True)
+
+    return data

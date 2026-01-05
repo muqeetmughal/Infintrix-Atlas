@@ -18,8 +18,8 @@ function FormRender({
   const [form] = Form.useForm();
   const [quickEntry, setQuickEntry] = React.useState(true);
   const query = useDoctypeSchema(doctype);
-  const schema = query.data || {};
   const createMutation = useFrappeCreateDoc();
+  const schema = query.data || {};
 
   // console.log("Schema:", schema.fields.map(f => {
   //   return {fieldname: f.fieldname, fieldtype: f.fieldtype, allow_in_quick_entry: f.allow_in_quick_entry}

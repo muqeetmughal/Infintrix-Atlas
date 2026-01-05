@@ -24,6 +24,7 @@ const PriorityWidget = (props) => {
   const [selected, setSelected] = useState(props.value || []);
 
   const priority_query = useGetDoctypeField("Task", "priority", "options");
+  const { options }=priority_query.data || {};
 
   if (priority_query.isLoading) return "Loading";
 
@@ -59,7 +60,7 @@ const PriorityWidget = (props) => {
       dropdownStyle={{ width: 150, overflowX: "auto" }}
       maxTagCount="responsive"
     >
-      {priority_query.data.map((option, index) => (
+      {options.map((option, index) => (
         <Select.Option key={option} value={option}>
           <Badge className={TASK_PRIORITY_COLORS[option]}>
             <span className="flex items-center gap-1">
