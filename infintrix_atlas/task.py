@@ -16,11 +16,11 @@ def validate_task_hierarchy(doc, method):
     child_type = frappe.get_doc("Task Type", doc.type)
 
     # Parent must be a container
-    if not parent_type.is_container:
+    if not parent_type.custom_is_container:
         frappe.throw(f"{parent_type.name} cannot have child tasks")
 
     # Validate allowed child types
-    allowed = [d.task_type for d in parent_type.allowed_child_types]
+    allowed = [d.task_type for d in parent_type.custom_allowed_child_types] if parent_type.custom_allowed_child_types else []
 
     if allowed and child_type.name not in allowed:
         frappe.throw(f"{child_type.name} cannot be child of {parent_type.name}")

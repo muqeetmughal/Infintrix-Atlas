@@ -42,11 +42,12 @@ import {
   Activity,
   Tag,
 } from "lucide-react";
-import { useFrappeGetDocList } from "frappe-react-sdk";
+import { useFrappeGetCall, useFrappeGetDocList } from "frappe-react-sdk";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Select } from "antd";
 import { useDoctypeSchema, useGetDoctypeField } from "../hooks/doctype";
 import Card from "../components/ui/Card";
+import PreviewAssignees from "../components/PreviewAssignees";
 
 // --- Constants ---
 
@@ -255,7 +256,8 @@ const TaskRowUI = ({
       </div>
 
       <div className="flex-none w-48 p-5 overflow-hidden">
-        <Avatar name={item.assignee} />
+        {item.assignee}
+        <PreviewAssignees assignees={item.assignees} enable_tooltip={true} />
       </div>
 
       <div className="flex-none w-32 p-5 text-right">
@@ -400,22 +402,11 @@ export default function ListView() {
   const group_by = searchParams.get("group_by") || null;
   const project_id = params.project || "";
   //   const doctype_field_query = useGetDoctypeField("Task", group_by, "options");
-  const tasks_query = useFrappeGetDocList("Task", {
-    filters: { project: project_id },
-    fields: [
-      "name as id",
-      "name",
-      "subject",
-      "custom_cycle as cycle",
-      "type",
-      "status",
-      "project",
-      "priority",
-      "creation as date",
-    ],
-  });
-
-  const items = tasks_query?.data || [];
+   const tasks_list_query = useFrappeGetCall(
+      `infintrix_atlas.api.v1.get_tasks?project=${project_id}`
+    );
+  const items = tasks_list_query?.data?.message || [];
+  console.log("tasks_list_query.data:", items);
 
   //   const { fieldtype, options, fieldname, label } =
   //     doctype_field_query.data || {};
@@ -464,8 +455,9 @@ export default function ListView() {
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      console.log("item:", item);
       const matchesSearch =
-        item.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.id.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus =
         filters.status.length === 0 || filters.status.includes(item.status);
@@ -474,7 +466,7 @@ export default function ListView() {
         filters.priority.includes(item.priority);
       return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [items, searchQuery, filters]);
+  }, [items, searchQuery, filters , group_by, tasks_list_query.isLoading]);
 
   const handleDragStart = (event) => setActiveId(event.active.id);
 
@@ -499,8 +491,8 @@ export default function ListView() {
     [items, activeId]
   );
 
-  if (tasks_query.isLoading) return "Loading...";
-
+  if (tasks_list_query.isLoading) return "Loading...";
+console.log("items:", items);
   return (
     <DndContext
       sensors={sensors}

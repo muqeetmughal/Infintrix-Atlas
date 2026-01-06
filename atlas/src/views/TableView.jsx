@@ -7,6 +7,8 @@ import { TASK_STATUS_COLORS } from "../data/constants";
 import PriorityWidget from "../components/widgets/PriorityWidget";
 import StatusWidget from "../components/widgets/StatusWidget";
 import { useFrappeUpdateDoc } from "frappe-react-sdk";
+import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
+import PreviewAssignees from "../components/PreviewAssignees";
 
 const TableView = ({ tasks }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -94,7 +96,9 @@ const TableView = ({ tasks }) => {
                 <td className="p-6">
                   <div className="flex items-center space-x-2">
                     {/* <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500">{t.assignee?.charAt(0)}</div> */}
-                    <Assignee assignees={t.assignees} />
+                    {/* <Assignee assignees={t.assignees} /> */}
+                    {console.log("t.assignees", t.assignees)}
+                    <PreviewAssignees assignees={t.assignees} enable_tooltip={false}/>
                   </div>
                 </td>
                 <td className="p-6 text-xs font-bold text-slate-400">

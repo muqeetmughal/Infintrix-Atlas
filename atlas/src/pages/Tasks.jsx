@@ -29,6 +29,7 @@ import AIArchitect from "./AIArchitect";
 import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import AvatarGen from "../components/AvatarGen";
 import ListView from "../views/ListView";
+import PreviewAssignees from "../components/PreviewAssignees";
 
 const Tasks = () => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -59,6 +60,9 @@ const Tasks = () => {
     { id: "table", label: "Table" },
     { id: "kanban", label: "Kanban" },
   ];
+  const refetch = ()=>{
+    tasks_query.mutate()
+  }
 
   if (tasks_query.isLoading && project_query.isLoading) {
     return <div>Loading...</div>;
@@ -181,13 +185,7 @@ const Tasks = () => {
           {/* User Avatars and Filter Options */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
             <div className="flex -space-x-2">
-              <Avatar.Group>
-                {assignees.map((assignee) => {
-                  return (
-                    <AvatarGen name={assignee} enable_tooltip={true} />
-                  );
-                })}
-              </Avatar.Group>
+              <PreviewAssignees assignees={assignees} enable_tooltip={true} />
               {/* {["JD", "MM", "SK"].map((initials, i) => (
                 <div
                   key={i}
@@ -219,7 +217,7 @@ const Tasks = () => {
           {view === "ai-architect" && <AIArchitect />}
           {view === "list" && <ListView tasks={tasks} />}
           {view === "table" && <TableView tasks={tasks} />}
-          {view === "kanban" && <KanbanView tasks={tasks} />}
+          {view === "kanban" && <KanbanView tasks_query={tasks_query} />}
           {view === "backlog" && (
             <BacklogView initialTasks={tasks} project={project_data} />
           )}

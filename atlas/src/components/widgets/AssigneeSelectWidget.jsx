@@ -5,6 +5,7 @@ import AvatarGen from "../AvatarGen";
 // import AvatarGen from "../common/AvatarGen";
 // import { useCollegueNamesQuery } from "../../queries/collegues";
 export const AssigneeSelectWidget = (props) => {
+  console.log("AssigneeSelectWidget props", props);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value || []);
 
@@ -49,7 +50,7 @@ export const AssigneeSelectWidget = (props) => {
       }}
       optionRender={(props) => (
         <div className="flex items-center" style={{ width: "100%" }}>
-          <AvatarGen name={props.label} enable_tooltip={false} />
+          <AvatarGen name={props.value} enable_tooltip={false} />
           <span className="ml-2">{props.label}</span>
         </div>
       )}

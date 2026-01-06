@@ -18,9 +18,13 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useFrappeUpdateDoc } from "frappe-react-sdk";
+import { useFrappeGetCall, useFrappeUpdateDoc } from "frappe-react-sdk";
 import { useGetDoctypeField } from "../hooks/doctype";
 import { useSearchParams } from "react-router-dom";
+import { message, Tooltip } from "antd";
+import { IconRenderer } from "../components/IconRenderer";
+import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
+import PreviewAssignees from "../components/PreviewAssignees";
 
 const IssueCard = React.forwardRef(
   (
@@ -77,11 +81,14 @@ const IssueCard = React.forwardRef(
 
         <div className="flex justify-between items-center mt-4">
           <div className="flex items-center gap-2">
-            <div
-              className={`w-3 h-3 rounded-sm ${
-                issue.type === "story" ? "bg-emerald-500" : "bg-rose-500"
-              }`}
-            />
+            <Tooltip title={issue.type}>
+              <WorkItemTypeWidget
+                value={issue.type}
+                disabled
+                show_label={false}
+              />
+
+            </Tooltip>
             <span className="text-[11px] text-slate-500 font-bold tracking-tight uppercase">
               {issue.id}
             </span>
@@ -89,7 +96,7 @@ const IssueCard = React.forwardRef(
           <div
             className={`w-7 h-7 rounded-full ${issue.assigneeColor} text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-sm`}
           >
-            {issue.assigneeInitials}
+            <PreviewAssignees assignees={issue.assignees} enable_tooltip={false}/>
           </div>
         </div>
       </div>
@@ -130,7 +137,7 @@ const SortableIssue = ({ issue }) => {
   );
 };
 
-const Column = ({ id, title, issues }) => {
+const Column = ({ id, title, tasks_list }) => {
   const [addNew, setAddNew] = useState(false);
   const [createItem, setCreateItem] = useState({
     subject: "",
@@ -171,7 +178,7 @@ const Column = ({ id, title, issues }) => {
         <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
           {title}
           <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-[10px]">
-            {issues.length}
+            {tasks_list.length}
           </span>
         </h3>
         <button className="text-slate-400 hover:text-slate-600">
@@ -181,10 +188,10 @@ const Column = ({ id, title, issues }) => {
 
       <div className="flex-1 overflow-y-auto custom-scrollbar min-h-[150px]">
         <SortableContext
-          items={issues.map((i) => i.id)}
+          items={tasks_list.map((i) => i.id)}
           strategy={verticalListSortingStrategy}
         >
-          {issues.map((issue) => (
+          {tasks_list.map((issue) => (
             <SortableIssue key={issue.id} issue={issue} />
           ))}
         </SortableContext>
@@ -229,7 +236,7 @@ const Column = ({ id, title, issues }) => {
             className="cursor-pointer w-full mt-2 py-2 flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-200/50 rounded-lg text-sm font-medium transition-colors"
           >
             <Plus size={16} />
-            Create Work Item
+            Create
           </button>
         )}
       </div>
@@ -237,16 +244,20 @@ const Column = ({ id, title, issues }) => {
   );
 };
 
-export default function KanbanView({ tasks = [] }) {
-
-  const [issues, setIssues] = useState(tasks);
+export default function KanbanView() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const project = searchParams.get("project") || null;
 
   const updateTaskMutation = useFrappeUpdateDoc();
 
   const columns_query = useGetDoctypeField("Task", "status", "options");
+  const tasks_list_query = useFrappeGetCall(
+    `infintrix_atlas.api.v1.get_tasks?project=${project}`
+  );
   const [activeIssue, setActiveIssue] = useState(null);
-  const {options} = columns_query.data || [];
+  const { options } = columns_query.data || [];
 
+  const tasks_list = tasks_list_query.data?.message || [];
   const COLUMNS =
     options.length > 0
       ? options.map((option) => ({
@@ -260,101 +271,190 @@ export default function KanbanView({ tasks = [] }) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Find issue by ID
   const findIssue = useCallback(
-    (id) => issues.find((i) => i.id === id),
-    [issues]
+    (id) => tasks_list.find((i) => i.id === id),
+    [tasks_list]
   );
 
   const handleDragStart = (event) => {
     const { active } = event;
     setActiveIssue(findIssue(active.id));
   };
-
-  /**
-   * onDragOver handles the real-time movement between columns
-   */
   const handleDragOver = (event) => {
-    const { active, over } = event;
-    if (!over) return;
+    const { active } = event;
+    if (!active) return;
 
-    const activeId = active.id;
-    const overId = over.id;
+    // If already set, do nothing
+    if (activeIssue && activeIssue.id === active.id) return;
 
-    if (activeId === overId) return;
+    const task = tasks_list.find((t) => t.id === active.id);
+    if (!task) return;
 
-    const isActiveAnIssue = active.data.current?.type === "Issue";
-    const isOverAnIssue = over.data.current?.type === "Issue";
-    const isOverAColumn = over.data.current?.type === "Column";
+    setActiveIssue(task);
+  };
+  // const handleDragOver = (event) => {
+  //   const { active, over } = event;
+  //   if (!over) return;
 
-    if (!isActiveAnIssue) return;
+  //   const activeId = active.id;
+  //   const overId = over.id;
 
-    // 1. Dragging an Issue over another Issue
-    if (isActiveAnIssue && isOverAnIssue) {
-      setIssues((prev) => {
-        const activeIndex = prev.findIndex((i) => i.id === activeId);
-        const overIndex = prev.findIndex((i) => i.id === overId);
+  //   if (activeId === overId) return;
 
-        if (prev[activeIndex].status !== prev[overIndex].status) {
-          const updatedIssues = [...prev];
-          updatedIssues[activeIndex] = {
-            ...updatedIssues[activeIndex],
-            status: updatedIssues[overIndex].status,
-          };
-          return arrayMove(updatedIssues, activeIndex, overIndex);
-        }
+  //   const isActiveAnIssue = active.data.current?.type === "Issue";
+  //   const isOverAnIssue = over.data.current?.type === "Issue";
+  //   const isOverAColumn = over.data.current?.type === "Column";
 
-        return arrayMove(prev, activeIndex, overIndex);
-      });
-    }
+  //   if (!isActiveAnIssue) return;
 
-    // 2. Dragging an Issue over an empty Column
-    if (isActiveAnIssue && isOverAColumn) {
-      setIssues((prev) => {
-        const activeIndex = prev.findIndex((i) => i.id === activeId);
-        const updatedIssues = [...prev];
-        updatedIssues[activeIndex] = {
-          ...updatedIssues[activeIndex],
-          status: overId,
+  //   // 1. Dragging an Issue over another Issue
+  //   if (isActiveAnIssue && isOverAnIssue) {
+  //     setIssues((prev) => {
+  //       const activeIndex = prev.findIndex((i) => i.id === activeId);
+  //       const overIndex = prev.findIndex((i) => i.id === overId);
+
+  //       if (prev[activeIndex].status !== prev[overIndex].status) {
+  //         const updatedIssues = [...prev];
+  //         updatedIssues[activeIndex] = {
+  //           ...updatedIssues[activeIndex],
+  //           status: updatedIssues[overIndex].status,
+  //         };
+  //         return arrayMove(updatedIssues, activeIndex, overIndex);
+  //       }
+
+  //       return arrayMove(prev, activeIndex, overIndex);
+  //     });
+  //   }
+
+  //   // 2. Dragging an Issue over an empty Column
+  //   if (isActiveAnIssue && isOverAColumn) {
+  //     setIssues((prev) => {
+  //       const activeIndex = prev.findIndex((i) => i.id === activeId);
+  //       const updatedIssues = [...prev];
+  //       updatedIssues[activeIndex] = {
+  //         ...updatedIssues[activeIndex],
+  //         status: overId,
+  //       };
+  //       return arrayMove(updatedIssues, activeIndex, activeIndex);
+  //     });
+  //   }
+  // };
+
+  const mutateTaskStatus = async (task, newStatus) => {
+    await tasks_list_query.mutate(
+      async (current) => {
+        await updateTaskMutation.updateDoc("Task", task, {
+          status: newStatus,
+        });
+
+        return {
+          ...current,
+          message: current.message.map((t) =>
+            t.name === task ? { ...t, status: newStatus } : t
+          ),
         };
-        return arrayMove(updatedIssues, activeIndex, activeIndex);
-      });
-    }
+      },
+      {
+        optimisticData: (current) => ({
+          ...current,
+          message: current.message.map((t) =>
+            t.name === task ? { ...t, status: newStatus } : t
+          ),
+        }),
+        rollbackOnError: true,
+        revalidate: false,
+        populateCache: true,
+      }
+    );
   };
 
-  const handleDragEnd = (event) => {
+  const handleDragEnd = async (event) => {
     setActiveIssue(null);
+
     const { active, over } = event;
     if (!over) return;
 
     const activeId = active.id;
     const overId = over.id;
 
-    if (activeId !== overId) {
-      setIssues((prev) => {
-        const activeIndex = prev.findIndex((i) => i.id === activeId);
-        const overIndex = prev.findIndex((i) => i.id === overId);
-        return arrayMove(prev, activeIndex, overIndex);
-      });
+    console.log("Drag ended:", activeId, overId);
+
+    const activeTask = tasks_list.find((i) => i.id === activeId);
+    console.log("Active task:", activeTask);
+    if (!activeTask) return;
+
+    let newStatus = activeTask.status;
+    console.log("Current status:", newStatus);
+
+    // Dropped on column
+    if (COLUMNS.some((c) => c.id === overId)) {
+      newStatus = overId;
     }
 
-    const columnName = issues.find((i) => i.id === activeId)?.status || overId;
+    console.log("Updating status to:", newStatus);
 
-    console.log("Mutating status", activeId, columnName);
-
-    mutate(activeId, columnName);
-  };
-  const mutate = async (taskName, newStatus) => {
-    try {
-      await updateTaskMutation.updateDoc("Task", taskName, {
-        status: newStatus,
-      });
-
-      console.log("Status updated:", newStatus);
-    } catch (err) {
-      console.error("Failed to update task", err);
+    // Dropped on another task
+    const overTask = tasks_list.find((i) => i.id === overId);
+    if (overTask) {
+      newStatus = overTask.status;
     }
+
+    console.log("Final new status:", newStatus);
+
+    if (newStatus !== activeTask.status) {
+      try {
+        await mutateTaskStatus(activeId, newStatus);
+        message.success("Task updated");
+      } catch (e) {
+        // console.error("Failed to update task", e);
+        message.error(String(e.exception).split(":").slice(-1)[0]);
+      }
+    }
+    // setActiveIssue(null);
+    // const { active, over } = event;
+    // if (!over) return;
+
+    // const activeId = active.id;
+    // const overId = over.id;
+
+    // if (activeId !== overId) {
+    //   console.log("activeId!=overId", activeId, overId);
+    //   // setIssues((prev) => {
+    //     // console.log("Prev issues:", prev);
+    //     const activeIndex = prev.findIndex((i) => i.id === activeId);
+    //     const overIndex = prev.findIndex((i) => i.id === overId);
+
+    //     console.log("Active index:", activeIndex, "Over index:", overIndex);
+    //     // return arrayMove(prev, activeIndex, overIndex);
+    //   // });
+    // }
+
+    // const columnName = tasks_list.find((i) => i.id === activeId)?.status || overId;
+
+    // console.log("Mutating status", activeId, columnName);
+
+    // mutate(activeId, columnName);
+    //  tasks_list_query.mutate()
   };
+  // const mutate = async (taskName, newStatus) => {
+  //   try {
+  //     await updateTaskMutation.updateDoc("Task", taskName, {
+  //       status: newStatus,
+  //     }).then(() => {
+  //       console.log("Task updated successfully");
+  //     }).catch((error) => {
+  //       message.error(error.exception);
+
+  //       console.log("Error updating task:",error.exception);
+  //     }).finally(() => {
+  //       tasks_query.mutate();
+  //     }
+  //     );
+  //     console.log("Status updated:", newStatus);
+  //   } catch (err) {
+  //     console.error("Failed to update task", err);
+  //   }
+  // };
 
   const dropAnimation = {
     sideEffects: defaultDropAnimationSideEffects({
@@ -365,7 +465,6 @@ export default function KanbanView({ tasks = [] }) {
       },
     }),
   };
-console.log("KanbanView COLUMNS:", COLUMNS, issues);
   return (
     <div className="text-slate-900">
       <div className="mx-auto flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-180px)] items-start">
@@ -373,7 +472,7 @@ console.log("KanbanView COLUMNS:", COLUMNS, issues);
           sensors={sensors}
           collisionDetection={closestCorners}
           onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
+          // onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
           {COLUMNS.map((col) => (
@@ -381,7 +480,7 @@ console.log("KanbanView COLUMNS:", COLUMNS, issues);
               key={col.id}
               id={col.id}
               title={col.title}
-              issues={issues.filter((i) => i.status === col.id)}
+              tasks_list={tasks_list.filter((i) => i.status === col.id)}
             />
           ))}
 

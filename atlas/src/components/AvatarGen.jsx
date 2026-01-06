@@ -35,7 +35,12 @@ const AvatarGen = ({
       <>
         {/* <AvatarGen id={id} name={name} size={100} enable_tooltip={false} />
         <br /> */}
-        {user?.first_name}{" "}{user?.last_name}
+        <img src={user?.user_image} alt="Avatar" width={100} height={100} className="rounded-full mb-2"/>
+        <br />
+        <Typography.Title level={5} className="mb-0">{user?.full_name}</Typography.Title>
+        <Typography.Text type="secondary" className="mb-2">{user?.email}</Typography.Text>
+        <br />
+        {/* {user?.first_name}{" "}{user?.last_name} */}
       </>
     );
   };
@@ -54,7 +59,7 @@ const AvatarGen = ({
         }}
       >
         <Avatar
-          src={avatar_query.data}
+          src={user_info?.user_image || avatar_query.data}
           style={{ backgroundColor: "#87d068" }}
           className="cursor-pointer"
           // icon={<UserOutlined />}
@@ -70,8 +75,8 @@ const AvatarGen = ({
     );
   } else {
     return (
-      <Avatar
-          src={avatar_query.data}
+       <Avatar
+          src={user_info?.user_image || avatar_query.data}
           style={{ backgroundColor: "#87d068" }}
           className="cursor-pointer"
           // icon={<UserOutlined />}
