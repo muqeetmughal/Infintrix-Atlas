@@ -193,16 +193,14 @@ const TaskRowUI = ({
   return (
     <div
       className={`group flex items-center border-b border-slate-50 min-w-[1000px] md:min-w-full transition-shadow
-        ${
-          isDragging && !isOverlay
-            ? "opacity-20 bg-slate-100"
-            : "bg-white hover:bg-indigo-50/30"
+        ${isDragging && !isOverlay
+          ? "opacity-20 bg-slate-100"
+          : "bg-white hover:bg-indigo-50/30"
         } 
         ${isSelected ? "bg-indigo-50/50" : ""} 
-        ${
-          isOverlay
-            ? "shadow-2xl ring-2 ring-indigo-500 rounded-2xl cursor-grabbing"
-            : ""
+        ${isOverlay
+          ? "shadow-2xl ring-2 ring-indigo-500 rounded-2xl cursor-grabbing"
+          : ""
         }`}
     >
       {/* Moved Drag Handle to the start for better visibility */}
@@ -318,16 +316,14 @@ const DroppableStatusSection = ({
   return (
     <div
       ref={setNodeRef}
-      className={`transition-all duration-300 min-h-25 flex flex-col border-l-4 ${
-        isOver
+      className={`transition-all duration-300 min-h-25 flex flex-col border-l-4 ${isOver
           ? "bg-indigo-50/50 border-indigo-500 shadow-inner"
           : "border-transparent"
-      }`}
+        }`}
     >
       <div
-        className={`sticky top-0 z-10 backdrop-blur-md border-y border-slate-100/50 py-3 px-6 flex items-center justify-between ${
-          isOver ? "bg-indigo-100/60" : "bg-slate-50/80"
-        }`}
+        className={`sticky top-0 z-10 backdrop-blur-md border-y border-slate-100/50 py-3 px-6 flex items-center justify-between ${isOver ? "bg-indigo-100/60" : "bg-slate-50/80"
+          }`}
       >
         <div className="flex items-center gap-3">
           {/* <div
@@ -369,11 +365,10 @@ const DroppableStatusSection = ({
         ) : (
           <div className="p-8 flex justify-center bg-white/40">
             <div
-              className={`w-full max-w-sm py-8 border-2 border-dashed rounded-4xl transition-all flex flex-col items-center gap-2 ${
-                isOver
+              className={`w-full max-w-sm py-8 border-2 border-dashed rounded-4xl transition-all flex flex-col items-center gap-2 ${isOver
                   ? "border-indigo-400 bg-indigo-50/50"
                   : "border-slate-100 bg-transparent"
-              }`}
+                }`}
             >
               <Activity size={24} className="text-slate-100" />
               <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
@@ -392,70 +387,73 @@ const DroppableStatusSection = ({
 export default function ListView() {
   const [items_old, setItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
-
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeId, setActiveId] = useState(null);
   const [filters, setFilters] = useState({ status: [], priority: [] });
-  const params = useParams();
 
-  const [searchParams, setSearchParams] = useSearchParams();
   const group_by = searchParams.get("group_by") || null;
-  const project_id = params.project || "";
   //   const doctype_field_query = useGetDoctypeField("Task", group_by, "options");
-   const tasks_list_query = useFrappeGetCall(
-      `infintrix_atlas.api.v1.get_tasks?project=${project_id}`
-    );
-  const items = tasks_list_query?.data?.message || [];
-  console.log("tasks_list_query.data:", items);
+  const params = useParams();
+  const project = params.project || null;
+  const tasks_list_query = useFrappeGetCall(
+    `infintrix_atlas.api.v1.get_tasks?project=${project}`
+    , {
+    }, ["tasks", "list", project], {
+    isPaused: () => !project
+  });
 
+  
+  
   //   const { fieldtype, options, fieldname, label } =
   //     doctype_field_query.data || {};
   const schema_query = useDoctypeSchema("Task");
-
+  
   //   const group_by_link_query = useFrappeGetDocList(
-  //     queryField.doctype,
-  //     {},
-  //     "link_query_for_" + queryField.options,
-  //     { isPaused: () => queryField.fieldtype !== "Link" }
-  //   );
-
-  //   console.log("group_by_link_query:", group_by_link_query);
-
-  const schema = schema_query.data || {};
-  const fields = schema.fields || [];
-
-  const group_by_fields = useMemo(() => {
-    return fields.filter(
-      (f) => f.fieldtype === "Select"
-      //   || f.fieldtype === "Link"
+    //     queryField.doctype,
+    //     {},
+    //     "link_query_for_" + queryField.options,
+    //     { isPaused: () => queryField.fieldtype !== "Link" }
+    //   );
+    
+    //   console.log("group_by_link_query:", group_by_link_query);
+    
+    const schema = schema_query.data || {};
+    const fields = schema.fields || [];
+    
+    const group_by_fields = useMemo(() => {
+      return fields.filter(
+        (f) => f.fieldtype === "Select"
+        //   || f.fieldtype === "Link"
+      );
+    }, [fields]);
+    
+    const statuses = Object.keys(STATUS_CONFIG);
+    
+    
+    const sensors = useSensors(
+      useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+      useSensor(MouseSensor),
+      useSensor(TouchSensor)
     );
-  }, [fields]);
-
-  const statuses = Object.keys(STATUS_CONFIG);
-
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(MouseSensor),
-    useSensor(TouchSensor)
-  );
-
-  const selectedGroupByField = useMemo(() => {
-    return group_by_fields.find((f) => f.fieldname === group_by) || {};
-  }, [group_by]);
-
-  const groups = useMemo(() => {
-    if (selectedGroupByField.fieldtype === "Select") {
-      return selectedGroupByField.options.split("\n").map((opt) => opt.trim());
-    }
-    return;
-  }, [selectedGroupByField]);
-
-  // console.log("groups:", groups);
-
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      console.log("item:", item);
+    
+    const selectedGroupByField = useMemo(() => {
+      return group_by_fields.find((f) => f.fieldname === group_by) || {};
+    }, [group_by]);
+    
+    const groups = useMemo(() => {
+      if (selectedGroupByField.fieldtype === "Select") {
+        return selectedGroupByField.options.split("\n").map((opt) => opt.trim());
+      }
+      return [];
+    }, [selectedGroupByField]);
+    
+    // console.log("groups:", groups);
+    const items = tasks_list_query.data?.message || [];
+    
+    const filteredItems = useMemo(() => {
+      return items.filter((item) => {
+        console.log("item:", item);
       const matchesSearch =
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.id.toLowerCase().includes(searchQuery.toLowerCase());
@@ -466,7 +464,7 @@ export default function ListView() {
         filters.priority.includes(item.priority);
       return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [items, searchQuery, filters , group_by, tasks_list_query.isLoading]);
+  }, [items, searchQuery, filters, group_by, tasks_list_query.isLoading]);
 
   const handleDragStart = (event) => setActiveId(event.active.id);
 
@@ -492,7 +490,7 @@ export default function ListView() {
   );
 
   if (tasks_list_query.isLoading) return "Loading...";
-console.log("items:", items);
+  console.log("items:", items);
   return (
     <DndContext
       sensors={sensors}
@@ -507,7 +505,7 @@ console.log("items:", items);
         {/* Search Toolbar */}
 
         <Select
-        variant="underlined"
+          variant="underlined"
           placeholder="Group by"
           value={group_by}
           options={group_by_fields.map((field) => ({

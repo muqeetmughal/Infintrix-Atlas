@@ -18,9 +18,9 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useFrappeGetCall, useFrappeUpdateDoc } from "frappe-react-sdk";
+import { useFrappeCreateDoc, useFrappeGetCall, useFrappeUpdateDoc } from "frappe-react-sdk";
 import { useGetDoctypeField } from "../hooks/doctype";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { message, Tooltip } from "antd";
 import { IconRenderer } from "../components/IconRenderer";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
@@ -46,16 +46,14 @@ const IssueCard = React.forwardRef(
         style={style}
         className={`
         group bg-white p-4 rounded-lg border shadow-sm mb-3 select-none transition-shadow
-        ${
-          isDragging
+        ${isDragging
             ? "opacity-40 border-blue-400 ring-2 ring-blue-100"
             : "border-slate-200 hover:border-slate-300 hover:shadow-md"
-        }
-        ${
-          isOverlay
+          }
+        ${isOverlay
             ? "shadow-xl cursor-grabbing ring-2 ring-blue-500 border-blue-500 scale-105 transition-transform"
             : "cursor-grab"
-        }
+          }
       `}
         {...attributes}
         {...listeners}
@@ -83,7 +81,7 @@ const IssueCard = React.forwardRef(
           <div className="flex items-center gap-2">
             <Tooltip title={issue.type}>
               <WorkItemTypeWidget
-                value={issue.type}
+                value={issue?.type || "Task"}
                 disabled
                 show_label={false}
               />
@@ -96,7 +94,7 @@ const IssueCard = React.forwardRef(
           <div
             className={`w-7 h-7 rounded-full ${issue.assigneeColor} text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-sm`}
           >
-            <PreviewAssignees assignees={issue.assignees} enable_tooltip={false}/>
+            <PreviewAssignees assignees={issue.assignees} enable_tooltip={false} />
           </div>
         </div>
       </div>
@@ -137,8 +135,9 @@ const SortableIssue = ({ issue }) => {
   );
 };
 
-const Column = ({ id, title, tasks_list }) => {
+const Column = ({ id, title, tasks_list, createTask }) => {
   const [addNew, setAddNew] = useState(false);
+  const { project } = useParams();
   const [createItem, setCreateItem] = useState({
     subject: "",
     status: id,
@@ -168,6 +167,8 @@ const Column = ({ id, title, tasks_list }) => {
     document.addEventListener("mousedown", handleMouseDown);
     return () => document.removeEventListener("mousedown", handleMouseDown);
   }, [addNew, handleClickOutside]);
+
+
 
   return (
     <div
@@ -208,10 +209,22 @@ const Column = ({ id, title, tasks_list }) => {
                     value={createItem.subject}
                     onChange={(e) =>
                       setCreateItem({ ...createItem, subject: e.target.value })
+
                     }
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        console.log("Creating work item:", createItem);
+                        const newTaskItem = {
+                          ...createItem,
+                          subject: e.target.value,
+                          project: project,
+                        }
+                        console.log("Creating work item:", newTaskItem);
+                        createTask(newTaskItem)
+                        // .then((res) => {
+                        //   console.log("Created work item:", res);
+                        //   setCreateItem({ subject: "", status: id });
+                        //   setAddNew(false);
+                        // })
                         setCreateItem({ subject: "", status: id });
                         setAddNew(false);
                       } else if (e.key === "Escape") {
@@ -245,26 +258,39 @@ const Column = ({ id, title, tasks_list }) => {
 };
 
 export default function KanbanView() {
+  const [activeIssue, setActiveIssue] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const project = searchParams.get("project") || null;
+  const { project } = useParams();
+  const createMutation = useFrappeCreateDoc();
 
   const updateTaskMutation = useFrappeUpdateDoc();
 
   const columns_query = useGetDoctypeField("Task", "status", "options");
   const tasks_list_query = useFrappeGetCall(
     `infintrix_atlas.api.v1.get_tasks?project=${project}`
-  );
-  const [activeIssue, setActiveIssue] = useState(null);
+    , {
+    }, ["tasks", "kanban", project], {
+    isPaused: () => !project
+  });
   const { options } = columns_query.data || [];
 
   const tasks_list = tasks_list_query.data?.message || [];
-  const COLUMNS =
-    options.length > 0
-      ? options.map((option) => ({
+
+  const COLUMNS = useMemo(
+    () => {
+      if (!options) {
+        return [];
+      } else {
+        return options.map((option) => ({
           id: option,
           title: option,
-        }))
-      : [];
+        }));
+      }
+    },
+
+    [options]
+  );
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -292,53 +318,6 @@ export default function KanbanView() {
 
     setActiveIssue(task);
   };
-  // const handleDragOver = (event) => {
-  //   const { active, over } = event;
-  //   if (!over) return;
-
-  //   const activeId = active.id;
-  //   const overId = over.id;
-
-  //   if (activeId === overId) return;
-
-  //   const isActiveAnIssue = active.data.current?.type === "Issue";
-  //   const isOverAnIssue = over.data.current?.type === "Issue";
-  //   const isOverAColumn = over.data.current?.type === "Column";
-
-  //   if (!isActiveAnIssue) return;
-
-  //   // 1. Dragging an Issue over another Issue
-  //   if (isActiveAnIssue && isOverAnIssue) {
-  //     setIssues((prev) => {
-  //       const activeIndex = prev.findIndex((i) => i.id === activeId);
-  //       const overIndex = prev.findIndex((i) => i.id === overId);
-
-  //       if (prev[activeIndex].status !== prev[overIndex].status) {
-  //         const updatedIssues = [...prev];
-  //         updatedIssues[activeIndex] = {
-  //           ...updatedIssues[activeIndex],
-  //           status: updatedIssues[overIndex].status,
-  //         };
-  //         return arrayMove(updatedIssues, activeIndex, overIndex);
-  //       }
-
-  //       return arrayMove(prev, activeIndex, overIndex);
-  //     });
-  //   }
-
-  //   // 2. Dragging an Issue over an empty Column
-  //   if (isActiveAnIssue && isOverAColumn) {
-  //     setIssues((prev) => {
-  //       const activeIndex = prev.findIndex((i) => i.id === activeId);
-  //       const updatedIssues = [...prev];
-  //       updatedIssues[activeIndex] = {
-  //         ...updatedIssues[activeIndex],
-  //         status: overId,
-  //       };
-  //       return arrayMove(updatedIssues, activeIndex, activeIndex);
-  //     });
-  //   }
-  // };
 
   const mutateTaskStatus = async (task, newStatus) => {
     await tasks_list_query.mutate(
@@ -368,6 +347,45 @@ export default function KanbanView() {
     );
   };
 
+  const createNewTask = async (newTask) => {
+    await tasks_list_query.mutate(
+      async (current) => {
+
+        console.log("current", current);
+        const newTaskCreated = await createMutation.createDoc("Task", newTask);
+
+        console.log("Created task result", newTaskCreated);
+        return {
+          ...current,
+          message: [...current.message, {
+              ...newTaskCreated,
+              id: newTaskCreated.name,
+              title: newTaskCreated.subject,
+            }],
+        };
+      },
+      {
+        optimisticData: (current) => {
+
+          console.log("Optimistic current", current);
+          return ({
+            ...current,
+            message: [...current.message, {
+                ...newTask,
+                title: newTask.subject,
+                
+                id: "temp-" + Math.random().toString(36).substr(2, 9),
+              }],
+          })
+        },
+        rollbackOnError: true,
+        revalidate: false,
+        populateCache: true,
+      }
+    );
+  };
+console.log("Tasks list:", tasks_list);
+
   const handleDragEnd = async (event) => {
     setActiveIssue(null);
 
@@ -377,21 +395,21 @@ export default function KanbanView() {
     const activeId = active.id;
     const overId = over.id;
 
-    console.log("Drag ended:", activeId, overId);
+    // console.log("Drag ended:", activeId, overId);
 
     const activeTask = tasks_list.find((i) => i.id === activeId);
     console.log("Active task:", activeTask);
     if (!activeTask) return;
 
     let newStatus = activeTask.status;
-    console.log("Current status:", newStatus);
+    // console.log("Current status:", newStatus);
 
     // Dropped on column
     if (COLUMNS.some((c) => c.id === overId)) {
       newStatus = overId;
     }
 
-    console.log("Updating status to:", newStatus);
+    // console.log("Updating status to:", newStatus);
 
     // Dropped on another task
     const overTask = tasks_list.find((i) => i.id === overId);
@@ -399,7 +417,7 @@ export default function KanbanView() {
       newStatus = overTask.status;
     }
 
-    console.log("Final new status:", newStatus);
+    // console.log("Final new status:", newStatus);
 
     if (newStatus !== activeTask.status) {
       try {
@@ -436,25 +454,6 @@ export default function KanbanView() {
     // mutate(activeId, columnName);
     //  tasks_list_query.mutate()
   };
-  // const mutate = async (taskName, newStatus) => {
-  //   try {
-  //     await updateTaskMutation.updateDoc("Task", taskName, {
-  //       status: newStatus,
-  //     }).then(() => {
-  //       console.log("Task updated successfully");
-  //     }).catch((error) => {
-  //       message.error(error.exception);
-
-  //       console.log("Error updating task:",error.exception);
-  //     }).finally(() => {
-  //       tasks_query.mutate();
-  //     }
-  //     );
-  //     console.log("Status updated:", newStatus);
-  //   } catch (err) {
-  //     console.error("Failed to update task", err);
-  //   }
-  // };
 
   const dropAnimation = {
     sideEffects: defaultDropAnimationSideEffects({
@@ -468,11 +467,12 @@ export default function KanbanView() {
   return (
     <div className="text-slate-900">
       <div className="mx-auto flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-180px)] items-start">
+
+
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
           onDragStart={handleDragStart}
-          // onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
           {COLUMNS.map((col) => (
@@ -481,16 +481,18 @@ export default function KanbanView() {
               id={col.id}
               title={col.title}
               tasks_list={tasks_list.filter((i) => i.status === col.id)}
+              createTask={createNewTask}
             />
           ))}
 
-          {/* This is the secret to smoothness: The Overlay follows the mouse */}
           <DragOverlay dropAnimation={dropAnimation}>
             {activeIssue ? (
               <IssueCard issue={activeIssue} isOverlay={true} />
             ) : null}
           </DragOverlay>
         </DndContext>
+
+
       </div>
     </div>
   );

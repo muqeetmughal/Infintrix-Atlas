@@ -24,23 +24,12 @@ export default function FormRender({
 
   const mutation = useFrappeCreateDoc();
 
-  // if (query.isLoading || (!open && !full_form && !Object.keys(defaultValues).length) || !schema?.fields) return null;
 
   if (query.isLoading) return <div>Loading...</div>;
 
   const schema = query.data || {};
     // console.log("SCHEMA:", schema);
   let fields = schema?.fields || [];
-
-  //   .filter(
-  //     (f) => !["Section Break", "Column Break"].includes(f.fieldtype)
-  //     // && f.allow_in_quick_entry === 1
-  //   );
-
-
-  // if (schema.quick_entry && !full_form){
-  //   fields = fields.filter(f => f.allow_in_quick_entry === 1);
-  // }
 
 
   const onSubmit = (data) => {

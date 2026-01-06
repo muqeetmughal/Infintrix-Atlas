@@ -42,16 +42,14 @@ const Tasks = () => {
   // const project = searchParams.get("project") || null;
   const navigate = useNavigate();
 
-  const query = useDoctypeSchema("Task");
+  // const query = useDoctypeSchema("Task");
   const project_query = useFrappeGetDoc("Project", project);
-  const tasks_query = useFrappeGetCall(
-    `infintrix_atlas.api.v1.get_tasks?project=${project}`
-  );
+
   const projects_options_query = useFrappeGetDocList("Project", {
     fields: ["name as value", "project_name as label"],
     limit_page_length: 100,
   });
-  const schema = query.data || {};
+  // const schema = query.data || {};
 
   const tabs = [
     { id: "ai-architect", label: "AI Architect" },
@@ -60,15 +58,12 @@ const Tasks = () => {
     { id: "table", label: "Table" },
     { id: "kanban", label: "Kanban" },
   ];
-  const refetch = ()=>{
-    tasks_query.mutate()
-  }
 
-  if (tasks_query.isLoading && project_query.isLoading) {
+
+  if (project_query.isLoading) {
     return <div>Loading...</div>;
   }
 
-  const tasks = tasks_query?.data?.message || [];
   const project_data = project_query?.data || {};
   const assignees = (project_data?.users || []).map((u) => u.user);
 
@@ -215,12 +210,12 @@ const Tasks = () => {
         {/* View Content */}
         <div className="overflow-x-auto">
           {view === "ai-architect" && <AIArchitect />}
-          {view === "list" && <ListView tasks={tasks} />}
-          {view === "table" && <TableView tasks={tasks} />}
-          {view === "kanban" && <KanbanView tasks_query={tasks_query} />}
-          {view === "backlog" && (
+          {view === "list" && <ListView />}
+          {view === "table" && <TableView />}
+          {view === "kanban" && <KanbanView  />}
+          {/* {view === "backlog" && (
             <BacklogView initialTasks={tasks} project={project_data} />
-          )}
+          )} */}
         </div>
       </div>
     </>
