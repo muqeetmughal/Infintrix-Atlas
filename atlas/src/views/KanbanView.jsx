@@ -18,7 +18,13 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useFrappeCreateDoc, useFrappeGetCall, useFrappeUpdateDoc } from "frappe-react-sdk";
+import {
+  useFrappeCreateDoc,
+  useFrappeGetCall,
+  useFrappeGetDoc,
+  useFrappeGetDocList,
+  useFrappeUpdateDoc,
+} from "frappe-react-sdk";
 import { useGetDoctypeField } from "../hooks/doctype";
 import { useParams, useSearchParams } from "react-router-dom";
 import { message, Tooltip } from "antd";
@@ -46,14 +52,16 @@ const IssueCard = React.forwardRef(
         style={style}
         className={`
         group bg-white p-4 rounded-lg border shadow-sm mb-3 select-none transition-shadow
-        ${isDragging
+        ${
+          isDragging
             ? "opacity-40 border-blue-400 ring-2 ring-blue-100"
             : "border-slate-200 hover:border-slate-300 hover:shadow-md"
-          }
-        ${isOverlay
+        }
+        ${
+          isOverlay
             ? "shadow-xl cursor-grabbing ring-2 ring-blue-500 border-blue-500 scale-105 transition-transform"
             : "cursor-grab"
-          }
+        }
       `}
         {...attributes}
         {...listeners}
@@ -85,7 +93,6 @@ const IssueCard = React.forwardRef(
                 disabled
                 show_label={false}
               />
-
             </Tooltip>
             <span className="text-[11px] text-slate-500 font-bold tracking-tight uppercase">
               {issue.id}
@@ -94,7 +101,10 @@ const IssueCard = React.forwardRef(
           <div
             className={`w-7 h-7 rounded-full ${issue.assigneeColor} text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-sm`}
           >
-            <PreviewAssignees assignees={issue.assignees} enable_tooltip={false} />
+            <PreviewAssignees
+              assignees={issue.assignees}
+              enable_tooltip={false}
+            />
           </div>
         </div>
       </div>
@@ -168,8 +178,6 @@ const Column = ({ id, title, tasks_list, createTask }) => {
     return () => document.removeEventListener("mousedown", handleMouseDown);
   }, [addNew, handleClickOutside]);
 
-
-
   return (
     <div
       ref={setNodeRef}
@@ -209,7 +217,6 @@ const Column = ({ id, title, tasks_list, createTask }) => {
                     value={createItem.subject}
                     onChange={(e) =>
                       setCreateItem({ ...createItem, subject: e.target.value })
-
                     }
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -217,9 +224,9 @@ const Column = ({ id, title, tasks_list, createTask }) => {
                           ...createItem,
                           subject: e.target.value,
                           project: project,
-                        }
+                        };
                         console.log("Creating work item:", newTaskItem);
-                        createTask(newTaskItem)
+                        createTask(newTaskItem);
                         // .then((res) => {
                         //   console.log("Created work item:", res);
                         //   setCreateItem({ subject: "", status: id });
@@ -264,33 +271,74 @@ export default function KanbanView() {
   const createMutation = useFrappeCreateDoc();
 
   const updateTaskMutation = useFrappeUpdateDoc();
-
+  const project_query = useFrappeGetDoc("Project", project);
   const columns_query = useGetDoctypeField("Task", "status", "options");
-  const tasks_list_query = useFrappeGetCall(
-    `infintrix_atlas.api.v1.get_tasks?project=${project}`
-    , {
-    }, ["tasks", "kanban", project], {
-    isPaused: () => !project
+
+  const active_cycle_query = useFrappeGetDocList("Cycle", {
+    filters: { project: project, status: "Active" },
   });
-  const { options } = columns_query.data || [];
+  const cycle_name = (active_cycle_query?.data || [])[0]?.name;
 
-  const tasks_list = tasks_list_query.data?.message || [];
+  const project_data = project_query.data || {};
+  const isScrum = project_data.custom_execution_mode === "Scrum";
 
-  const COLUMNS = useMemo(
-    () => {
-      if (!options) {
-        return [];
-      } else {
-        return options.map((option) => ({
-          id: option,
-          title: option,
-        }));
-      }
+  // const tasks_list_query = useFrappeGetCall(
+  //   `infintrix_atlas.api.v1.get_tasks?project=${project}&cycle=${cycle_name}`,
+  //   {},
+  //   ["tasks", "kanban", project, cycle_name],
+  //   {
+  //     isPaused: () => {
+  //       if (isScrum){
+  //         return !cycle_name;
+  //       }
+  //       return !project;
+  //     },
+  //   }
+  // );
+  const tasks_list_query = useFrappeGetDocList(
+    `Task`,
+    {
+      filters: isScrum
+        ? { project: project, custom_cycle: cycle_name }
+        : { project: project },
+      fields: [
+        "name",
+        "name as id",
+        "subject as title",
+        "status",
+        "type",
+        "custom_cycle as cycle",
+        "priority",
+        "modified",
+        "project",
+      ],
+      // limit_page_length: 1000,
     },
-
-    [options]
+    ["tasks", "kanban", project, cycle_name],
+    {
+      isPaused: () => {
+        if (isScrum){
+          return !cycle_name;
+        }
+        return !project;
+      },
+    }
   );
 
+  const { options } = columns_query.data || [];
+
+  const tasks_list = tasks_list_query.data || [];
+
+  const COLUMNS = useMemo(() => {
+    if (!options) {
+      return [];
+    } else {
+      return options.map((option) => ({
+        id: option,
+        title: option,
+      }));
+    }
+  }, [options]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -326,20 +374,23 @@ export default function KanbanView() {
           status: newStatus,
         });
 
-        return {
-          ...current,
-          message: current.message.map((t) =>
-            t.name === task ? { ...t, status: newStatus } : t
-          ),
-        };
+        return current.map((t) =>{
+    
+          if (t.name === task){
+            return { ...t, status: newStatus };
+          }
+          return t;
+        });
       },
       {
-        optimisticData: (current) => ({
-          ...current,
-          message: current.message.map((t) =>
-            t.name === task ? { ...t, status: newStatus } : t
-          ),
-        }),
+        optimisticData: (current) => {
+          return current.map((t) => {
+            if (t.name === task) {
+              return { ...t, status: newStatus };
+            }
+            return t;
+          });
+        },
         rollbackOnError: true,
         revalidate: false,
         populateCache: true,
@@ -350,33 +401,29 @@ export default function KanbanView() {
   const createNewTask = async (newTask) => {
     await tasks_list_query.mutate(
       async (current) => {
-
-        console.log("current", current);
         const newTaskCreated = await createMutation.createDoc("Task", newTask);
 
-        console.log("Created task result", newTaskCreated);
-        return {
+        return [
           ...current,
-          message: [...current.message, {
-              ...newTaskCreated,
-              id: newTaskCreated.name,
-              title: newTaskCreated.subject,
-            }],
-        };
+          {
+            ...newTaskCreated,
+            id: newTaskCreated.name,
+            title: newTaskCreated.subject,
+          },
+        ];
       },
       {
         optimisticData: (current) => {
-
           console.log("Optimistic current", current);
-          return ({
+          return [
             ...current,
-            message: [...current.message, {
-                ...newTask,
-                title: newTask.subject,
-                
-                id: "temp-" + Math.random().toString(36).substr(2, 9),
-              }],
-          })
+            {
+              ...newTask,
+              title: newTask.subject,
+
+              id: "temp-" + Math.random().toString(36).substr(2, 9),
+            },
+          ];
         },
         rollbackOnError: true,
         revalidate: false,
@@ -384,7 +431,7 @@ export default function KanbanView() {
       }
     );
   };
-console.log("Tasks list:", tasks_list);
+  // console.log("Tasks:", tasks_list_query);
 
   const handleDragEnd = async (event) => {
     setActiveIssue(null);
@@ -464,11 +511,18 @@ console.log("Tasks list:", tasks_list);
       },
     }),
   };
+
+  if (
+    tasks_list_query.isLoading &&
+    columns_query.isLoading &&
+    project_query.isLoading &&
+    active_cycle_query.isLoading
+  ) {
+    return <div>Loading...</div>;
+  }
   return (
     <div className="text-slate-900">
       <div className="mx-auto flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-180px)] items-start">
-
-
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -491,8 +545,6 @@ console.log("Tasks list:", tasks_list);
             ) : null}
           </DragOverlay>
         </DndContext>
-
-
       </div>
     </div>
   );

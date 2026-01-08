@@ -41,6 +41,7 @@ def get_tasks():
                 Task.status,
                 Task.project,
                 Task.modified,
+                Task.custom_cycle.as_("cycle"),
             )
             .where(Task.project.isnull())
             .orderby(Task.modified, order=frappe.qb.desc)

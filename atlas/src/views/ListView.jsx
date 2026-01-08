@@ -453,7 +453,7 @@ export default function ListView() {
     
     const filteredItems = useMemo(() => {
       return items.filter((item) => {
-        console.log("item:", item);
+        // console.log("item:", item);
       const matchesSearch =
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.id.toLowerCase().includes(searchQuery.toLowerCase());
@@ -490,7 +490,6 @@ export default function ListView() {
   );
 
   if (tasks_list_query.isLoading) return "Loading...";
-  console.log("items:", items);
   return (
     <DndContext
       sensors={sensors}

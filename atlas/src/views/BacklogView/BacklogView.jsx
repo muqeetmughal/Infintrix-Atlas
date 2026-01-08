@@ -170,7 +170,7 @@ const BacklogView = () => {
     limit_start: 0,
   });
   const tasks_query = useFrappeGetDocList("Task", {
-    filters: { project: project_id, status: "Open" },
+    filters: { project: project_id },
     fields: ["name as id", "name", "subject", "custom_cycle", "type", "status"],
   });
 
@@ -360,7 +360,7 @@ const BacklogView = () => {
             {(hasActiveCycle && cycle.status !== "Active") ||
             cycle.status == "Completed" ? null : (
               <Button
-                disabled={hasNoWorkItems}
+                // disabled={hasNoWorkItems}
                 size="small"
                 type={cycle.status === "Active" ? "default" : "primary"}
                 onClick={() => {

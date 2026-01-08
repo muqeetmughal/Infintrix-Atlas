@@ -109,7 +109,6 @@ const TableView = () => {
                   <div className="flex items-center space-x-2">
                     {/* <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500">{t.assignee?.charAt(0)}</div> */}
                     {/* <Assignee assignees={t.assignees} /> */}
-                    {console.log("t.assignees", t.assignees)}
                     <PreviewAssignees assignees={t.assignees} enable_tooltip={false} />
                   </div>
                 </td>

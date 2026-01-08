@@ -38,18 +38,19 @@ const Tasks = () => {
 
   const view = params.view || "table";
   const project = params.project || null;
-  const selectedTask = searchParams.get("selected_task") || null;
+  // const selectedTask = searchParams.get("selected_task") || null;
   // const project = searchParams.get("project") || null;
   const navigate = useNavigate();
 
   // const query = useDoctypeSchema("Task");
   const project_query = useFrappeGetDoc("Project", project);
+  
 
   const projects_options_query = useFrappeGetDocList("Project", {
     fields: ["name as value", "project_name as label"],
     limit_page_length: 100,
   });
-  // const schema = query.data || {};
+
 
   const tabs = [
     { id: "ai-architect", label: "AI Architect" },
@@ -175,6 +176,7 @@ const Tasks = () => {
               // }}
               options={projects_options_query?.data || []}
             />
+       
           </div>
 
           {/* User Avatars and Filter Options */}
@@ -213,9 +215,9 @@ const Tasks = () => {
           {view === "list" && <ListView />}
           {view === "table" && <TableView />}
           {view === "kanban" && <KanbanView  />}
-          {/* {view === "backlog" && (
-            <BacklogView initialTasks={tasks} project={project_data} />
-          )} */}
+          {view === "backlog" && (
+            <BacklogView  />
+          )}
         </div>
       </div>
     </>
