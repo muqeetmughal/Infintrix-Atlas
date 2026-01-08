@@ -101,7 +101,7 @@ function FormRender({
 
   return (<Modal
     title={`${mode.charAt(0).toUpperCase() + mode.slice(1)} ${doctype}`}
-    closable={{ 'aria-label': 'Custom Close Button' }}
+    // closable={{ 'aria-label': 'Custom Close Button' }}
     open={open}
     onOk={() => { }}
     width={800}
@@ -132,7 +132,7 @@ function FormRender({
   >
     <Form
       form={form}
-      variant="underlined"
+      variant="filled"
       layout="vertical"
       name={schema.name}
       initialValues={defaultValues}

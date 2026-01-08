@@ -391,32 +391,40 @@ export default function ListView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeId, setActiveId] = useState(null);
   const [filters, setFilters] = useState({ status: [], priority: [] });
+    const schema_query = useDoctypeSchema("Task");
+
 
   const group_by = searchParams.get("group_by") || null;
   //   const doctype_field_query = useGetDoctypeField("Task", group_by, "options");
   const params = useParams();
   const project = params.project || null;
-  const tasks_list_query = useFrappeGetCall(
-    `infintrix_atlas.api.v1.get_tasks?project=${project}`
-    , {
-    }, ["tasks", "list", project], {
-    isPaused: () => !project
-  });
+  const tasks_list_query = useFrappeGetDocList(
+      `Task`,
+      {
+        filters: { project: project },
+        fields: [
+          "name",
+          "name as id",
+          "subject as title",
+          "status",
+          "type",
+          "custom_cycle as cycle",
+          "priority",
+          "modified",
+          "project",
+        ],
+        // limit_page_length: 1000,
+      },
+      "list_view", {
+          revalidateOnFocus: false,
+          revalidateIfStale: false,
+          revalidateOnReconnect: false,
+      }
+  
+      
+    );
+  
 
-  
-  
-  //   const { fieldtype, options, fieldname, label } =
-  //     doctype_field_query.data || {};
-  const schema_query = useDoctypeSchema("Task");
-  
-  //   const group_by_link_query = useFrappeGetDocList(
-    //     queryField.doctype,
-    //     {},
-    //     "link_query_for_" + queryField.options,
-    //     { isPaused: () => queryField.fieldtype !== "Link" }
-    //   );
-    
-    //   console.log("group_by_link_query:", group_by_link_query);
     
     const schema = schema_query.data || {};
     const fields = schema.fields || [];
@@ -489,7 +497,7 @@ export default function ListView() {
     [items, activeId]
   );
 
-  if (tasks_list_query.isLoading) return "Loading...";
+  if (tasks_list_query.isLoading || schema_query.isLoading) return "Loading...";
   return (
     <DndContext
       sensors={sensors}

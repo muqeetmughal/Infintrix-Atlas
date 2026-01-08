@@ -10,7 +10,8 @@
   "duration",
   "start_date",
   "end_date",
-  "status"
+  "status",
+  "actual_end_date"
  ],
  "fields": [
   {
@@ -43,12 +44,17 @@
    "fieldtype": "Select",
    "label": "Duration",
    "options": "1 Week\n2 Week\n3 Week\n4 Week\nCustom"
+  },
+  {
+   "fieldname": "actual_end_date",
+   "fieldtype": "Datetime",
+   "label": "Actual End Date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-04 16:35:46.456691",
+ "modified": "2026-01-09 02:18:58.743672",
  "modified_by": "Administrator",
  "module": "Infintrix Atlas",
  "name": "Cycle",

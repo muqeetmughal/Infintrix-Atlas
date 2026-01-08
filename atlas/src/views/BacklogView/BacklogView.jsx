@@ -360,7 +360,7 @@ const BacklogView = () => {
             {(hasActiveCycle && cycle.status !== "Active") ||
             cycle.status == "Completed" ? null : (
               <Button
-                // disabled={hasNoWorkItems}
+                disabled={hasNoWorkItems}
                 size="small"
                 type={cycle.status === "Active" ? "default" : "primary"}
                 onClick={() => {
@@ -392,20 +392,7 @@ const BacklogView = () => {
                     key: "Edit Cycle",
                     label: "Edit Cycle",
                     // disabled: true,
-                  },
-                  // {
-                  //   type: "divider",
-                  // },
-                  // {
-                  //   key: "2",
-                  //   label: "Profile",
-                  //   extra: "⌘P",
-                  // },
-                  // {
-                  //   key: "3",
-                  //   label: "Billing",
-                  //   extra: "⌘B",
-                  // },
+                  }
                 ],
               }}
             >
@@ -575,6 +562,7 @@ const BacklogView = () => {
                       <span className="text-[10px] font-black uppercase">
                         Plan Task
                       </span>
+                      
                     </button>
                   </div>
                 )}

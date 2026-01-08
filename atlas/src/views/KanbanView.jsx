@@ -26,7 +26,7 @@ import {
   useFrappeUpdateDoc,
 } from "frappe-react-sdk";
 import { useGetDoctypeField } from "../hooks/doctype";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { message, Tooltip } from "antd";
 import { IconRenderer } from "../components/IconRenderer";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
@@ -277,24 +277,14 @@ export default function KanbanView() {
   const active_cycle_query = useFrappeGetDocList("Cycle", {
     filters: { project: project, status: "Active" },
   });
-  const cycle_name = (active_cycle_query?.data || [])[0]?.name;
+  const cycle = (active_cycle_query?.data || [])[0];
+  const cycle_name = cycle?.name;
+
+  console.log(cycle_name);
 
   const project_data = project_query.data || {};
   const isScrum = project_data.custom_execution_mode === "Scrum";
 
-  // const tasks_list_query = useFrappeGetCall(
-  //   `infintrix_atlas.api.v1.get_tasks?project=${project}&cycle=${cycle_name}`,
-  //   {},
-  //   ["tasks", "kanban", project, cycle_name],
-  //   {
-  //     isPaused: () => {
-  //       if (isScrum){
-  //         return !cycle_name;
-  //       }
-  //       return !project;
-  //     },
-  //   }
-  // );
   const tasks_list_query = useFrappeGetDocList(
     `Task`,
     {
@@ -314,15 +304,13 @@ export default function KanbanView() {
       ],
       // limit_page_length: 1000,
     },
-    ["tasks", "kanban", project, cycle_name],
-    {
-      isPaused: () => {
-        if (isScrum){
-          return !cycle_name;
-        }
-        return !project;
-      },
+    isScrum ? `task_list_${project}_${cycle_name}` :`task_list_${project}`, {
+        revalidateOnFocus: false,
+        revalidateIfStale: false,
+        revalidateOnReconnect: false,
     }
+
+    
   );
 
   const { options } = columns_query.data || [];
@@ -374,9 +362,8 @@ export default function KanbanView() {
           status: newStatus,
         });
 
-        return current.map((t) =>{
-    
-          if (t.name === task){
+        return current.map((t) => {
+          if (t.name === task) {
             return { ...t, status: newStatus };
           }
           return t;
@@ -516,9 +503,42 @@ export default function KanbanView() {
     tasks_list_query.isLoading &&
     columns_query.isLoading &&
     project_query.isLoading &&
-    active_cycle_query.isLoading
+    active_cycle_query.isLoading &&
+    (!isScrum || (isScrum && !cycle_name))
   ) {
     return <div>Loading...</div>;
+  }
+
+  if (isScrum && !cycle_name) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <div className="text-center space-y-4">
+          <div className="flex justify-center mb-6">
+            <div className="w-35 h-35 bg-blue-50 rounded-full flex items-center justify-center">
+              <img
+                src="/images/agile.svg"
+                alt="No cycle"
+                className="w-25 h-25"
+              />
+            </div>
+          </div>
+          <div>
+            <p className="text-xl font-bold text-slate-900 mb-2">
+              No Active Sprint
+            </p>
+            <p className="text-sm text-slate-500 max-w-xs mx-auto">
+              Create or select an active sprint to start organizing your tasks
+            </p>
+          </div>
+          <Link
+            to={`/tasks/${project}/backlog`}
+            className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
+          >
+            Go to Backlog
+          </Link>
+        </div>
+      </div>
+    );
   }
   return (
     <div className="text-slate-900">

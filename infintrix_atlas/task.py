@@ -11,6 +11,16 @@ def validate_task_hierarchy(doc, method):
 
     if not parent.type:
         return
+    
+    # Check if project has active cycles
+    if doc.project:
+        active_cycle = frappe.db.get_value(
+            "Cycle",
+            doc.project,
+            "custom_active_cycle"
+        )
+        if active_cycle and doc.custom_cycle and doc.custom_cycle != active_cycle:
+            frappe.throw(f"Cannot change cycle while project has active cycle: {active_cycle}")
 
     parent_type = frappe.get_doc("Task Type", parent.type)
     child_type = frappe.get_doc("Task Type", doc.type)

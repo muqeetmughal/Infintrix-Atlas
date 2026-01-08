@@ -53,9 +53,9 @@ const Tasks = () => {
 
 
   const tabs = [
-    { id: "ai-architect", label: "AI Architect" },
+    // { id: "ai-architect", label: "AI Architect" },
     { id: "backlog", label: "Backlog" },
-    { id: "list", label: "List" },
+    // { id: "list", label: "List" },
     { id: "table", label: "Table" },
     { id: "kanban", label: "Kanban" },
   ];
@@ -211,8 +211,8 @@ const Tasks = () => {
 
         {/* View Content */}
         <div className="overflow-x-auto">
-          {view === "ai-architect" && <AIArchitect />}
-          {view === "list" && <ListView />}
+          {/* {view === "ai-architect" && <AIArchitect />} */}
+          {/* {view === "list" && <ListView />} */}
           {view === "table" && <TableView />}
           {view === "kanban" && <KanbanView  />}
           {view === "backlog" && (
