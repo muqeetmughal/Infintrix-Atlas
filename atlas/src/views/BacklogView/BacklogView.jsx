@@ -40,7 +40,7 @@ import {
   useFrappeUpdateDoc,
 } from "frappe-react-sdk";
 import dayjs from "dayjs";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { Button, Dropdown, Space, Spin } from "antd";
 import BacklogHealth from "./BacklogHealth";
 import FormRender from "../../components/form/FormRender";
@@ -257,6 +257,7 @@ const BacklogView = () => {
     [tasks, activeId]
   );
   const Cycle = ({ cycle, tasks = [] }) => {
+    const [searchParams, setSearchParams] = useSearchParams();
     // const project = params.project;
     const [isExpanded, setIsExpanded] = useState(false);
     // const tasks_query = useFrappeGetDocList("Task", {
@@ -364,14 +365,18 @@ const BacklogView = () => {
                 size="small"
                 type={cycle.status === "Active" ? "default" : "primary"}
                 onClick={() => {
-                  updateMutation
-                    .updateDoc("Cycle", cycle.name, {
-                      status:
-                        cycle.status === "Active" ? "Completed" : "Active",
-                    })
-                    .then(() => {
-                      cycles_query.mutate();
-                    });
+                  searchParams.set("doctype", 'Cycle');
+                  searchParams.set("docname", cycle.name);
+                  searchParams.set("mode","edit");
+                  setSearchParams(searchParams);
+                  // updateMutation
+                  //   .updateDoc("Cycle", cycle.name, {
+                  //     status:
+                  //       cycle.status === "Active" ? "Completed" : "Active",
+                  //   })
+                  //   .then(() => {
+                  //     cycles_query.mutate();
+                  //   });
                 }}
               >
                 {cycle.status === "Active" ? "Complete" : "Start Cycle"}

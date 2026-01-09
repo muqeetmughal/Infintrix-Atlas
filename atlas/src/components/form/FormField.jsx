@@ -54,6 +54,16 @@ export function FormField({ field }) {
         );
       case "Date":
         return <DatePicker style={{ width: "100%" }} />;
+      case "Datetime":
+        console.log("Datetime Field Value:", field.value);
+        return (
+          <DatePicker
+            showTime
+            format="YYYY-MM-DD HH:mm:ss"
+            style={{ width: "100%" }}
+            // value={field.value ? dayjs(field.value) : undefined}
+          />
+        );
       case "Percent":
         return (
           <InputNumber

@@ -249,9 +249,14 @@ app_license = "mit"
 
 doc_events = {
     "Task": {
-        "validate": "infintrix_atlas.task.validate_task_hierarchy",
-        "before_save": "infintrix_atlas.task.before_task_save"
-    }
+        "validate": "infintrix_atlas.events.task.validate_task_hierarchy",
+        "before_save": "infintrix_atlas.events.task.before_task_save"
+    },
+     "Project": {
+        "validate": "infintrix_atlas.events.project.validate_project",
+        # "before_save": "infintrix_atlas.events.task.before_task_save"
+    },
+    
 }
 fixtures = [
 

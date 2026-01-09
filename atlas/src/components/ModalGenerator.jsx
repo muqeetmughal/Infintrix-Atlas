@@ -1,15 +1,20 @@
 import React from "react";
 import FormRender from "./form/FormRender";
 import { useSearchParams } from "react-router-dom";
+import { useFrappeGetDoc } from "frappe-react-sdk";
+import { Spin } from "antd";
 
 const ModalGenerator = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = searchParams.get("mode") || "create";
   const document_name = searchParams.get("docname") || null;
   const doctype = searchParams.get("doctype") || null;
+  const form_data_query = useFrappeGetDoc(doctype, document_name);
 
-  if (!doctype) {
-    return null;
+  const form_data = form_data_query.data || {};
+
+  if (!doctype || (mode === "edit" && !form_data)) {
+    return null
   }
 
   return (
@@ -25,7 +30,7 @@ const ModalGenerator = () => {
           setSearchParams(searchParams);
         }}
         full_form={false}
-        defaultValues={document_name ? { name: document_name } : {}}
+        defaultValues={form_data ? form_data : {}}
       />
     </>
   );

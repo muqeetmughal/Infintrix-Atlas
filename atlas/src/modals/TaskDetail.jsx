@@ -137,7 +137,7 @@ const TaskDetail = () => {
       {/* Navigation Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white">
         <div className="flex items-center space-x-4 text-sm text-slate-500">
-          <Dropdown
+          {/* <Dropdown
             menu={{
               items: [
                 {
@@ -180,7 +180,7 @@ const TaskDetail = () => {
             </Button>
           </Dropdown>
 
-          <span className="text-slate-300">/</span>
+          <span className="text-slate-300">/</span> */}
 
           <div className="flex items-center space-x-8  font-medium cursor-pointer hover:underline">
            
