@@ -37,18 +37,6 @@
   "weight": 0.0
  },
  {
-  "custom_allowed_child_type": [],
-  "custom_color": "#449CF0",
-  "custom_icon": "CheckSquareOutlined",
-  "custom_is_container": 0,
-  "description": null,
-  "docstatus": 0,
-  "doctype": "Task Type",
-  "modified": "2026-01-03 17:45:26.737185",
-  "name": "Task",
-  "weight": 0.0
- },
- {
   "custom_allowed_child_type": [
    {
     "parent": "Feature",
@@ -77,6 +65,18 @@
   "doctype": "Task Type",
   "modified": "2026-01-03 17:45:58.871560",
   "name": "Bug",
+  "weight": 0.0
+ },
+ {
+  "custom_allowed_child_type": [],
+  "custom_color": "#449CF0",
+  "custom_icon": "CheckSquareOutlined",
+  "custom_is_container": 0,
+  "description": null,
+  "docstatus": 0,
+  "doctype": "Task Type",
+  "modified": "2026-01-03 17:45:26.737185",
+  "name": "Task",
   "weight": 0.0
  }
 ]
