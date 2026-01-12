@@ -21,7 +21,21 @@ function FormRender({
   const schemaQuery = useDoctypeSchema(doctype);
   const createMutation = useFrappeCreateDoc();
 
-  const schema = schemaQuery.data || {};
+  const schema = useMemo(() => {
+    let form_schema = schemaQuery.data || {};
+    
+    if (doctype == "Cycle" && mode === "edit") {
+      form_schema.fields = (form_schema?.fields||[]).map(field => {
+        if (field.fieldname === "start_date" || field.fieldname === "end_date") {
+          return { ...field, reqd: 1 };
+        }
+        return field;
+      });
+      // console.log("before removing project field",schema.fields);
+      // schema = schema.map(fd => fd.fieldname !== "project");
+    }
+    return form_schema || {};
+  }, [schemaQuery.data]);
   const allFields = schema.fields || [];
 
   /**

@@ -30,6 +30,7 @@ import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget
 import AvatarGen from "../components/AvatarGen";
 import ListView from "../views/ListView";
 import PreviewAssignees from "../components/PreviewAssignees";
+import StartCycleModal from "../components/custom/StartCycleModel";
 
 const Tasks = () => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -220,6 +221,7 @@ const Tasks = () => {
           )}
         </div>
       </div>
+      <StartCycleModal/>
     </>
   );
 };

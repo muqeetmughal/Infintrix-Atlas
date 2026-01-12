@@ -365,9 +365,7 @@ const BacklogView = () => {
                 size="small"
                 type={cycle.status === "Active" ? "default" : "primary"}
                 onClick={() => {
-                  searchParams.set("doctype", 'Cycle');
-                  searchParams.set("docname", cycle.name);
-                  searchParams.set("mode","edit");
+                  searchParams.set("start_cycle", cycle.name);
                   setSearchParams(searchParams);
                   // updateMutation
                   //   .updateDoc("Cycle", cycle.name, {
