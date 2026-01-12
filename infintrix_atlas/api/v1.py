@@ -246,3 +246,48 @@ def get_project_flow_metrics(project):
         ],
     }
 
+@frappe.whitelist()
+def start_cycle(cycle_name, duration, start_date, end_date):
+    cycle = frappe.get_doc("Cycle", cycle_name)
+
+    if cycle.status != "Planned":
+        frappe.throw("Only planned cycles can be started")
+    
+    active_cycles = frappe.get_all(
+        "Cycle",
+        filters={"status": "Active", "name": ["!=", cycle_name]},
+        fields=["name"]
+    )
+    
+    if active_cycles:
+        frappe.throw(f"Cannot start cycle. Another cycle '{active_cycles[0].name}' is already active.")
+    
+    if not start_date:
+        cycle.start_date = frappe.utils.nowdate()
+    else:
+        cycle.start_date = start_date
+    
+    if not end_date:
+        frappe.throw("Please set an end date before starting the cycle")
+    else:
+        cycle.end_date = end_date
+    
+    cycle.status = "Active"
+    cycle.save()
+    frappe.db.commit()
+    
+    return {"success": True, "message": f"Cycle {cycle_name} started successfully"}
+
+
+def complete_cycle(cycle_name):
+    cycle = frappe.get_doc("Cycle", cycle_name)
+
+    if cycle.status != "Active":
+        frappe.throw("Only active cycles can be completed")
+    
+    cycle.status = "Completed"
+    cycle.actual_end_date = frappe.utils.nowdate()
+    cycle.save()
+    frappe.db.commit()
+    
+    return {"success": True, "message": f"Cycle {cycle_name} completed successfully"}

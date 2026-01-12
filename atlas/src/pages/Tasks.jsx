@@ -1,5 +1,5 @@
 import { Filter, Plus, Search } from "lucide-react";
-import React, { useEffect } from "react";
+import React, { act, useEffect } from "react";
 import Card from "../components/ui/Card";
 import {
   INITIAL_TASKS,
@@ -22,7 +22,7 @@ import TaskDetail from "../modals/TaskDetail";
 import TableView from "../views/TableView";
 import KanbanView from "../views/KanbanView";
 import LinkField from "../components/form/LinkField";
-import { Avatar, Input, Select, Tooltip } from "antd";
+import { Avatar, Button, Input, Select, Tooltip } from "antd";
 import BacklogView from "../views/BacklogView/BacklogView";
 import { set } from "react-hook-form";
 import AIArchitect from "./AIArchitect";
@@ -30,7 +30,8 @@ import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget
 import AvatarGen from "../components/AvatarGen";
 import ListView from "../views/ListView";
 import PreviewAssignees from "../components/PreviewAssignees";
-import StartCycleModal from "../components/custom/StartCycleModel";
+import StartCycleModal from "../components/custom/StartCycleModal";
+import CompleteCycleModal from "../components/custom/CompleteCycleModal";
 
 const Tasks = () => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -45,12 +46,16 @@ const Tasks = () => {
 
   // const query = useDoctypeSchema("Task");
   const project_query = useFrappeGetDoc("Project", project);
-  
+  const active_cycle_query = useFrappeGetDocList("Cycle", {
+    filters: { project: project, status: "Active" },
+  });
 
   const projects_options_query = useFrappeGetDocList("Project", {
     fields: ["name as value", "project_name as label"],
     limit_page_length: 100,
   });
+  const cycle = (active_cycle_query?.data || [])[0];
+  const active_cycle_name = cycle?.name;
 
 
   const tabs = [
@@ -105,11 +110,10 @@ const Tasks = () => {
                     navigate(`/tasks/${project}/${tab.id}`);
                     setSearchParams(oldSearchParams);
                   }}
-                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${
-                    view === tab.id
+                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${view === tab.id
                       ? "text-blue-600"
                       : "text-slate-500 hover:text-slate-700"
-                  }`}
+                    }`}
                 >
                   {tab.label}
                   {view === tab.id && (
@@ -122,20 +126,30 @@ const Tasks = () => {
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            <button className="p-2 md:p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-all">
+            <Button className="p-2 md:p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-all">
               <Filter size={18} className="md:w-5 md:h-5" />
-            </button>
-            <button
+            </Button>
+            <Button
+              type="dashed"
+              onClick={() => {
+                searchParams.set("complete_cycle", active_cycle_name);
+                setSearchParams(searchParams);
+              }}
+            >
+              Complete Cycle
+            </Button>
+            <Button
+              type="primary"
               onClick={() => {
                 searchParams.set("doctype", "Task");
                 searchParams.set("mode", "create" || "");
                 setSearchParams(searchParams);
               }}
-              className="cursor-pointer bg-slate-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-slate-800 transition-colors"
+            // className="cursor-pointer bg-slate-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-slate-800 transition-colors"
             >
               <Plus size={18} className="md:w-5 md:h-5" />
               <span className="text-sm md:text-base">Create Task</span>
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -177,7 +191,7 @@ const Tasks = () => {
               // }}
               options={projects_options_query?.data || []}
             />
-       
+
           </div>
 
           {/* User Avatars and Filter Options */}
@@ -215,13 +229,14 @@ const Tasks = () => {
           {/* {view === "ai-architect" && <AIArchitect />} */}
           {/* {view === "list" && <ListView />} */}
           {view === "table" && <TableView />}
-          {view === "kanban" && <KanbanView  />}
+          {view === "kanban" && <KanbanView />}
           {view === "backlog" && (
-            <BacklogView  />
+            <BacklogView />
           )}
         </div>
       </div>
-      <StartCycleModal/>
+      <StartCycleModal />
+      <CompleteCycleModal />
     </>
   );
 };

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Modal, Form, Select, DatePicker, Button, Row, Col } from "antd";
+import { Modal, Form, Select, DatePicker, Button, Row, Col, message } from "antd";
 import { useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
-import { useFrappeGetDoc } from "frappe-react-sdk";
+import { useFrappeGetDoc, useFrappePostCall } from "frappe-react-sdk";
 
 const { Option } = Select;
 
@@ -22,6 +22,8 @@ export default function StartCycleModal({}) {
       }
     }
   );
+
+  const mutation = useFrappePostCall("infintrix_atlas.api.v1.start_cycle");
 
   const handleDurationChange = (value) => {
     setDuration(value);
@@ -46,6 +48,18 @@ export default function StartCycleModal({}) {
 
   const handleFinish = (values) => {
     console.log("Form Values:", values);
+    mutation.call({
+        cycle_name : start_cycle,
+        duration : values.duration,
+        start_date: values.start_date.format("YYYY-MM-DD HH:mm:ss"),
+        end_date: values.end_date.format("YYYY-MM-DD HH:mm:ss"),
+      }).then((res)=>{
+        message.success("Cycle Started Successfully");
+        console.log("Cycle Started:", res);
+        onClose();
+      }).catch((err)=>{
+        console.error("Error starting cycle:", err);
+      })
   };
 
   const onClose = () => {

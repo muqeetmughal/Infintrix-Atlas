@@ -14,9 +14,9 @@ const ModalGenerator = () => {
     doctype,
     document_name,
   ], {
-    // isPaused : ()=>{
-    //   return !document_name
-    // }
+    isPaused : ()=>{
+      return !document_name
+    }
   });
 
   console.log("form_data_query",form_data_query)

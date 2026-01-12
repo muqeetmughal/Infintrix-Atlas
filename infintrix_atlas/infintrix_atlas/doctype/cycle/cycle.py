@@ -45,19 +45,8 @@ class Cycle(Document):
 		if self.status == "Completed":
 			frappe.throw("Cannot delete a completed cycle")
 
-		# self.status = "Archived"
-		# self.save()
-		# frappe.throw("Cycle cannot be deleted. It has been archived instead.")
 
 	@property
 	def is_active(self):
 		return self.status == "Active"
 
-	# @frappe.whitelist()
-	# def start_cycle(self):
-	# 	if self.status != "Planned":
-	# 		frappe.throw("Only planned cycles can be started")
-	# 	self.status = "Active"
-	# 	if not self.start_date:
-	# 		self.start_date = frappe.utils.nowdate()
-	# 	self.save()

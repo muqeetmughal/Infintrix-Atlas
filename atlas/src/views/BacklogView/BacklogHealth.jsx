@@ -11,7 +11,7 @@ const BacklogHealth = ({
   return (
     <footer className="fixed bottom-8 left-1/2 -translate-x-1/2 w-fit px-8 py-4 bg-slate-900 rounded-[40px] text-white flex items-center justify-between shadow-2xl">
           {metrics_query.isLoading ? (
-            <Spin  />
+            <Spin/>
           ) : (
             <>
               <div className="flex items-center gap-10">

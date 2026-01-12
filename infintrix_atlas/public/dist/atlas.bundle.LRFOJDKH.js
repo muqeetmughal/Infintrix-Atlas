@@ -21723,9 +21723,7 @@
   var React = __toESM(require_react());
   function App() {
     const dynamicMessage = React.useState("Hello from App.jsx");
-    return /* @__PURE__ */ React.createElement("div", {
-      className: "m-4"
-    }, /* @__PURE__ */ React.createElement("h3", null, dynamicMessage), /* @__PURE__ */ React.createElement("h4", null, "Start editing at infintrix_atlas/public/js/atlas/App.jsx"));
+    return /* @__PURE__ */ React.createElement("div", null, "hello");
   }
 
   // ../infintrix_atlas/infintrix_atlas/public/js/atlas/atlas.bundle.jsx
@@ -21792,4 +21790,4 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-//# sourceMappingURL=atlas.bundle.67L2VR56.js.map
+//# sourceMappingURL=atlas.bundle.LRFOJDKH.js.map

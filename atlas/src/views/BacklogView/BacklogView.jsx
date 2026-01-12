@@ -37,6 +37,7 @@ import {
   useFrappeGetCall,
   useFrappeGetDoc,
   useFrappeGetDocList,
+  useFrappePostCall,
   useFrappeUpdateDoc,
 } from "frappe-react-sdk";
 import dayjs from "dayjs";
@@ -73,8 +74,8 @@ const TaskCard = ({ task, isOverlay = false }) => {
 
   const style = transform
     ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
+      transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    }
     : undefined;
 
   return (
@@ -83,10 +84,9 @@ const TaskCard = ({ task, isOverlay = false }) => {
       style={style}
       className={`bg-white border border-slate-200 p-2 rounded-xl shadow-sm hover:border-indigo-300 transition-all flex items-start gap-3 group 
         ${isDragging && !isOverlay ? "opacity-30" : "opacity-100"} 
-        ${
-          isOverlay
-            ? "shadow-xl ring-2 ring-indigo-500 cursor-grabbing"
-            : "cursor-grab active:cursor-grabbing"
+        ${isOverlay
+          ? "shadow-xl ring-2 ring-indigo-500 cursor-grabbing"
+          : "cursor-grab active:cursor-grabbing"
         }`}
     >
       <div
@@ -132,9 +132,8 @@ const DroppableZone = ({ id, children, className, isOverColor }) => {
   return (
     <div
       ref={setNodeRef}
-      className={`${className} transition-all duration-200 ${
-        isOver ? isOverColor : ""
-      }`}
+      className={`${className} transition-all duration-200 ${isOver ? isOverColor : ""
+        }`}
     >
       {children}
     </div>
@@ -155,6 +154,7 @@ const BacklogView = () => {
   const updateMutation = useFrappeUpdateDoc();
   const createMutation = useFrappeCreateDoc();
   const deleteMutation = useFrappeDeleteDoc();
+  const complete_cycle_mutation = useFrappePostCall("infintrix_atlas.api.v1.complete_cycle");
   const [activeId, setActiveId] = useState(null);
   const [isBacklogExpanded, setIsBacklogExpanded] = useState(true);
   const project_query = useFrappeGetDoc("Project", project_id);
@@ -281,23 +281,21 @@ const BacklogView = () => {
               <ChevronRight
                 onClick={() => setIsExpanded(!isExpanded)}
                 size={20}
-                className={`text-slate-400 transition-transform ${
-                  isExpanded ? "rotate-90" : ""
-                }`}
+                className={`text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""
+                  }`}
               />
             </div>
             <div
-              className={`p-2 rounded-xl ${
-                cycle.status === "Active"
-                  ? "bg-indigo-600 text-white shadow-lg"
-                  : cycle.status === "Completed"
+              className={`p-2 rounded-xl ${cycle.status === "Active"
+                ? "bg-indigo-600 text-white shadow-lg"
+                : cycle.status === "Completed"
                   ? "bg-emerald-100 text-emerald-600"
                   : cycle.status === "Planned"
-                  ? "bg-blue-100 text-blue-600"
-                  : cycle.status === "Archived"
-                  ? "bg-slate-100 text-slate-400"
-                  : "bg-slate-100 text-slate-400"
-              }`}
+                    ? "bg-blue-100 text-blue-600"
+                    : cycle.status === "Archived"
+                      ? "bg-slate-100 text-slate-400"
+                      : "bg-slate-100 text-slate-400"
+                }`}
             >
               {cycle.status === "Active" ? (
                 <Zap size={20} />
@@ -328,12 +326,12 @@ const BacklogView = () => {
                     cycle.status === "Active"
                       ? "bg-indigo-50 text-indigo-700 border-indigo-100"
                       : cycle.status === "Completed"
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                      : cycle.status === "Planned"
-                      ? "bg-blue-50 text-blue-700 border-blue-100"
-                      : cycle.status === "Archived"
-                      ? "bg-slate-50 text-slate-400 border-slate-100"
-                      : "bg-slate-50 text-slate-400 border-slate-100"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                        : cycle.status === "Planned"
+                          ? "bg-blue-50 text-blue-700 border-blue-100"
+                          : cycle.status === "Archived"
+                            ? "bg-slate-50 text-slate-400 border-slate-100"
+                            : "bg-slate-50 text-slate-400 border-slate-100"
                   }
                 >
                   {cycle.status}
@@ -342,7 +340,7 @@ const BacklogView = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {isExpanded && cycle.status=="Planned" && (
+            {isExpanded && cycle.status == "Planned" && (
               <Button
                 type="text"
                 size="small"
@@ -358,32 +356,37 @@ const BacklogView = () => {
               </Button>
             )}
 
-            {(hasActiveCycle && cycle.status !== "Active") ||
-            cycle.status == "Completed" ? null : (
+            {cycle.status !== "Active" &&
+              cycle.status !== "Completed" &&
+              !hasActiveCycle && (
+                <Button
+                  disabled={hasNoWorkItems}
+                  size="small"
+                  type="primary"
+                  onClick={() => {
+                    searchParams.set("start_cycle", cycle.name);
+                    setSearchParams(searchParams);
+                  }}
+                >
+                  Start Cycle
+                </Button>
+              )}
+
+            {cycle.status === "Active" && (
               <Button
-                disabled={hasNoWorkItems}
                 size="small"
-                type={cycle.status === "Active" ? "default" : "primary"}
+                type="default"
                 onClick={() => {
-                  searchParams.set("start_cycle", cycle.name);
+                  searchParams.set("complete_cycle", cycle.name);
                   setSearchParams(searchParams);
-                  // updateMutation
-                  //   .updateDoc("Cycle", cycle.name, {
-                  //     status:
-                  //       cycle.status === "Active" ? "Completed" : "Active",
-                  //   })
-                  //   .then(() => {
-                  //     cycles_query.mutate();
-                  //   });
                 }}
               >
-                {cycle.status === "Active" ? "Complete" : "Start Cycle"}
+                Complete
               </Button>
             )}
 
             <Dropdown
-          
-            trigger={'click'}
+              trigger={'click'}
               menu={{
                 onClick: ({ key }) => {
                   if (key === "Edit Cycle") {
@@ -435,11 +438,11 @@ const BacklogView = () => {
           open={cycleModal.open}
           onClose={() => setCycleModal({ open: false, data: null })}
           full_form={false}
-          // defaultValues={
-          //   {
-          //     // project: project || "",
-          //   }
-          // }
+        // defaultValues={
+        //   {
+        //     // project: project || "",
+        //   }
+        // }
         />
       }
       <DndContext
@@ -482,11 +485,10 @@ const BacklogView = () => {
 
           {/* Main Viewport */}
           <div
-            className={`grid gap-8 ${
-              isScrum ? "grid-cols-1 lg:grid-cols-1" : "max-w-2xl mx-auto"
-            }`}
+            className={`grid gap-8 ${isScrum ? "grid-cols-1 lg:grid-cols-1" : "max-w-2xl mx-auto"
+              }`}
           >
-           
+
             <div className="lg:col-span-8 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
               <DroppableZone
                 // key={cycle.name}
@@ -500,9 +502,8 @@ const BacklogView = () => {
                       <ChevronRight
                         onClick={() => setIsBacklogExpanded(!isBacklogExpanded)}
                         size={20}
-                        className={`text-slate-400 transition-transform ${
-                          isBacklogExpanded ? "rotate-90" : ""
-                        }`}
+                        className={`text-slate-400 transition-transform ${isBacklogExpanded ? "rotate-90" : ""
+                          }`}
                       />
                     </div>
                     <div
@@ -548,9 +549,8 @@ const BacklogView = () => {
                     </Button>
                     <ChevronRight
                       size={20}
-                      className={`text-slate-400 transition-transform ${
-                        isBacklogExpanded ? "rotate-90" : ""
-                      }`}
+                      className={`text-slate-400 transition-transform ${isBacklogExpanded ? "rotate-90" : ""
+                        }`}
                     />
                   </div>
                 </div>
@@ -565,14 +565,14 @@ const BacklogView = () => {
                       <span className="text-[10px] font-black uppercase">
                         Plan Task
                       </span>
-                      
+
                     </button>
                   </div>
                 )}
               </DroppableZone>
             </div>
 
-             {isScrum && (
+            {isScrum && (
               <div className="lg:col-span-8 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
                 {cycles.map((cycle) => {
                   // const [isExpanded, setIsExpanded] = useState(false);
