@@ -5,7 +5,6 @@ import AvatarGen from "../AvatarGen";
 // import AvatarGen from "../common/AvatarGen";
 // import { useCollegueNamesQuery } from "../../queries/collegues";
 export const AssigneeSelectWidget = (props) => {
-  console.log("AssigneeSelectWidget props", props);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value || []);
 

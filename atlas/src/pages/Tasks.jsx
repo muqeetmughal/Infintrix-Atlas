@@ -30,16 +30,18 @@ import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget
 import AvatarGen from "../components/AvatarGen";
 import ListView from "../views/ListView";
 import PreviewAssignees from "../components/PreviewAssignees";
-import StartCycleModal from "../components/custom/StartCycleModal";
+import CycleModal from "../components/custom/CycleModal";
 import CompleteCycleModal from "../components/custom/CompleteCycleModal";
+import { useQueryParams } from "../hooks/useQueryParams";
 
 const Tasks = () => {
-  const [isOpen, setIsOpen] = React.useState(false);
+  // const [isOpen, setIsOpen] = React.useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
+  const qp = useQueryParams()
 
   const view = params.view || "table";
-  const project = params.project || null;
+  const project = qp.get("project") || null;
   // const selectedTask = searchParams.get("selected_task") || null;
   // const project = searchParams.get("project") || null;
   const navigate = useNavigate();
@@ -57,17 +59,15 @@ const Tasks = () => {
   const cycle = (active_cycle_query?.data || [])[0];
   const active_cycle_name = cycle?.name;
 
-
   const tabs = [
-    // { id: "ai-architect", label: "AI Architect" },
+    { id: "ai-architect", label: "AI Architect" },
+    { id: "list", label: "List" },
     { id: "backlog", label: "Backlog" },
     // { id: "list", label: "List" },
-    { id: "table", label: "Table" },
     { id: "kanban", label: "Kanban" },
   ];
 
-
-  if (project_query.isLoading) {
+  if (active_cycle_query.isLoading || projects_options_query.isLoading) {
     return <div>Loading...</div>;
   }
 
@@ -76,17 +76,7 @@ const Tasks = () => {
 
   return (
     <>
-      {/* {
-        <FormRender
-          doctype="Task"
-          open={isOpen}
-          onClose={() => setIsOpen(false)}
-          full_form={false}
-          defaultValues={{
-            project: project || "",
-          }}
-        />
-      } */}
+   
       <TaskDetail />
       <div className="space-y-2 md:space-y-1">
         {/* Header Section */}
@@ -107,13 +97,14 @@ const Tasks = () => {
                     const oldSearchParams = new URLSearchParams(
                       searchParams.toString()
                     );
-                    navigate(`/tasks/${project}/${tab.id}`);
+                    navigate(`/tasks/${tab.id}`);
                     setSearchParams(oldSearchParams);
                   }}
-                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${view === tab.id
+                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${
+                    view === tab.id
                       ? "text-blue-600"
                       : "text-slate-500 hover:text-slate-700"
-                    }`}
+                  }`}
                 >
                   {tab.label}
                   {view === tab.id && (
@@ -145,7 +136,7 @@ const Tasks = () => {
                 searchParams.set("mode", "create" || "");
                 setSearchParams(searchParams);
               }}
-            // className="cursor-pointer bg-slate-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-slate-800 transition-colors"
+              // className="cursor-pointer bg-slate-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-slate-800 transition-colors"
             >
               <Plus size={18} className="md:w-5 md:h-5" />
               <span className="text-sm md:text-base">Create Task</span>
@@ -157,12 +148,7 @@ const Tasks = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           {/* Search Bar */}
           <div className="relative flex max-w-full space-x-2">
-            {/* <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Search Tasks"
-                            className="w-full pl-9 pr-3 py-1.5 md:py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                        /> */}
+     
             <Input
               placeholder="Search"
               style={{ width: 200 }}
@@ -172,45 +158,22 @@ const Tasks = () => {
               }}
             />
             <Select
+              // mode="multiple"
               placeholder="Filter by Project"
               style={{ width: 200 }}
-              defaultValue={project}
-              value={project}
+              defaultValue={qp.get("project") || []}
+              value={qp.get("project") || []}
               onChange={(value) => {
-                const oldSearchParams = new URLSearchParams(
-                  searchParams.toString()
-                );
-                navigate(`/tasks/${value}/${view}`);
-                setSearchParams(oldSearchParams);
+                qp.set("project", value);
               }}
-              // allowClear
-              // onClear={()=>{
-              //     console.log("Clearing")
-              //     searchParams.delete("project")
-              //     setSearchParams(searchParams)
-              // }}
               options={projects_options_query?.data || []}
             />
-
           </div>
 
           {/* User Avatars and Filter Options */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
             <div className="flex -space-x-2">
-              <PreviewAssignees assignees={assignees} enable_tooltip={true} />
-              {/* {["JD", "MM", "SK"].map((initials, i) => (
-                <div
-                  key={i}
-                  className={`w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-sm cursor-pointer hover:-translate-y-1 transition-transform ${
-                    ["bg-indigo-500", "bg-cyan-600", "bg-rose-500"][i]
-                  }`}
-                >
-                  {initials}
-                </div>
-              ))} */}
-              {/* <div className="w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm cursor-pointer hover:bg-slate-300 transition-colors">
-                +1
-              </div> */}
+              {/* <PreviewAssignees assignees={assignees} enable_tooltip={true} /> */}
             </div>
 
             <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-slate-600 font-medium">
@@ -226,17 +189,15 @@ const Tasks = () => {
 
         {/* View Content */}
         <div className="overflow-x-auto">
-          {/* {view === "ai-architect" && <AIArchitect />} */}
+          {view === "ai-architect" && <AIArchitect />}
           {/* {view === "list" && <ListView />} */}
-          {view === "table" && <TableView />}
+          {view === "list" && <TableView />}
           {view === "kanban" && <KanbanView />}
-          {view === "backlog" && (
-            <BacklogView />
-          )}
+          {view === "backlog" && <BacklogView />}
         </div>
       </div>
-      <StartCycleModal />
       <CompleteCycleModal />
+      <CycleModal />
     </>
   );
 };

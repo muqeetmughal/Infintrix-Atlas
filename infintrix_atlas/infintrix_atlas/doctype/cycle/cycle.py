@@ -6,6 +6,20 @@ from frappe.model.document import Document
 
 
 class Cycle(Document):
+
+
+	def project_abbreviation(self):
+		if self.project:
+			project = frappe.get_doc("Project", self.project)
+			return project.project_name
+		return ""
+
+
+	def before_insert(self):
+		self.cycle_name = f"{self.project_abbreviation()} - {frappe.db.count('Cycle', {'project': self.project}) + 1}"
+
+
+
 	def validate(self):
 		if self.status not in ["Planned", "Active", "Completed", "Archived"]:
 			frappe.throw("Status must be one of: Planned, Active, Completed, Archived")
@@ -26,7 +40,10 @@ class Cycle(Document):
 			)
 			if active_cycle and self.status == "Active":
 				frappe.throw(f"Project already has an active cycle: {active_cycle}")
-
+		if self.project:
+			project = frappe.get_doc("Project", self.project)
+			if project.custom_execution_mode != "Scrum":
+				frappe.throw("Cycles can only be created for projects with Scrum execution mode")
 				
 
 		# if self.status == "Completed" and not self.actual_end_date:

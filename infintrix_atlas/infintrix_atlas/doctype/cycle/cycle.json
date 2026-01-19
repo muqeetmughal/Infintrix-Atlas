@@ -1,12 +1,14 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:CYC-{project}-{###}",
+ "autoname": "hash",
  "creation": "2026-01-01 20:00:35.740749",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "project",
+  "cycle_name",
+  "project_name",
   "duration",
   "start_date",
   "end_date",
@@ -49,16 +51,32 @@
    "fieldname": "actual_end_date",
    "fieldtype": "Datetime",
    "label": "Actual End Date"
+  },
+  {
+   "fetch_from": "project.project_name",
+   "fetch_if_empty": 1,
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Project Name",
+   "options": "Project",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cycle_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Cycle Name "
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-11 16:38:45.242689",
+ "modified": "2026-01-17 14:59:08.655835",
  "modified_by": "Administrator",
  "module": "Infintrix Atlas",
  "name": "Cycle",
- "naming_rule": "Expression",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {

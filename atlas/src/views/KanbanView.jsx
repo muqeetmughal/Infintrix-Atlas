@@ -31,6 +31,8 @@ import { message, Tooltip } from "antd";
 import { IconRenderer } from "../components/IconRenderer";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
 import PreviewAssignees from "../components/PreviewAssignees";
+import { useTasksQuery } from "../hooks/query";
+import { useQueryParams } from "../hooks/useQueryParams";
 
 const IssueCard = React.forwardRef(
   (
@@ -41,7 +43,7 @@ const IssueCard = React.forwardRef(
     const handleTitleClick = (e) => {
       e.stopPropagation();
       if (issue.id === "new_item") return;
-      console.log("Issue clicked:", issue, issue);
+      // console.log("Issue clicked:", issue, issue);
       searchParams.set("selected_task", issue.id);
       setSearchParams(searchParams);
     };
@@ -72,7 +74,7 @@ const IssueCard = React.forwardRef(
             onClick={handleTitleClick}
             className="text-sm font-medium text-slate-800 leading-snug cursor-pointer hover:text-blue-600"
           >
-            {issue.title}
+            {issue.subject}
           </p>
           {issue.id !== "new_item" && (
             <div
@@ -147,7 +149,8 @@ const SortableIssue = ({ issue }) => {
 
 const Column = ({ id, title, tasks_list, createTask }) => {
   const [addNew, setAddNew] = useState(false);
-  const { project } = useParams();
+  const qp = useQueryParams();
+  const project = qp.get("project") || null;
   const [createItem, setCreateItem] = useState({
     subject: "",
     status: id,
@@ -207,46 +210,39 @@ const Column = ({ id, title, tasks_list, createTask }) => {
 
         {addNew ? (
           <div data-create-item>
-            <IssueCard
-              issue={{
-                title: (
-                  <input
-                    type="text"
-                    className="w-full border-0 bg-transparent focus:ring-0 p-0 m-0 outline-none"
-                    placeholder="Enter work item title"
-                    value={createItem.subject}
-                    onChange={(e) =>
-                      setCreateItem({ ...createItem, subject: e.target.value })
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        const newTaskItem = {
-                          ...createItem,
-                          subject: e.target.value,
-                          project: project,
-                        };
-                        console.log("Creating work item:", newTaskItem);
-                        createTask(newTaskItem);
-                        // .then((res) => {
-                        //   console.log("Created work item:", res);
-                        //   setCreateItem({ subject: "", status: id });
-                        //   setAddNew(false);
-                        // })
-                        setCreateItem({ subject: "", status: id });
-                        setAddNew(false);
-                      } else if (e.key === "Escape") {
-                        setCreateItem({ subject: "", status: id });
-                        setAddNew(false);
-                      }
-                    }}
-                    autoFocus
-                  />
-                ),
-                id: "new_item",
-                assigneeInitials: "",
-                assigneeColor: "bg-slate-400",
-              }}
-            />
+            <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm mb-3">
+              <input
+                type="text"
+                className="w-full border-0 bg-transparent focus:ring-0 p-0 m-0 outline-none text-sm font-medium text-slate-800"
+                placeholder="Enter work item title"
+                value={createItem.subject}
+                onChange={(e) =>
+                  setCreateItem({ ...createItem, subject: e.target.value })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const newTaskItem = {
+                      ...createItem,
+                      subject: e.target.value,
+                      project: project,
+                    };
+                    // console.log("Creating work item:", newTaskItem);
+                    createTask(newTaskItem);
+                    // .then((res) => {
+                    //   console.log("Created work item:", res);
+                    //   setCreateItem({ subject: "", status: id });
+                    //   setAddNew(false);
+                    // })
+                    setCreateItem({ subject: "", status: id });
+                    setAddNew(false);
+                  } else if (e.key === "Escape") {
+                    setCreateItem({ subject: "", status: id });
+                    setAddNew(false);
+                  }
+                }}
+                autoFocus
+              />
+            </div>
           </div>
         ) : (
           <button
@@ -267,51 +263,26 @@ const Column = ({ id, title, tasks_list, createTask }) => {
 export default function KanbanView() {
   const [activeIssue, setActiveIssue] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const { project } = useParams();
+  // const { project } = useParams();
+  const qp = useQueryParams()
+  const project = qp.get("project") || null;
   const createMutation = useFrappeCreateDoc();
-
+  
   const updateTaskMutation = useFrappeUpdateDoc();
   const project_query = useFrappeGetDoc("Project", project);
   const columns_query = useGetDoctypeField("Task", "status", "options");
-
+  
   const active_cycle_query = useFrappeGetDocList("Cycle", {
     filters: { project: project, status: "Active" },
   });
   const cycle = (active_cycle_query?.data || [])[0];
   const cycle_name = cycle?.name;
 
-  console.log(cycle_name);
 
   const project_data = project_query.data || {};
   const isScrum = project_data.custom_execution_mode === "Scrum";
 
-  const tasks_list_query = useFrappeGetDocList(
-    `Task`,
-    {
-      filters: isScrum
-        ? { project: project, custom_cycle: cycle_name }
-        : { project: project },
-      fields: [
-        "name",
-        "name as id",
-        "subject as title",
-        "status",
-        "type",
-        "custom_cycle as cycle",
-        "priority",
-        "modified",
-        "project",
-      ],
-      // limit_page_length: 1000,
-    },
-    isScrum ? `task_list_${project}_${cycle_name}` :`task_list_${project}`, {
-        revalidateOnFocus: false,
-        revalidateIfStale: false,
-        revalidateOnReconnect: false,
-    }
-
-    
-  );
+  const tasks_list_query = useTasksQuery(cycle_name)
 
   const { options } = columns_query.data || [];
 
@@ -531,7 +502,7 @@ export default function KanbanView() {
             </p>
           </div>
           <Link
-            to={`/tasks/${project}/backlog`}
+            to={`/tasks/backlog?project=${project}`}
             className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
           >
             Go to Backlog

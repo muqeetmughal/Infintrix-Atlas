@@ -66,7 +66,7 @@ const Projects = () => {
                   <MoreVertical size={20} />
                 </button>
               </div>
-              <Link to={`/tasks/${p.name}/kanban`}>
+              <Link to={`/tasks/kanban?project=${p.name}`}>
                 <h3 className="text-xl font-bold text-slate-900 mb-1 group-hover:text-indigo-600 transition-colors duration-200">
                   {p.project_name}
                 </h3>

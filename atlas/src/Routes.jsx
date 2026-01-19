@@ -47,10 +47,17 @@ export const router = createBrowserRouter(
                 }, {
                     path: "ai-gen",
                     element: <AIArchitect />
-                }, {
-                    path: "tasks/:project/:view",
+                }
+                ,
+                // {
+                //     path: "tasks/:project/:view",
+                //     element: <Tasks />
+                // },
+                {
+                    path: "tasks/:view",
                     element: <Tasks />
                 }
+
 
 
             ],

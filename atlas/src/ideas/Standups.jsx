@@ -299,7 +299,6 @@ const DailyStandupPage = () => {
   const submitStandup = () => {
     // Only modified suggestions are sent? In this mock, we send current state
     setStatus('Submitted');
-    console.log('Submitting Standup:', entries);
   };
 
   return (

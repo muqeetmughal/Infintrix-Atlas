@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, use } from "react";
+import React, { useState, useMemo, useCallback, use, useRef, useEffect } from "react";
 import {
   DndContext,
   useDraggable,
@@ -42,9 +42,11 @@ import {
 } from "frappe-react-sdk";
 import dayjs from "dayjs";
 import { useParams, useSearchParams } from "react-router-dom";
-import { Button, Dropdown, Space, Spin } from "antd";
+import { Button, Dropdown, Input, Space, Spin } from "antd";
 import BacklogHealth from "./BacklogHealth";
 import FormRender from "../../components/form/FormRender";
+import { useQueryParams } from "../../hooks/useQueryParams";
+import { useTasksQuery } from "../../hooks/query";
 // --- Constants ---
 
 const TASK_STATUS_COLORS = {
@@ -53,7 +55,6 @@ const TASK_STATUS_COLORS = {
   "In Progress": "bg-indigo-100 text-indigo-700",
   Done: "bg-emerald-100 text-emerald-700",
 };
-
 
 // --- Components ---
 
@@ -66,7 +67,6 @@ const Badge = ({ children, className }) => (
 );
 
 const TaskCard = ({ task, isOverlay = false }) => {
-  // console.log("Rendering TaskCard", task);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,
@@ -74,8 +74,8 @@ const TaskCard = ({ task, isOverlay = false }) => {
 
   const style = transform
     ? {
-      transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    }
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      }
     : undefined;
 
   return (
@@ -84,9 +84,10 @@ const TaskCard = ({ task, isOverlay = false }) => {
       style={style}
       className={`bg-white border border-slate-200 p-2 rounded-xl shadow-sm hover:border-indigo-300 transition-all flex items-start gap-3 group 
         ${isDragging && !isOverlay ? "opacity-30" : "opacity-100"} 
-        ${isOverlay
-          ? "shadow-xl ring-2 ring-indigo-500 cursor-grabbing"
-          : "cursor-grab active:cursor-grabbing"
+        ${
+          isOverlay
+            ? "shadow-xl ring-2 ring-indigo-500 cursor-grabbing"
+            : "cursor-grab active:cursor-grabbing"
         }`}
     >
       <div
@@ -132,8 +133,9 @@ const DroppableZone = ({ id, children, className, isOverColor }) => {
   return (
     <div
       ref={setNodeRef}
-      className={`${className} transition-all duration-200 ${isOver ? isOverColor : ""
-        }`}
+      className={`${className} transition-all duration-200 ${
+        isOver ? isOverColor : ""
+      }`}
     >
       {children}
     </div>
@@ -142,37 +144,98 @@ const DroppableZone = ({ id, children, className, isOverColor }) => {
 
 // --- Main App ---
 
+const InlineTaskCreator = ({
+  project_id,
+  cycle = null,
+  onCreated,
+  onCancel,
+}) => {
+  
+  const [value, setValue] = useState("");
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef(null);
+
+  const createMutation = useFrappeCreateDoc();
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const createTask = async () => {
+    if (!value.trim()) return;
+
+    setLoading(true);
+    try {
+      const doc = await createMutation.createDoc("Task", {
+        subject: value,
+        project: project_id,
+        custom_cycle: cycle,
+        status: "Open",
+      });
+
+      onCreated?.(doc);
+      setValue("");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+   
+    <div className="bg-white border border-indigo-300 rounded-xl px-3 py-2 shadow-sm">
+      <Input
+        ref={inputRef}
+        size="small"
+        placeholder="What needs to be done?"
+        value={value}
+        disabled={loading}
+        onChange={(e) => setValue(e.target.value)}
+        onPressEnter={createTask}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") onCancel();
+        }}
+        suffix={loading ? <Spin size="small" /> : null}
+        bordered={false}
+      />
+    </div>
+  );
+};
+
 const BacklogView = () => {
   //   const [tasks, setTasks] = useState(initialTasks);
   const params = useParams();
-  const [cycleModal, setCycleModal] = React.useState({
-    open: false,
-    data: null,
-  });
+  const qp = useQueryParams();
+  const [showBacklogCreator, setShowBacklogCreator] = useState(false);
 
-  const project_id = params.project;
+  const project_id = qp.get("project") || null;
   const updateMutation = useFrappeUpdateDoc();
   const createMutation = useFrappeCreateDoc();
   const deleteMutation = useFrappeDeleteDoc();
-  const complete_cycle_mutation = useFrappePostCall("infintrix_atlas.api.v1.complete_cycle");
+  const complete_cycle_mutation = useFrappePostCall(
+    "infintrix_atlas.api.v1.complete_cycle"
+  );
   const [activeId, setActiveId] = useState(null);
   const [isBacklogExpanded, setIsBacklogExpanded] = useState(true);
   const project_query = useFrappeGetDoc("Project", project_id);
 
-  const cycles_query = useFrappeGetDocList("Cycle", {
-    filters: { project: project_id },
-    fields: ["*"],
-    orderBy: {
-      field: "creation",
-      order: "desc", // Sort from newest to oldest
+  const cycles_query = useFrappeGetDocList(
+    "Cycle",
+    {
+      filters: { project: project_id },
+      fields: ["*"],
+      orderBy: {
+        field: "creation",
+        order: "desc", // Sort from newest to oldest
+      },
+      limit: 1000,
+      limit_start: 0,
     },
-    limit: 1000,
-    limit_start: 0,
-  });
-  const tasks_query = useFrappeGetDocList("Task", {
-    filters: { project: project_id },
-    fields: ["name as id", "name", "subject", "custom_cycle", "type", "status"],
-  });
+    ["cycles", project_id],
+    {
+      revalidateOnFocus: false,
+    }
+  );
+  const tasks_query = useTasksQuery();
 
   const project = project_query.data || {};
   const hasActiveCycle = useMemo(
@@ -193,9 +256,7 @@ const BacklogView = () => {
 
   // Derived filters
   const backlogTasks = useMemo(() => {
-    return tasks.filter((t) =>
-      isScrum ? !t.custom_cycle : t.status === "Open"
-    );
+    return tasks.filter((t) => (isScrum ? !t.cycle : t.status === "Open"));
   }, [tasks, isScrum]);
 
   const handleDragStart = (event) => {
@@ -212,7 +273,6 @@ const BacklogView = () => {
   };
 
   const handleMoveTask = useCallback((taskId, targetId) => {
-    // console.log(`Move Task ${taskId} to ${targetId}`);
     updateMutation
       .updateDoc("Task", taskId, {
         custom_cycle: targetId === "Open" ? null : targetId,
@@ -220,24 +280,6 @@ const BacklogView = () => {
       .then(() => {
         tasks_query.mutate();
       });
-
-    // setTasks((prev) =>
-    //   prev.map((t) => {
-    //     if (t.id === taskId) {
-    //       if (targetId === "Open") {
-    //         return { ...t, cycle: null, status: "Open" };
-    //       } else {
-    //         // targetId is a Cycle Name
-    //         return {
-    //           ...t,
-    //           cycle: targetId,
-    //           status: t.status === "Open" ? "Todo" : t.status,
-    //         };
-    //       }
-    //     }
-    //     return t;
-    //   })
-    // );
   }, []);
 
   const addCycle = () => {
@@ -252,242 +294,202 @@ const BacklogView = () => {
     setCycles([...cycles, newCycle]);
   };
 
+  const Cycle = ({ cycle, tasks = [] }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  // const project = params.project;
+  const [isExpanded, setIsExpanded] = useState(false);
+  const cycle_tasks = tasks.filter((t) => t.cycle === cycle.name);
+  const hasNoWorkItems = cycle_tasks.length === 0;
+  return (
+    <DroppableZone
+      key={cycle.name}
+      id={cycle.name}
+      isOverColor="bg-indigo-50 ring-2 ring-indigo-400"
+      className="bg-white border border-slate-200 rounded-xl p-2 shadow-sm group hover:border-indigo-200 transition-all"
+    >
+      <div className="flex items-center justify-between cursor-pointer">
+        <div className="flex items-center gap-2 flex-1 space-y-1">
+          <div className="flex items-center gap-4">
+            <ChevronRight
+              onClick={() => setIsExpanded(!isExpanded)}
+              size={20}
+              className={`text-slate-400 transition-transform ${
+                isExpanded ? "rotate-90" : ""
+              }`}
+            />
+          </div>
+          <div
+            className={`p-2 rounded-xl ${
+              cycle.status === "Active"
+                ? "bg-indigo-600 text-white shadow-lg"
+                : cycle.status === "Completed"
+                ? "bg-emerald-100 text-emerald-600"
+                : cycle.status === "Planned"
+                ? "bg-blue-100 text-blue-600"
+                : cycle.status === "Archived"
+                ? "bg-slate-100 text-slate-400"
+                : "bg-slate-100 text-slate-400"
+            }`}
+          >
+            {cycle.status === "Active" ? (
+              <Zap size={20} />
+            ) : cycle.status === "Completed" ? (
+              <CheckCheck size={20} />
+            ) : cycle.status === "Planned" ? (
+              <Clock size={20} />
+            ) : cycle.status === "Archived" ? (
+              <Archive size={20} />
+            ) : (
+              <Clock size={20} />
+            )}
+          </div>
+          <div className="flex items-center">
+            <h3 className="font-semibold text-slate-900 leading-none">
+              {cycle.cycle_name ?? cycle.name}{" "}
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                {dayjs(cycle.start_date).format("MMM D")} —{" "}
+                {dayjs(cycle.end_date).format("MMM D")}
+              </span>
+              <small className="text-xs font-light">
+                ({cycle_tasks.length} Work Items)
+              </small>
+            </h3>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge
+                className={
+                  cycle.status === "Active"
+                    ? "bg-indigo-50 text-indigo-700 border-indigo-100"
+                    : cycle.status === "Completed"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                    : cycle.status === "Planned"
+                    ? "bg-blue-50 text-blue-700 border-blue-100"
+                    : cycle.status === "Archived"
+                    ? "bg-slate-50 text-slate-400 border-slate-100"
+                    : "bg-slate-50 text-slate-400 border-slate-100"
+                }
+              >
+                {cycle.status}
+              </Badge>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          {isExpanded && cycle.status == "Planned" && (
+            <Button
+              type="text"
+              size="small"
+              icon={<Trash size={16} />}
+              danger
+              onClick={() => {
+                deleteMutation.deleteDoc("Cycle", cycle.name).then(() => {
+                  cycles_query.mutate();
+                });
+              }}
+            >
+              Delete
+            </Button>
+          )}
+
+          {cycle.status !== "Active" &&
+            cycle.status !== "Completed" &&
+            !hasActiveCycle && (
+              <Button
+                disabled={hasNoWorkItems}
+                size="small"
+                type="primary"
+                onClick={() => {
+                  searchParams.set("cycle", cycle.name);
+                  searchParams.set("mode", "start");
+                  setSearchParams(searchParams);
+                }}
+              >
+                Start Cycle
+              </Button>
+            )}
+
+          {cycle.status === "Active" && (
+            <Button
+              size="small"
+              type="default"
+              onClick={() => {
+                searchParams.set("complete_cycle", cycle.name);
+                setSearchParams(searchParams);
+              }}
+            >
+              Complete
+            </Button>
+          )}
+
+          <Dropdown
+            trigger={"click"}
+            menu={{
+              onClick: ({ key }) => {
+                if (key === "Edit Cycle") {
+                  setCycleModal({ open: true, data: cycle });
+                }
+              },
+              items: [
+                {
+                  key: "Edit Cycle",
+                  label: "Edit Cycle",
+                  // disabled: true,
+                },
+              ],
+            }}
+          >
+            <a onClick={(e) => e.preventDefault()}>
+              <Button type="text" icon={<MenuIcon />}></Button>
+            </a>
+          </Dropdown>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 animate-in fade-in duration-200">
+          {cycle_tasks.map((t) => (
+            <TaskCard key={t.id} task={t} />
+          ))}
+          <button className="border-2 border-dashed border-slate-100 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 hover:text-indigo-500 hover:border-indigo-100 transition-all">
+            <Plus size={16} />
+            <span className="text-[10px] font-black uppercase">Plan Task</span>
+          </button>
+        </div>
+      )}
+    </DroppableZone>
+  );
+};
+
+
   const activeTask = useMemo(
     () => tasks.find((t) => t.id === activeId),
     [tasks, activeId]
   );
-  const Cycle = ({ cycle, tasks = [] }) => {
-    const [searchParams, setSearchParams] = useSearchParams();
-    // const project = params.project;
-    const [isExpanded, setIsExpanded] = useState(false);
-    // const tasks_query = useFrappeGetDocList("Task", {
-    //   filters: { custom_cycle: cycle.name, project: project },
-    //   fields: ["*"],
-    // });
-    // const tasks = tasks_query.data || [];
-    // if (tasks_query.isLoading) return <div>Loading...</div>;
-    const cycle_tasks = tasks.filter((t) => t.custom_cycle === cycle.name);
-    const hasNoWorkItems = cycle_tasks.length === 0;
-    return (
-      <DroppableZone
-        key={cycle.name}
-        id={cycle.name}
-        isOverColor="bg-indigo-50 ring-2 ring-indigo-400"
-        className="bg-white border border-slate-200 rounded-xl p-2 shadow-sm group hover:border-indigo-200 transition-all"
-      >
-        <div className="flex items-center justify-between cursor-pointer">
-          <div className="flex items-center gap-2 flex-1 space-y-1">
-            <div className="flex items-center gap-4">
-              <ChevronRight
-                onClick={() => setIsExpanded(!isExpanded)}
-                size={20}
-                className={`text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""
-                  }`}
-              />
-            </div>
-            <div
-              className={`p-2 rounded-xl ${cycle.status === "Active"
-                ? "bg-indigo-600 text-white shadow-lg"
-                : cycle.status === "Completed"
-                  ? "bg-emerald-100 text-emerald-600"
-                  : cycle.status === "Planned"
-                    ? "bg-blue-100 text-blue-600"
-                    : cycle.status === "Archived"
-                      ? "bg-slate-100 text-slate-400"
-                      : "bg-slate-100 text-slate-400"
-                }`}
-            >
-              {cycle.status === "Active" ? (
-                <Zap size={20} />
-              ) : cycle.status === "Completed" ? (
-                <CheckCheck size={20} />
-              ) : cycle.status === "Planned" ? (
-                <Clock size={20} />
-              ) : cycle.status === "Archived" ? (
-                <Archive size={20} />
-              ) : (
-                <Clock size={20} />
-              )}
-            </div>
-            <div className="flex items-center">
-              <h3 className="font-semibold text-slate-900 leading-none">
-                {cycle.name}{" "}
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                  {dayjs(cycle.start_date).format("MMM D")} —{" "}
-                  {dayjs(cycle.end_date).format("MMM D")}
-                </span>
-                <small className="text-xs font-light">
-                  ({cycle_tasks.length} Work Items)
-                </small>
-              </h3>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge
-                  className={
-                    cycle.status === "Active"
-                      ? "bg-indigo-50 text-indigo-700 border-indigo-100"
-                      : cycle.status === "Completed"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                        : cycle.status === "Planned"
-                          ? "bg-blue-50 text-blue-700 border-blue-100"
-                          : cycle.status === "Archived"
-                            ? "bg-slate-50 text-slate-400 border-slate-100"
-                            : "bg-slate-50 text-slate-400 border-slate-100"
-                  }
-                >
-                  {cycle.status}
-                </Badge>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            {isExpanded && cycle.status == "Planned" && (
-              <Button
-                type="text"
-                size="small"
-                icon={<Trash size={16} />}
-                danger
-                onClick={() => {
-                  deleteMutation.deleteDoc("Cycle", cycle.name).then(() => {
-                    cycles_query.mutate();
-                  });
-                }}
-              >
-                Delete
-              </Button>
-            )}
 
-            {cycle.status !== "Active" &&
-              cycle.status !== "Completed" &&
-              !hasActiveCycle && (
-                <Button
-                  disabled={hasNoWorkItems}
-                  size="small"
-                  type="primary"
-                  onClick={() => {
-                    searchParams.set("start_cycle", cycle.name);
-                    setSearchParams(searchParams);
-                  }}
-                >
-                  Start Cycle
-                </Button>
-              )}
-
-            {cycle.status === "Active" && (
-              <Button
-                size="small"
-                type="default"
-                onClick={() => {
-                  searchParams.set("complete_cycle", cycle.name);
-                  setSearchParams(searchParams);
-                }}
-              >
-                Complete
-              </Button>
-            )}
-
-            <Dropdown
-              trigger={'click'}
-              menu={{
-                onClick: ({ key }) => {
-                  if (key === "Edit Cycle") {
-                    setCycleModal({ open: true, data: cycle });
-                  }
-                },
-                items: [
-                  {
-                    key: "Edit Cycle",
-                    label: "Edit Cycle",
-                    // disabled: true,
-                  }
-                ],
-              }}
-            >
-              <a onClick={(e) => e.preventDefault()}>
-                <Button type="text" icon={<MenuIcon />}></Button>
-              </a>
-            </Dropdown>
-          </div>
-        </div>
-
-        {isExpanded && (
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-4 animate-in fade-in duration-200">
-            {cycle_tasks.map((t) => (
-              <TaskCard key={t.id} task={t} />
-            ))}
-            <button className="border-2 border-dashed border-slate-100 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 hover:text-indigo-500 hover:border-indigo-100 transition-all">
-              <Plus size={16} />
-              <span className="text-[10px] font-black uppercase">
-                Plan Task
-              </span>
-            </button>
-          </div>
-        )}
-      </DroppableZone>
-    );
-  };
   if (cycles_query.isLoading || tasks_query.isLoading)
     return <div>Loading...</div>;
 
   const cycles = cycles_query.data || [];
-  // console.log("Tasks", tasks);
   return (
     <>
-      {
-        <FormRender
-          doctype="Cycle"
-          open={cycleModal.open}
-          onClose={() => setCycleModal({ open: false, data: null })}
-          full_form={false}
-        // defaultValues={
-        //   {
-        //     // project: project || "",
-        //   }
-        // }
-        />
-      }
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
         <div className="max-w-8xl mx-auto space-y-8 animate-in fade-in duration-500 pb-32">
-          {/* Header */}
-          {/* <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
-              {isScrum ? <RotateCcw size={28} /> : <Trello size={28} />}
-            </div>
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
-                Backlog
-              </h1>
-              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                {isScrum ? "Sprint Planning" : "Intake Management"}
-                <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                {project.name}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {isScrum && (
-              <button
-                onClick={addCycle}
-                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-xs text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
-              >
-                <CalendarPlus size={16} className="text-indigo-600" />
-                <span>Create Cycle</span>
-              </button>
-            )}
-         
-          </div>
-        </header> */}
-
           {/* Main Viewport */}
           <div
-            className={`grid gap-8 ${isScrum ? "grid-cols-1 lg:grid-cols-1" : "max-w-2xl mx-auto"
-              }`}
+            className={`grid gap-8 ${
+              isScrum ? "grid-cols-1 lg:grid-cols-1" : "max-w-2xl mx-auto"
+            }`}
           >
+            {isScrum && (
+              <div className="lg:col-span-8 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
+                {cycles.map((cycle) => {
+                  return <Cycle key={cycle.name} cycle={cycle} tasks={tasks} />;
+                })}
+              </div>
+            )}
 
             <div className="lg:col-span-8 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
               <DroppableZone
@@ -502,8 +504,9 @@ const BacklogView = () => {
                       <ChevronRight
                         onClick={() => setIsBacklogExpanded(!isBacklogExpanded)}
                         size={20}
-                        className={`text-slate-400 transition-transform ${isBacklogExpanded ? "rotate-90" : ""
-                          }`}
+                        className={`text-slate-400 transition-transform ${
+                          isBacklogExpanded ? "rotate-90" : ""
+                        }`}
                       />
                     </div>
                     <div
@@ -534,6 +537,7 @@ const BacklogView = () => {
                   </div>
                   <div className="flex items-center gap-4">
                     <Button
+                      disabled={!isScrum}
                       onClick={() => {
                         createMutation
                           .createDoc("Cycle", {
@@ -549,8 +553,9 @@ const BacklogView = () => {
                     </Button>
                     <ChevronRight
                       size={20}
-                      className={`text-slate-400 transition-transform ${isBacklogExpanded ? "rotate-90" : ""
-                        }`}
+                      className={`text-slate-400 transition-transform ${
+                        isBacklogExpanded ? "rotate-90" : ""
+                      }`}
                     />
                   </div>
                 </div>
@@ -560,81 +565,30 @@ const BacklogView = () => {
                     {backlogTasks.map((t) => (
                       <TaskCard key={t.id} task={t} />
                     ))}
-                    <button className="border-2 border-dashed border-slate-100 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 hover:text-indigo-500 hover:border-indigo-100 transition-all">
-                      <Plus size={16} />
-                      <span className="text-[10px] font-black uppercase">
-                        Plan Task
-                      </span>
-
-                    </button>
+                    {showBacklogCreator ? (
+                      <InlineTaskCreator
+                        project_id={project_id}
+                        onCreated={() => {
+                          setShowBacklogCreator(false);
+                          tasks_query.mutate();
+                        }}
+                        onCancel={() => setShowBacklogCreator(false)}
+                      />
+                    ) : (
+                      <button
+                        onClick={() => setShowBacklogCreator(true)}
+                        className="border-2 border-dashed border-slate-100 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 hover:text-indigo-500 hover:border-indigo-100 transition-all"
+                      >
+                        <Plus size={16} />
+                        <span className="text-[10px] font-black uppercase">
+                          Plan Task
+                        </span>
+                      </button>
+                    )}
                   </div>
                 )}
               </DroppableZone>
             </div>
-
-            {isScrum && (
-              <div className="lg:col-span-8 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
-                {cycles.map((cycle) => {
-                  // const [isExpanded, setIsExpanded] = useState(false);
-
-                  return <Cycle key={cycle.name} cycle={cycle} tasks={tasks} />;
-                })}
-              </div>
-            )}
-            {/* <div className={`w-full`}>
-            {(() => {
-              const [isExpanded, setIsExpanded] = useState(true);
-
-              return (
-                <>
-                  <div
-                    className="mb-4 flex items-center justify-between cursor-pointer"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                  >
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <Package size={14} />
-                      Project Backlog
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-black">
-                        {backlogTasks.length}
-                      </span>
-                      <ChevronRight
-                        size={16}
-                        className={`text-slate-400 transition-transform ${
-                          isExpanded ? "rotate-90" : ""
-                        }`}
-                      />
-                    </div>
-                  </div>
-
-                  {isExpanded && (
-                    <DroppableZone
-                      id="backlog"
-                      isOverColor="bg-slate-100 ring-2 ring-slate-300"
-                      className="bg-white border border-slate-200 rounded-[32px] p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4 animate-in fade-in duration-200"
-                    >
-                      {backlogTasks.length > 0 ? (
-                        backlogTasks.map((t) => (
-                          <TaskCard key={t.id} task={t} />
-                        ))
-                      ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-100 rounded-2xl p-8 text-center">
-                          <ShieldAlert size={40} className="mb-4 opacity-10" />
-                          <p className="text-[10px] font-black uppercase tracking-[0.2em]">
-                            System is Calm
-                          </p>
-                          <p className="text-[10px] font-bold mt-1 text-slate-400">
-                            No pending work found.
-                          </p>
-                        </div>
-                      )}
-                    </DroppableZone>
-                  )}
-                </>
-              );
-            })()}
-          </div> */}
           </div>
 
           <DragOverlay>
@@ -650,10 +604,3 @@ const BacklogView = () => {
   );
 };
 export default BacklogView;
-// export default function App() {
-//   return (
-//     <div className="min-h-screen bg-slate-50 p-8">
-//       <BacklogApp />
-//     </div>
-//   );
-// }

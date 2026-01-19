@@ -12,11 +12,10 @@ function FormRender({
   onClose,
   defaultValues = {},
 }) {
-  console.log("FormRender defaultValues:", defaultValues);
   const [form] = Form.useForm();
 
   // Quick Entry is only valid outside create mode
-  const [quickEntry, setQuickEntry] = useState(mode !== "create");
+  const [quickEntry, setQuickEntry] = useState(mode === "create");
 
   const schemaQuery = useDoctypeSchema(doctype);
   const createMutation = useFrappeCreateDoc();

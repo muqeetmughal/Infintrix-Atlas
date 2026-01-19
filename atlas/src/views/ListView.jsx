@@ -81,80 +81,7 @@ const COLOR_CONFIG = {
     Low: { color: "text-slate-400", bg: "bg-green-100", icon: Hash },
   },
 };
-const INITIAL_DATA = [
-  {
-    id: "TASK-2024-001",
-    subject: "Integrate Stripe API for Subscriptions",
-    project: "PROJ-001",
-    status: "Working",
-    priority: "Urgent",
-    assignee: "Alex Rivera",
-    date: "2024-05-12",
-  },
-  {
-    id: "TASK-2024-002",
-    subject: "Fix Header Alignment on Mobile",
-    project: "PROJ-001",
-    status: "Pending Review",
-    priority: "Medium",
-    assignee: "Sarah Chen",
-    date: "2024-05-14",
-  },
-  {
-    id: "TASK-2024-003",
-    subject: "Draft Project Charter",
-    project: "PROJ-002",
-    status: "Open",
-    priority: "High",
-    assignee: "John Doe",
-    date: "2024-05-15",
-  },
-  {
-    id: "TASK-2024-004",
-    subject: "Setup Redis Cache Layer",
-    project: "PROJ-003",
-    status: "Backlog",
-    priority: "Urgent",
-    assignee: "Unassigned",
-    date: "2024-05-20",
-  },
-  {
-    id: "TASK-2024-005",
-    subject: "UI Consistency Audit",
-    project: "PROJ-001",
-    status: "Completed",
-    priority: "Low",
-    assignee: "Mike Ross",
-    date: "2024-04-30",
-  },
-  {
-    id: "TASK-2024-006",
-    subject: "Legal Compliance Check",
-    project: "PROJ-004",
-    status: "Open",
-    priority: "Medium",
-    assignee: "Jane Smith",
-    date: "2024-05-18",
-  },
-  {
-    id: "TASK-2024-007",
-    subject: "Refactor Auth Middleware",
-    project: "PROJ-003",
-    status: "Working",
-    priority: "High",
-    assignee: "Alex Rivera",
-    date: "2024-05-22",
-  },
-  {
-    id: "TASK-2024-008",
-    subject: "Database Migration Script",
-    project: "PROJ-003",
-    status: "Cancelled",
-    priority: "Urgent",
-    assignee: "John Doe",
-    date: "2024-05-25",
-  },
-];
+
 
 // --- Sub-Components ---
 
@@ -463,7 +390,7 @@ export default function ListView() {
       return items.filter((item) => {
         // console.log("item:", item);
       const matchesSearch =
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.id.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus =
         filters.status.length === 0 || filters.status.includes(item.status);

@@ -33,7 +33,6 @@ export default function FormRender({
 
 
   const onSubmit = (data) => {
-    console.log("FORM DATA:", data);
     mutation.createDoc(doctype, data).then((res) => {
       console.log("CREATED:", res);
       onClose();

@@ -54,12 +54,6 @@ const WorkItemTypeWidget = (props) => {
   }
   if (task_type_query.isLoading) return <Spin />;
 
-  // if (props.only_icon){
-  //   const selected_type = task_types.find((t)=> t.key === selected)
-  //   console.log("selected_type", selected_type);
-  //   return selected_type.icon
-  // }
-
   return (
     <>
       <Select

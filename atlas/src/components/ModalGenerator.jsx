@@ -19,7 +19,7 @@ const ModalGenerator = () => {
     }
   });
 
-  console.log("form_data_query",form_data_query)
+  // console.log("form_data_query",form_data_query)
 
   const form_data = form_data_query.data || {};
 

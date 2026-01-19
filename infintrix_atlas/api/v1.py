@@ -1,6 +1,7 @@
 import frappe
 from frappe.query_builder import DocType, functions as fn
 from datetime import datetime, timedelta
+import json
 
 
 @frappe.whitelist()
@@ -246,48 +247,210 @@ def get_project_flow_metrics(project):
         ],
     }
 
+
 @frappe.whitelist()
-def start_cycle(cycle_name, duration, start_date, end_date):
-    cycle = frappe.get_doc("Cycle", cycle_name)
+def start_cycle(name,cycle_name, duration, start_date, end_date):
+    cycle = frappe.get_doc("Cycle", name)
 
     if cycle.status != "Planned":
         frappe.throw("Only planned cycles can be started")
-    
+
     active_cycles = frappe.get_all(
         "Cycle",
-        filters={"status": "Active", "name": ["!=", cycle_name]},
-        fields=["name"]
+        filters={"status": "Active", "name": ["!=", name]},
+        fields=["name"],
     )
-    
+
     if active_cycles:
-        frappe.throw(f"Cannot start cycle. Another cycle '{active_cycles[0].name}' is already active.")
-    
+        frappe.throw(
+            f"Cannot start cycle. Another cycle '{active_cycles[0].name}' is already active."
+        )
+
     if not start_date:
         cycle.start_date = frappe.utils.nowdate()
     else:
         cycle.start_date = start_date
-    
+
     if not end_date:
         frappe.throw("Please set an end date before starting the cycle")
     else:
         cycle.end_date = end_date
-    
+
+    cycle.cycle_name = cycle_name
     cycle.status = "Active"
     cycle.save()
     frappe.db.commit()
-    
+
     return {"success": True, "message": f"Cycle {cycle_name} started successfully"}
 
-
-def complete_cycle(cycle_name):
-    cycle = frappe.get_doc("Cycle", cycle_name)
-
+@frappe.whitelist()
+def complete_cycle(name, move_tasks_to):
+    cycle = frappe.get_doc("Cycle", name)
     if cycle.status != "Active":
         frappe.throw("Only active cycles can be completed")
+
+    open_tasks = frappe.get_all(
+        "Task",
+        filters={
+            "custom_cycle": name,
+            "status": ["in", ["Open", "Working", "Pending Review"]],
+        },
+        fields=["name"],
+    )
+
+    if open_tasks and not move_tasks_to:
+        frappe.throw(
+            f"Cycle has {len(open_tasks)} open tasks. Please specify a cycle to move them to."
+        )
     
+    if open_tasks and move_tasks_to:
+        for t in open_tasks:
+            task_doc = frappe.get_doc("Task", t.name)
+            task_doc.custom_cycle = move_tasks_to
+            task_doc.save()
+
     cycle.status = "Completed"
     cycle.actual_end_date = frappe.utils.nowdate()
     cycle.save()
     frappe.db.commit()
-    
-    return {"success": True, "message": f"Cycle {cycle_name} completed successfully"}
+
+    return {"success": True, "message": f"Cycle {name} completed successfully"}
+
+
+
+@frappe.whitelist()
+def query_tasks(payload=None):
+    if isinstance(payload, str):
+        payload = json.loads(payload or "{}")
+
+    filters = payload.get("filters", {})
+    search = payload.get("search")
+    group_by = payload.get("group_by")
+    tree = payload.get("tree", False)
+    page = int(payload.get("page", 1))
+    page_size = int(payload.get("page_size", 20))
+    order_by = payload.get("order_by", "t.modified desc")
+
+    offset = (page - 1) * page_size
+
+    conditions = []
+    values = []
+
+    # Client → DB field mapping
+    field_map = {
+        "id": "t.name",
+        "name": "t.name",
+        "subject": "t.subject",
+        "priority": "t.priority",
+        "status": "t.status",
+        "cycle": "t.custom_cycle",
+        "project": "t.project",
+        "assignee": "a.owner",
+    }
+
+    # -------------------------------
+    # Filters
+    # -------------------------------
+    for key, val in (filters or {}).items():
+        col = field_map.get(key, f"t.{key}")
+
+        if isinstance(val, list) and val[0].lower() == "in":
+            placeholders = ", ".join(["%s"] * len(val[1]))
+            conditions.append(f"{col} IN ({placeholders})")
+            values.extend(val[1])
+        else:
+            conditions.append(f"{col} = %s")
+            values.append(val)
+
+    # -------------------------------
+    # Search
+    # -------------------------------
+    if search:
+        conditions.append("(t.name LIKE %s OR t.subject LIKE %s)")
+        values.extend([f"%{search}%", f"%{search}%"])
+
+    # -------------------------------
+    # Tree mode (top level only)
+    # -------------------------------
+    if tree:
+        conditions.append("t.parent_task IS NULL")
+
+    where_clause = " AND ".join(conditions)
+    if where_clause:
+        where_clause = "WHERE " + where_clause
+
+    # -------------------------------
+    # Grouping
+    # -------------------------------
+    if group_by:
+        group_col = field_map.get(group_by, f"t.{group_by}")
+        group_clause = f"GROUP BY {group_col}"
+    else:
+        # Critical: always group by task so aggregates don’t collapse rows
+        group_clause = "GROUP BY t.name"
+
+    # -------------------------------
+    # SQL
+    # -------------------------------
+    sql = f"""
+        SELECT
+            t.name AS id,
+            t.subject,
+            t.priority,
+            t.status,
+            t.custom_cycle AS cycle,
+            t.project,
+            p.project_name,
+            COUNT(DISTINCT c.name) AS subtask_count,
+            GROUP_CONCAT(DISTINCT u.full_name ORDER BY u.full_name SEPARATOR ', ') AS assignees
+
+        FROM `tabTask` t
+
+        LEFT JOIN `tabTask` c ON c.parent_task = t.name
+        LEFT JOIN `tabProject` p ON p.name = t.project
+        LEFT JOIN `tabToDo` a ON a.reference_name = t.name
+        LEFT JOIN `tabUser` u ON u.name = a.owner
+
+        {where_clause}
+        {group_clause}
+        ORDER BY {order_by}
+        LIMIT %s OFFSET %s
+    """
+
+    values.extend([page_size, offset])
+
+    data = frappe.db.sql(sql, values, as_dict=True)
+
+    # -------------------------------
+    # Load children for tree mode
+    # -------------------------------
+    if tree and data:
+        parents = [d["id"] for d in data]
+
+        children = frappe.db.sql(
+            """
+            SELECT
+                name AS id,
+                subject,
+                parent_task
+            FROM `tabTask`
+            WHERE parent_task IN %s
+            """,
+            [parents],
+            as_dict=True,
+        )
+
+        children_map = {}
+        for c in children:
+            children_map.setdefault(c["parent_task"], []).append(c)
+
+        for row in data:
+            row["children"] = children_map.get(row["id"], [])
+
+    return {
+        "data": data,
+        "page": page,
+        "page_size": page_size,
+        "has_more": len(data) == page_size,
+        "total": frappe.db.count("Task", filters),
+    }
