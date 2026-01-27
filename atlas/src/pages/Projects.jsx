@@ -25,22 +25,17 @@ const Projects = () => {
     fields: ["*"],
     limit_page_length: 20,
     order_by: "modified desc",
-    filters: status ? [["status", "=", status]] : []
+    filters: status_param ? [["status", "=", status_param]] : []
   });
 
   const project_status_options = useGetDoctypeField("Project", "status", "options");
   const project_statuses = project_status_options?.data?.options || [];
 
-  console.log("Project status:L", project_statuses || [])
   const projects = projects_query.data || [];
 
   if (projects_query.isLoading || project_status_options.isLoading) {
     return <div>Loading...</div>;
   }
-
-  // const schema = query.data || {}
-
-  const activeStatus = searchParams.get("status");
 
   return (
     <>
