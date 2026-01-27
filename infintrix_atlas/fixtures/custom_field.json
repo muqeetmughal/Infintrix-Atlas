@@ -291,7 +291,7 @@
   "collapsible": 0,
   "collapsible_depends_on": null,
   "columns": 0,
-  "default": null,
+  "default": "Kanban",
   "depends_on": null,
   "description": null,
   "docstatus": 0,

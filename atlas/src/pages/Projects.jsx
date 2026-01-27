@@ -7,29 +7,40 @@ import { useFrappeGetDocList } from "frappe-react-sdk";
 import Assignee from "../components/widgets/Assignee";
 import DocModal from "../components/form/FormRender";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { useDoctypeSchema } from "../hooks/doctype";
-import { Progress } from "antd";
+import { useDoctypeSchema, useGetDoctypeField } from "../hooks/doctype";
+import { Checkbox, Progress } from "antd";
 
 const Projects = () => {
   // const [projects] = useState(INITIAL_PROJECTS);
   const [isOpen, setIsOpen] = React.useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+
+
   const selectedProject = searchParams.get("project") || null;
   const navigate = useNavigate();
 
+  const status_param = searchParams.get("status") || "Open"
   // const query = useDoctypeSchema("Project")
   const projects_query = useFrappeGetDocList("Project", {
     fields: ["*"],
     limit_page_length: 20,
     order_by: "modified desc",
+    filters: status ? [["status", "=", status]] : []
   });
+
+  const project_status_options = useGetDoctypeField("Project", "status", "options");
+  const project_statuses = project_status_options?.data?.options || [];
+
+  console.log("Project status:L", project_statuses || [])
   const projects = projects_query.data || [];
 
-  if (projects_query.isLoading) {
+  if (projects_query.isLoading || project_status_options.isLoading) {
     return <div>Loading...</div>;
   }
 
   // const schema = query.data || {}
+
+  const activeStatus = searchParams.get("status");
 
   return (
     <>
@@ -52,6 +63,27 @@ const Projects = () => {
             />
             <span>Create Project</span>
           </button>
+        </div>
+        <div className="mb-6">
+          <div className="flex space-x-2 border-b border-slate-200">
+            {/* <button onClick={() => {
+              searchParams.delete("status")
+              setSearchParams(searchParams)
+            }} className={`px-4 py-2 text-sm font-semibold -mb-px transition-colors ${!activeStatus ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-600 hover:text-slate-900'}`}>
+              All Projects
+            </button> */}
+            {
+              project_statuses.map((status) => {
+                return <button onClick={() => {
+                  searchParams.set("status", status)
+                  setSearchParams(searchParams)
+                }} className={`px-4 py-2 text-sm font-semibold -mb-px transition-colors ${status_param === status ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-600 hover:text-slate-900'}`} key={status}>
+                  {status}
+                </button>
+              })
+            }
+
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((p) => (
