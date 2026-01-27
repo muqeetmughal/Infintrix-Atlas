@@ -8,6 +8,7 @@ import Assignee from "../components/widgets/Assignee";
 import DocModal from "../components/form/FormRender";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useDoctypeSchema } from "../hooks/doctype";
+import { Progress } from "antd";
 
 const Projects = () => {
   // const [projects] = useState(INITIAL_PROJECTS);
@@ -75,20 +76,9 @@ const Projects = () => {
                 {p.name} • {p.project_type}
               </p>
 
-              <div className="space-y-2 mb-6">
-                <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  <span>Completion</span>
-                  <span className="text-indigo-600 font-black">
-                    {p.percent_complete}%
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-indigo-500 transition-all duration-1000 rounded-full shadow-lg shadow-indigo-300"
-                    style={{ width: `${p.percent_complete}%` }}
-                  />
-                </div>
-              </div>
+              <Progress percent={p.percent_complete} size="small" status="active" />
+
+
 
               <div className="flex items-center justify-between pt-4 border-t border-slate-50 group-hover:border-indigo-100 transition-colors duration-200">
                 <Assignee assignees={p?.assignees} />

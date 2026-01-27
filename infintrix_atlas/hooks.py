@@ -256,7 +256,7 @@ doc_events = {
         "validate": "infintrix_atlas.events.project.validate_project",
         # "before_save": "infintrix_atlas.events.task.before_task_save"
     },
-    
+
 }
 fixtures = [
 
@@ -271,6 +271,7 @@ fixtures = [
         ]]
     ]},
     {"dt": "Task Type"},
+    {"dt": "Cycle Template"},
 ]
 
 

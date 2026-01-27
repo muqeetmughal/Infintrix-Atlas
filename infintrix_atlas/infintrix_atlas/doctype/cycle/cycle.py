@@ -16,7 +16,8 @@ class Cycle(Document):
 
 
 	def before_insert(self):
-		self.cycle_name = f"{self.project_abbreviation()} - {frappe.db.count('Cycle', {'project': self.project}) + 1}"
+		if not self.cycle_name:
+			self.cycle_name = f"{self.project_abbreviation()} - {frappe.db.count('Cycle', {'project': self.project}) + 1}"
 
 
 
@@ -27,7 +28,7 @@ class Cycle(Document):
 			frappe.throw("Cycle cannot be active without start and end date")
 		if self.start_date and self.end_date and self.start_date > self.end_date:
 			frappe.throw("End date cannot be before start date")
-			
+
 		if self.project:
 			active_cycle = frappe.db.get_value(
 				"Cycle",
@@ -44,7 +45,7 @@ class Cycle(Document):
 			project = frappe.get_doc("Project", self.project)
 			if project.custom_execution_mode != "Scrum":
 				frappe.throw("Cycles can only be created for projects with Scrum execution mode")
-				
+
 
 		# if self.status == "Completed" and not self.actual_end_date:
 		# 	frappe.throw("Please set actual end date before marking cycle as completed")

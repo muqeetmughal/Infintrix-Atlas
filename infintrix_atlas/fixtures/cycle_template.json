@@ -1,0 +1,59 @@
+[
+ {
+  "cycles": [
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "cycles",
+    "parenttype": "Cycle Template",
+    "phase_name": "Pre-Sales Qualification"
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "cycles",
+    "parenttype": "Cycle Template",
+    "phase_name": "Discovery & Process Freeze"
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "cycles",
+    "parenttype": "Cycle Template",
+    "phase_name": "Scope Lock"
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "cycles",
+    "parenttype": "Cycle Template",
+    "phase_name": "Build & Configuration"
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "cycles",
+    "parenttype": "Cycle Template",
+    "phase_name": "Data Migration"
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "cycles",
+    "parenttype": "Cycle Template",
+    "phase_name": "UAT"
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "cycles",
+    "parenttype": "Cycle Template",
+    "phase_name": "Go-Live & Hypercare"
+   }
+  ],
+  "docstatus": 0,
+  "doctype": "Cycle Template",
+  "modified": "2026-01-27 18:54:33.843470",
+  "name": "ERP IMPLEMENTATION – CONTROLLED"
+ }
+]

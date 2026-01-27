@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createAvatar } from "@dicebear/core";
 import { initials } from "@dicebear/collection";
-import { useFrappeGetDocList } from "frappe-react-sdk";
+import { useFrappeGetDoc, useFrappeGetDocList } from "frappe-react-sdk";
 import { db } from "../lib/frappeClient";
 import { useQueryParams } from "./useQueryParams";
 export const useAvatarQuery = (name) => {
@@ -75,7 +75,9 @@ export const useTasksQuery = (
 	//   ...(cycle_name && { custom_cycle: cycle_name }),
 	// };
 	const filters_string = qp.all;
-	const cacheKey = ["tasks-list", cycle_name, filters_string];
+	const cacheKey = ["tasks", filters_string];
+
+	console.log("cacheKey:", cacheKey);
   let final_filters = [];
   if (project) {
     final_filters.push(["project", "in", [project]]);
@@ -99,6 +101,14 @@ export const useTasksQuery = (
 		}
 	);
 };
+
+export const useProjectDetailsQuery = (project) => {
+	return useFrappeGetDoc(
+		"Project",
+		project,
+		project ? ["Project", project] : null
+	);
+}
 
 // export const useTasksQuery = (filters, options) => {
 //   return  useFrappeGetDocList(

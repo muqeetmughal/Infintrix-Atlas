@@ -72,7 +72,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-17 14:59:08.655835",
+ "modified": "2026-01-27 18:09:32.885165",
  "modified_by": "Administrator",
  "module": "Infintrix Atlas",
  "name": "Cycle",
@@ -94,7 +94,9 @@
  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "cycle_name"
 }

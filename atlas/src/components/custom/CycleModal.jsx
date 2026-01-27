@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Modal,
   Form,
@@ -10,7 +10,7 @@ import {
   message,
   Input,
 } from "antd";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
 import {
   useFrappeGetDoc,
@@ -29,22 +29,32 @@ const DURATION_DAYS = {
 };
 
 export default function CycleModal() {
+  const qp = useQueryParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const cycle = searchParams.get("cycle");
-
+  const navigate = useNavigate();
   const [form] = Form.useForm();
   const [duration, setDuration] = useState("Custom");
 
   const { mutate } = useSWRConfig();
-  const qp = useQueryParams();
   const project_id = qp.get("project");
+  const cycle = qp.get("cycle");
 
   const { data, isLoading } = useFrappeGetDoc(
     "Cycle",
     cycle,
-    ["form_data", "Cycle", cycle],
+   cycle ? ["Cycle", cycle] : null,
     {
-      isPaused: () => !cycle,
+      // isPaused: () => {
+
+      //   console.log("Query Paused because cycle is null:", !cycle);
+      //   return !cycle
+      // },
+
+      // Don't use a function for isPaused if it's acting up;
+      // passing null as the key (above) is the standard SWR way to pause.
+      revalidateOnMount: true,
+      revalidateOnFocus: false, // Turn this off to stop the "window focus" dependency
+
     }
   );
 
@@ -72,8 +82,24 @@ export default function CycleModal() {
       start_date: startDate,
       end_date: endDate,
     });
-  }, [data, form]);
+  }, [data, form, cycle]);
+  // const formInitialValues = useMemo(() => {
+  //     if (!data) return {};
 
+  //     const startDate = data.start_date
+  //       ? dayjs(data.start_date)
+  //       : dayjs();
+
+  //     const endDate = data.end_date
+  //       ? dayjs(data.end_date)
+  //       : startDate;
+
+  //     return {
+  //       ...data,
+  //       start_date: startDate,
+  //       end_date: endDate,
+  //     };
+  //   }, [data, isLoading]);
   const handleDurationChange = (value) => {
     setDuration(value);
 
@@ -108,6 +134,7 @@ export default function CycleModal() {
       })
       .then(() => {
         message.success("Cycle Started Successfully");
+        navigate(`/tasks/kanban?project=${project_id}`);
         onClose();
       })
       .catch((err) => {
@@ -117,29 +144,33 @@ export default function CycleModal() {
   };
 
   const onClose = () => {
-    const params = new URLSearchParams(searchParams);
-    params.delete("cycle");
-    params.delete("mode");
-    setSearchParams(params);
-
-    mutate(["cycles"]);
+    searchParams.delete("cycle");
+    searchParams.delete("mode");
+    setSearchParams(searchParams);
+    mutate(["cycles", project_id]);
     mutate(["tasks", project_id]);
+
   };
+  // if (!cycle) return null;
 
   return (
     <Modal
       open={!!cycle}
-      title={`Start Cycle ${cycle}`}
+      title={`Start Cycle ${data?.cycle_name ? `: ${data.cycle_name}` : cycle}`}
       onCancel={onClose}
       footer={null}
       width={720}
       confirmLoading={isLoading}
-      destroyOnClose
+      // destroyOnClose
+      // forceRender
     >
+      {/* Loading: {isLoading ? "Yes" : "No"}<br/>
+      data: {JSON.stringify(formInitialValues, null, 2)}<br/> */}
       <Form
         form={form}
         layout="vertical"
         onFinish={handleFinish}
+      // initialValues={formInitialValues}
       >
         <Form.Item
           label="Cycle Name"

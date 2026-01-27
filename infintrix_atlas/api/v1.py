@@ -251,15 +251,22 @@ def get_project_flow_metrics(project):
 @frappe.whitelist()
 def start_cycle(name,cycle_name, duration, start_date, end_date):
     cycle = frappe.get_doc("Cycle", name)
+    project_cycle_belongs_to = cycle.project
+    print("Cycle Name:", cycle.project)
 
     if cycle.status != "Planned":
         frappe.throw("Only planned cycles can be started")
 
     active_cycles = frappe.get_all(
-        "Cycle",
-        filters={"status": "Active", "name": ["!=", name]},
-        fields=["name"],
-    )
+		"Cycle",
+		filters={
+			"status": "Active",
+			"project": project_cycle_belongs_to,
+			"name": ["!=", name]
+		},
+		fields=["name"],
+	)
+
 
     if active_cycles:
         frappe.throw(
@@ -302,7 +309,7 @@ def complete_cycle(name, move_tasks_to):
         frappe.throw(
             f"Cycle has {len(open_tasks)} open tasks. Please specify a cycle to move them to."
         )
-    
+
     if open_tasks and move_tasks_to:
         for t in open_tasks:
             task_doc = frappe.get_doc("Task", t.name)
@@ -453,4 +460,54 @@ def query_tasks(payload=None):
         "page_size": page_size,
         "has_more": len(data) == page_size,
         "total": frappe.db.count("Task", filters),
+    }
+
+@frappe.whitelist()
+def create_cycles_for_project(cycle_template_name: str, project_id: str):
+    if not cycle_template_name or not project_id:
+        frappe.throw("cycle_template_name and project_id are required")
+
+    # Fetch project
+    project = frappe.get_doc("Project", project_id)
+
+    # Prevent duplicate cycles
+    existing = frappe.db.exists(
+        "Cycle",
+        {"project": project_id}
+    )
+    if existing:
+        frappe.throw(
+            f"Cycles already exist for Project {project_id}. "
+            "Delete them before recreating."
+        )
+
+    # Fetch cycle template
+    template = frappe.get_doc("Cycle Template", cycle_template_name)
+
+    if not template.cycles:
+        frappe.throw(
+            f"Cycle Template '{cycle_template_name}' has no cycles defined"
+        )
+
+    created = []
+
+    for idx, row in enumerate(template.cycles, start=1):
+        cycle = frappe.get_doc({
+            "doctype": "Cycle",
+            "project": project.name,
+            "project_name": project.project_name,
+            "cycle_name": row.phase_name,
+            "duration": "1 Week",        # default, change if needed
+            "status": "Planned",
+            # "sequence": idx              # strongly recommended field
+        })
+
+        cycle.insert(ignore_permissions=True)
+        created.append(cycle.name)
+
+    return {
+        "status": "success",
+        "project": project_id,
+        "cycles_created": len(created),
+        "cycle_ids": created
     }

@@ -8,9 +8,12 @@ import {
 } from "../data/constants";
 import Badge from "../components/ui/Badge";
 import {
+  useFrappeCreateDoc,
   useFrappeGetCall,
   useFrappeGetDoc,
   useFrappeGetDocList,
+  useFrappePostCall,
+  useSWRConfig,
 } from "frappe-react-sdk";
 import dayjs from "dayjs";
 import Assignee from "../components/widgets/Assignee";
@@ -22,7 +25,7 @@ import TaskDetail from "../modals/TaskDetail";
 import TableView from "../views/TableView";
 import KanbanView from "../views/KanbanView";
 import LinkField from "../components/form/LinkField";
-import { Avatar, Button, Input, Select, Tooltip } from "antd";
+import { Avatar, Button, Input, Progress, Select, Tooltip } from "antd";
 import BacklogView from "../views/BacklogView/BacklogView";
 import { set } from "react-hook-form";
 import AIArchitect from "./AIArchitect";
@@ -42,18 +45,27 @@ const Tasks = () => {
 
   const view = params.view || "table";
   const project = qp.get("project") || null;
+  const { mutate } = useSWRConfig();
+
   // const selectedTask = searchParams.get("selected_task") || null;
   // const project = searchParams.get("project") || null;
   const navigate = useNavigate();
+  const createMutation = useFrappeCreateDoc();
 
   // const query = useDoctypeSchema("Task");
-  const project_query = useFrappeGetDoc("Project", project);
+  const create_cycles_for_project_mutatation = useFrappePostCall("infintrix_atlas.api.v1.create_cycles_for_project");
+  const project_query = useFrappeGetDoc("Project", project, project ? ["Project", project] : null);
   const active_cycle_query = useFrappeGetDocList("Cycle", {
     filters: { project: project, status: "Active" },
   });
 
   const projects_options_query = useFrappeGetDocList("Project", {
     fields: ["name as value", "project_name as label"],
+    limit_page_length: 100,
+  });
+
+  const cycles_template_options_query = useFrappeGetDocList("Cycle Template", {
+    fields: ["name as value", "name as label"],
     limit_page_length: 100,
   });
   const cycle = (active_cycle_query?.data || [])[0];
@@ -76,14 +88,32 @@ const Tasks = () => {
 
   return (
     <>
-   
+
       <TaskDetail />
       <div className="space-y-2 md:space-y-1">
         {/* Header Section */}
         {project_data.project_name && (
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900">
-            {project_data.project_name}
-          </h1>
+          // <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+          //   {project_data.project_name}
+          // </h1>
+          <div className="flex">
+            <Select
+              // mode="multiple"
+              variant="borderless"
+              placeholder="Filter by Project"
+              style={{ width: 200, size: "large", fontSize: "24px", fontWeight: "600" }}
+              defaultValue={qp.get("project") || []}
+              value={qp.get("project") || []}
+              onChange={(value) => {
+                qp.set("project", value);
+              }}
+              options={projects_options_query?.data || []}
+            />
+            <Progress percent={project_data.percent_complete} size="small" status="active" />
+
+          </div>
+
+
         )}
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
           {/* Tabs */}
@@ -100,11 +130,10 @@ const Tasks = () => {
                     navigate(`/tasks/${tab.id}`);
                     setSearchParams(oldSearchParams);
                   }}
-                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${
-                    view === tab.id
-                      ? "text-blue-600"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
+                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${view === tab.id
+                    ? "text-blue-600"
+                    : "text-slate-500 hover:text-slate-700"
+                    }`}
                 >
                   {tab.label}
                   {view === tab.id && (
@@ -121,14 +150,50 @@ const Tasks = () => {
               <Filter size={18} className="md:w-5 md:h-5" />
             </Button>
             <Button
-              type="dashed"
+              // disabled={!isScrum}
               onClick={() => {
-                searchParams.set("complete_cycle", active_cycle_name);
-                setSearchParams(searchParams);
+                createMutation
+                  .createDoc("Cycle", {
+                    project: project,
+                    // name: `New Cycle ${dayjs().format("MM-DD")}`,
+                  })
+                  .then(() => {
+                    mutate(["cycles", project]);
+
+                  });
               }}
             >
-              Complete Cycle
+              Create Cycle
             </Button>
+
+            <Select
+              // mode="multiple"
+              placeholder="Create Cycle From Template"
+              style={{ width: 200 }}
+              // defaultValue={qp.get("project") || []}
+              // value={qp.get("project") || []}
+              onChange={(value) => {
+                // qp.set("project", value);
+                create_cycles_for_project_mutatation.call({
+                  cycle_template_name: value,
+                  project_id: project,
+                })
+              }}
+              options={cycles_template_options_query?.data || []}
+            />
+
+            {
+              active_cycle_name && (<Button
+                type="dashed"
+                onClick={() => {
+                  searchParams.set("complete_cycle", active_cycle_name);
+                  setSearchParams(searchParams);
+                }}
+              >
+                Complete Cycle
+              </Button>)
+            }
+
             <Button
               type="primary"
               onClick={() => {
@@ -136,7 +201,7 @@ const Tasks = () => {
                 searchParams.set("mode", "create" || "");
                 setSearchParams(searchParams);
               }}
-              // className="cursor-pointer bg-slate-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-slate-800 transition-colors"
+            // className="cursor-pointer bg-slate-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-slate-800 transition-colors"
             >
               <Plus size={18} className="md:w-5 md:h-5" />
               <span className="text-sm md:text-base">Create Task</span>
@@ -148,7 +213,7 @@ const Tasks = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           {/* Search Bar */}
           <div className="relative flex max-w-full space-x-2">
-     
+
             <Input
               placeholder="Search"
               style={{ width: 200 }}
@@ -157,17 +222,7 @@ const Tasks = () => {
                 setSearchParams(searchParams);
               }}
             />
-            <Select
-              // mode="multiple"
-              placeholder="Filter by Project"
-              style={{ width: 200 }}
-              defaultValue={qp.get("project") || []}
-              value={qp.get("project") || []}
-              onChange={(value) => {
-                qp.set("project", value);
-              }}
-              options={projects_options_query?.data || []}
-            />
+
           </div>
 
           {/* User Avatars and Filter Options */}

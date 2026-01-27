@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Modal, Form, Select, Button, message, Spin } from "antd";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   useFrappeGetDocList,
   useFrappePostCall,
@@ -10,6 +10,7 @@ import { useQueryParams } from "../../hooks/useQueryParams";
 
 export default function CompleteCycleModal() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const complete_cycle = searchParams.get("complete_cycle");
   const [move_tasks_to, setMoveTasksTo] = useState(null);
   const [form] = Form.useForm();
@@ -43,7 +44,7 @@ export default function CompleteCycleModal() {
         ["project", "=", project_id],
         ["name", "!=", complete_cycle],
       ],
-      fields: ["name as value", "name as label"],
+      fields: ["name as value", "cycle_name as label"],
       limit_page_length: 100,
     },
     planned_cycles_key
@@ -82,6 +83,7 @@ export default function CompleteCycleModal() {
       .then(() => {
         message.success("Cycle completed");
         onClose();
+        navigate(`/tasks/backlog?project=${project_id}`);
       })
       .catch(() => {
         message.error("Failed to complete cycle");

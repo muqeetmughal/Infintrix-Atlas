@@ -24,6 +24,7 @@ import {
   useFrappeGetDoc,
   useFrappeGetDocList,
   useFrappeUpdateDoc,
+  useSWRConfig,
 } from "frappe-react-sdk";
 import { useGetDoctypeField } from "../hooks/doctype";
 import { Link, useParams, useSearchParams } from "react-router-dom";
@@ -263,15 +264,16 @@ const Column = ({ id, title, tasks_list, createTask }) => {
 export default function KanbanView() {
   const [activeIssue, setActiveIssue] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const {mutate} = useSWRConfig()
   // const { project } = useParams();
   const qp = useQueryParams()
   const project = qp.get("project") || null;
   const createMutation = useFrappeCreateDoc();
-  
+
   const updateTaskMutation = useFrappeUpdateDoc();
   const project_query = useFrappeGetDoc("Project", project);
   const columns_query = useGetDoctypeField("Task", "status", "options");
-  
+
   const active_cycle_query = useFrappeGetDocList("Cycle", {
     filters: { project: project, status: "Active" },
   });
@@ -292,10 +294,12 @@ export default function KanbanView() {
     if (!options) {
       return [];
     } else {
-      return options.map((option) => ({
-        id: option,
-        title: option,
-      }));
+      return options
+        .filter((option) => option.toLowerCase() !== "template")
+        .map((option) => ({
+          id: option,
+          title: option,
+        }));
     }
   }, [options]);
 
@@ -353,7 +357,9 @@ export default function KanbanView() {
         revalidate: false,
         populateCache: true,
       }
-    );
+    ).then(() => {
+     mutate(["Project", project] );
+    });
   };
 
   const createNewTask = async (newTask) => {
@@ -427,7 +433,6 @@ export default function KanbanView() {
     if (newStatus !== activeTask.status) {
       try {
         await mutateTaskStatus(activeId, newStatus);
-        message.success("Task updated");
       } catch (e) {
         // console.error("Failed to update task", e);
         message.error(String(e.exception).split(":").slice(-1)[0]);
