@@ -250,7 +250,8 @@ app_license = "mit"
 doc_events = {
     "Task": {
         "validate": "infintrix_atlas.events.task.validate_task_hierarchy",
-        "before_save": "infintrix_atlas.events.task.before_task_save"
+        "before_save": "infintrix_atlas.events.task.before_task_save",
+        # "has_permission": "infintrix_atlas.permissions.task_has_permission"
     },
      "Project": {
         "validate": "infintrix_atlas.events.project.validate_project",
@@ -272,7 +273,29 @@ fixtures = [
     ]},
     {"dt": "Task Type"},
     {"dt": "Cycle Template"},
+    {
+        "dt": "Custom DocPerm",
+		"filters": [
+			["parent", "in", [
+				"Task",
+				"Cycle Template",
+                "Cycle"
+			]]
+		]
+
+	}
 ]
 
 
 website_route_rules = [{'from_route': '/atlas/<path:app_path>', 'to_route': 'atlas'},]
+
+
+permission_query_conditions = {
+"Project": "infintrix_atlas.permissions.project_permission_query",
+"Task": "infintrix_atlas.permissions.task_permission_query",
+}
+
+
+override_doctype_class = {
+"Task": "infintrix_atlas.overrides.task.TaskOverride"
+}

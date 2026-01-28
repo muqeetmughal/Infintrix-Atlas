@@ -7,8 +7,12 @@ import {
   useSWRConfig,
 } from "frappe-react-sdk";
 import { useQueryParams } from "../../hooks/useQueryParams";
+import Confetti from "../Confetti";
 
 export default function CompleteCycleModal() {
+
+    const [showCelebration, setShowCelebration] = useState(false);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const complete_cycle = searchParams.get("complete_cycle");
@@ -83,6 +87,7 @@ export default function CompleteCycleModal() {
       .then(() => {
         message.success("Cycle completed");
         onClose();
+        setShowCelebration(true);
         navigate(`/tasks/backlog?project=${project_id}`);
       })
       .catch(() => {
@@ -94,6 +99,8 @@ export default function CompleteCycleModal() {
     !complete_cycle || tasks_query.isLoading || planned_cycles_query.isLoading;
 
   return (
+
+    <>
     <Modal open={!!complete_cycle} onCancel={onClose} footer={null} width={720}>
       {isLoading ? (
         <div className="p-8 text-center">
@@ -148,8 +155,15 @@ export default function CompleteCycleModal() {
               Complete Cycle
             </Button>
           </div>
+
+
         </>
       )}
     </Modal>
+          <Confetti
+        isVisible={showCelebration}
+        onClose={() => setShowCelebration(false)}
+      />
+    </>
   );
 }

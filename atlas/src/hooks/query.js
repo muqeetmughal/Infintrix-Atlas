@@ -75,7 +75,7 @@ export const useTasksQuery = (
 	//   ...(cycle_name && { custom_cycle: cycle_name }),
 	// };
 	const filters_string = qp.all;
-	const cacheKey = ["tasks", filters_string];
+	const cacheKey = ["tasks", filters_string, cycle_name];
 
 	console.log("cacheKey:", cacheKey);
   let final_filters = [];

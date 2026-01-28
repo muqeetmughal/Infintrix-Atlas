@@ -34,6 +34,7 @@ import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
 import PreviewAssignees from "../components/PreviewAssignees";
 import { useTasksQuery } from "../hooks/query";
 import { useQueryParams } from "../hooks/useQueryParams";
+import Confetti from "../components/Confetti";
 
 const IssueCard = React.forwardRef(
   (
@@ -55,16 +56,14 @@ const IssueCard = React.forwardRef(
         style={style}
         className={`
         group bg-white p-4 rounded-lg border shadow-sm mb-3 select-none transition-shadow
-        ${
-          isDragging
+        ${isDragging
             ? "opacity-40 border-blue-400 ring-2 ring-blue-100"
             : "border-slate-200 hover:border-slate-300 hover:shadow-md"
-        }
-        ${
-          isOverlay
+          }
+        ${isOverlay
             ? "shadow-xl cursor-grabbing ring-2 ring-blue-500 border-blue-500 scale-105 transition-transform"
             : "cursor-grab"
-        }
+          }
       `}
         {...attributes}
         {...listeners}
@@ -262,9 +261,10 @@ const Column = ({ id, title, tasks_list, createTask }) => {
 };
 
 export default function KanbanView() {
+
   const [activeIssue, setActiveIssue] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const {mutate} = useSWRConfig()
+  const { mutate } = useSWRConfig()
   // const { project } = useParams();
   const qp = useQueryParams()
   const project = qp.get("project") || null;
@@ -358,7 +358,7 @@ export default function KanbanView() {
         populateCache: true,
       }
     ).then(() => {
-     mutate(["Project", project] );
+      mutate(["Project", project]);
     });
   };
 
@@ -396,6 +396,14 @@ export default function KanbanView() {
     );
   };
   // console.log("Tasks:", tasks_list_query);
+
+
+
+  // useEffect(() => {
+  //   if (isAllTasksDone) {
+  //     setShowCelebration(true);
+  //   }
+  // }, [isAllTasksDone]);
 
   const handleDragEnd = async (event) => {
     setActiveIssue(null);
@@ -542,6 +550,8 @@ export default function KanbanView() {
           </DragOverlay>
         </DndContext>
       </div>
+
+
     </div>
   );
 }
