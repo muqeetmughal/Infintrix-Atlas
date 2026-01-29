@@ -52,63 +52,63 @@ const IssueCard = React.forwardRef(
 
     return (
       <div
-        ref={ref}
-        style={style}
-        className={`
-        group bg-white p-4 rounded-lg border shadow-sm mb-3 select-none transition-shadow
-        ${isDragging
-            ? "opacity-40 border-blue-400 ring-2 ring-blue-100"
-            : "border-slate-200 hover:border-slate-300 hover:shadow-md"
-          }
-        ${isOverlay
-            ? "shadow-xl cursor-grabbing ring-2 ring-blue-500 border-blue-500 scale-105 transition-transform"
-            : "cursor-grab"
-          }
+      ref={ref}
+      style={style}
+      className={`
+      group bg-white dark:bg-slate-800 p-4 rounded-lg border shadow-sm mb-3 select-none transition-shadow
+      ${isDragging
+        ? "opacity-40 border-blue-400 dark:border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900"
+        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md"
+        }
+      ${isOverlay
+        ? "shadow-xl cursor-grabbing ring-2 ring-blue-500 border-blue-500 scale-105 transition-transform"
+        : "cursor-grab"
+        }
       `}
-        {...attributes}
-        {...listeners}
-        {...props}
+      {...attributes}
+      {...listeners}
+      {...props}
       >
-        <div className="flex items-start justify-between mb-2">
-          <p
-            onClick={handleTitleClick}
-            className="text-sm font-medium text-slate-800 leading-snug cursor-pointer hover:text-blue-600"
-          >
-            {issue.subject}
-          </p>
-          {issue.id !== "new_item" && (
-            <div
-              className="text-slate-300 group-hover:text-slate-500 transition-colors p-1 -mr-2"
-              {...attributes}
-              {...listeners}
-            >
-              <GripVertical size={16} />
-            </div>
-          )}
+      <div className="flex items-start justify-between mb-2">
+        <p
+        onClick={handleTitleClick}
+        className="text-sm font-medium text-slate-800 dark:text-slate-100 leading-snug cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
+        >
+        {issue.subject}
+        </p>
+        {issue.id !== "new_item" && (
+        <div
+          className="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors p-1 -mr-2"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical size={16} />
         </div>
+        )}
+      </div>
 
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex items-center gap-2">
-            <Tooltip title={issue.type}>
-              <WorkItemTypeWidget
-                value={issue?.type || "Task"}
-                disabled
-                show_label={false}
-              />
-            </Tooltip>
-            <span className="text-[11px] text-slate-500 font-bold tracking-tight uppercase">
-              {issue.id}
-            </span>
-          </div>
-          <div
-            className={`w-7 h-7 rounded-full ${issue.assigneeColor} text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-sm`}
-          >
-            <PreviewAssignees
-              assignees={issue.assignees}
-              enable_tooltip={false}
-            />
-          </div>
+      <div className="flex justify-between items-center mt-4">
+        <div className="flex items-center gap-2">
+        <Tooltip title={issue.type}>
+          <WorkItemTypeWidget
+          value={issue?.type || "Task"}
+          disabled
+          show_label={false}
+          />
+        </Tooltip>
+        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold tracking-tight uppercase">
+          {issue.id}
+        </span>
         </div>
+        <div
+        className={`w-7 h-7 rounded-full ${issue.assigneeColor} text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm`}
+        >
+        <PreviewAssignees
+          assignees={issue.assignees}
+          enable_tooltip={false}
+        />
+        </div>
+      </div>
       </div>
     );
   }
@@ -184,7 +184,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
   return (
     <div
       ref={setNodeRef}
-      className="flex flex-col w-80 bg-slate-100/80 rounded-xl p-3 max-h-full border border-slate-200/50"
+      className="flex flex-col w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 max-h-full border border-slate-200/50 dark:border-slate-700"
     >
       <div className="flex items-center justify-between mb-4 px-1">
         <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
@@ -198,7 +198,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-[150px]">
+      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-[60vh]">
         <SortableContext
           items={tasks_list.map((i) => i.id)}
           strategy={verticalListSortingStrategy}
@@ -210,10 +210,10 @@ const Column = ({ id, title, tasks_list, createTask }) => {
 
         {addNew ? (
           <div data-create-item>
-            <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm mb-3">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm mb-3">
               <input
                 type="text"
-                className="w-full border-0 bg-transparent focus:ring-0 p-0 m-0 outline-none text-sm font-medium text-slate-800"
+                className="w-full border-0 bg-transparent focus:ring-0 p-0 m-0 outline-none text-sm font-medium text-slate-800 dark:text-slate-100"
                 placeholder="Enter work item title"
                 value={createItem.subject}
                 onChange={(e) =>
@@ -249,7 +249,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
             onClick={() => {
               setAddNew(true);
             }}
-            className="cursor-pointer w-full mt-2 py-2 flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-200/50 rounded-lg text-sm font-medium transition-colors"
+            className="cursor-pointer w-full mt-2 py-2 flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg text-sm font-medium transition-colors"
           >
             <Plus size={16} />
             Create

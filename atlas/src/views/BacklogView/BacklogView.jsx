@@ -44,7 +44,7 @@ import {
 import dayjs from "dayjs";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Button, Dropdown, Input, Space, Spin } from "antd";
-import BacklogHealth from "./BacklogHealth";
+import BacklogHealth from "../../components/ProjectHealth";
 import FormRender from "../../components/form/FormRender";
 import { useQueryParams } from "../../hooks/useQueryParams";
 import { useProjectDetailsQuery, useTasksQuery } from "../../hooks/query";
@@ -83,17 +83,17 @@ const TaskCard = ({ task, isOverlay = false }) => {
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white border border-slate-200 p-2 rounded-xl shadow-sm hover:border-indigo-300 transition-all flex items-start gap-3 group
+      className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl shadow-sm hover:border-indigo-300 dark:hover:border-indigo-600 transition-all flex items-start gap-3 group
         ${isDragging && !isOverlay ? "opacity-30" : "opacity-100"}
         ${isOverlay
-          ? "shadow-xl ring-2 ring-indigo-500 cursor-grabbing"
+          ? "shadow-xl ring-2 ring-indigo-500 dark:ring-indigo-400 cursor-grabbing"
           : "cursor-grab active:cursor-grabbing"
         }`}
     >
       <div
         {...attributes}
         {...listeners}
-        className="mt-1 text-slate-300 group-hover:text-slate-400"
+        className="mt-1 text-slate-300 dark:text-slate-600 group-hover:text-slate-400 dark:group-hover:text-slate-500"
       >
         <GripVertical size={14} />
       </div>
@@ -103,16 +103,16 @@ const TaskCard = ({ task, isOverlay = false }) => {
             <Badge
               className={
                 task.type === "Bug"
-                  ? "bg-rose-50 text-rose-600 border-rose-100"
-                  : "bg-slate-50 text-slate-500 border-slate-100"
+                  ? "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800"
+                  : "bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-600"
               }
             >
               {task.type}
             </Badge>
-            <span className="text-[10px] font-bold text-slate-400 font-mono uppercase">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 font-mono uppercase">
               {task.id}
             </span>
-            <h4 className="text-sm font-bold text-slate-900 leading-snug">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
               {task.subject}
             </h4>
           </div>
@@ -181,7 +181,7 @@ const InlineTaskCreator = ({
 
   return (
 
-    <div className="bg-white border border-indigo-300 rounded-xl px-3 py-2 shadow-sm">
+    <div className="bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-600 rounded-xl px-3 py-2 shadow-sm">
       <Input
         ref={inputRef}
         size="small"
@@ -194,11 +194,13 @@ const InlineTaskCreator = ({
           if (e.key === "Escape") onCancel();
         }}
         suffix={loading ? <Spin size="small" /> : null}
-        bordered={false}
+        variant="borderless"
+        className="dark:text-slate-100 dark:placeholder-slate-400"
       />
     </div>
   );
 };
+
 
 const BacklogView = () => {
   //   const [tasks, setTasks] = useState(initialTasks);
@@ -305,8 +307,8 @@ const BacklogView = () => {
       <DroppableZone
         key={cycle.name}
         id={cycle.name}
-        isOverColor="bg-indigo-50 ring-2 ring-indigo-400"
-        className="bg-white border border-slate-200 rounded-xl p-2 shadow-sm group hover:border-indigo-200 transition-all"
+        isOverColor="bg-indigo-50 dark:bg-indigo-900/20 ring-2 ring-indigo-400 dark:ring-indigo-500"
+        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 shadow-sm group hover:border-indigo-200 dark:hover:border-indigo-600 transition-all"
       >
         <div className="flex items-center justify-between cursor-pointer">
           <div className="flex items-center gap-2 flex-1 space-y-1">
@@ -314,7 +316,7 @@ const BacklogView = () => {
               <ChevronRight
                 onClick={() => setIsExpanded(!isExpanded)}
                 size={20}
-                className={`text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""
+                className={`text-slate-400 dark:text-slate-500 transition-transform ${isExpanded ? "rotate-90" : ""
                   }`}
               />
             </div>
@@ -322,12 +324,12 @@ const BacklogView = () => {
               className={`p-2 rounded-xl ${cycle.status === "Active"
                 ? "bg-indigo-600 text-white shadow-lg"
                 : cycle.status === "Completed"
-                  ? "bg-emerald-100 text-emerald-600"
+                  ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
                   : cycle.status === "Planned"
-                    ? "bg-blue-100 text-blue-600"
+                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
                     : cycle.status === "Archived"
-                      ? "bg-slate-100 text-slate-400"
-                      : "bg-slate-100 text-slate-400"
+                      ? "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500"
+                      : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500"
                 }`}
             >
               {cycle.status === "Active" ? (
@@ -343,9 +345,9 @@ const BacklogView = () => {
               )}
             </div>
             <div className="flex items-center">
-              <h3 className="font-semibold text-slate-900 leading-none">
+              <h3 className="font-semibold text-slate-900 dark:text-slate-100 leading-none">
                 {cycle.cycle_name ?? cycle.name}{" "}
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
                   {dayjs(cycle.start_date).format("MMM D")} —{" "}
                   {dayjs(cycle.end_date).format("MMM D")}
                 </span>
@@ -357,14 +359,14 @@ const BacklogView = () => {
                 <Badge
                   className={
                     cycle.status === "Active"
-                      ? "bg-indigo-50 text-indigo-700 border-indigo-100"
+                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800"
                       : cycle.status === "Completed"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                        ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800"
                         : cycle.status === "Planned"
-                          ? "bg-blue-50 text-blue-700 border-blue-100"
+                          ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-800"
                           : cycle.status === "Archived"
-                            ? "bg-slate-50 text-slate-400 border-slate-100"
-                            : "bg-slate-50 text-slate-400 border-slate-100"
+                            ? "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-700"
+                            : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-700"
                   }
                 >
                   {cycle.status}
@@ -448,7 +450,7 @@ const BacklogView = () => {
             {cycle_tasks.map((t) => (
               <TaskCard key={t.id} task={t} />
             ))}
-            <button className="border-2 border-dashed border-slate-100 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 hover:text-indigo-500 hover:border-indigo-100 transition-all">
+            <button className="border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 hover:border-indigo-100 dark:hover:border-indigo-800 transition-all">
               <Plus size={16} />
               <span className="text-[10px] font-black uppercase">Plan Task</span>
             </button>
@@ -493,8 +495,8 @@ const BacklogView = () => {
               <DroppableZone
                 // key={cycle.name}
                 id="Open"
-                isOverColor="bg-indigo-50 ring-2 ring-indigo-400"
-                className="bg-white border border-slate-200 rounded-xl p-2 shadow-sm group hover:border-indigo-200 transition-all"
+                isOverColor="bg-indigo-50 dark:bg-indigo-900/20 ring-2 ring-indigo-400 dark:ring-indigo-500"
+                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 shadow-sm group hover:border-indigo-200 dark:hover:border-indigo-600 transition-all"
               >
                 <div className="flex items-center justify-between cursor-pointer">
                   <div className="flex items-center gap-2 flex-1 space-y-1">
@@ -502,19 +504,19 @@ const BacklogView = () => {
                       <ChevronRight
                         onClick={() => setIsBacklogExpanded(!isBacklogExpanded)}
                         size={20}
-                        className={`text-slate-400 transition-transform ${isBacklogExpanded ? "rotate-90" : ""
+                        className={`text-slate-400 dark:text-slate-500 transition-transform ${isBacklogExpanded ? "rotate-90" : ""
                           }`}
                       />
                     </div>
                     <div
-                      className={`p-2 rounded-xl bg-indigo-600 text-white shadow-lg`}
+                      className={`p-2 rounded-xl bg-indigo-600 dark:bg-indigo-700 text-white shadow-lg`}
                     >
                       <Package size={20} />
                     </div>
                     <div className="flex items-center">
-                      <h3 className="font-semibold text-slate-900 leading-none">
+                      <h3 className="font-semibold text-slate-900 dark:text-slate-100 leading-none">
                         Backlog{" "}
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
                           {/* {cycle.start_date} — {cycle.end_date} */}
                         </span>
                         <small className="text-xs font-light">
@@ -524,7 +526,7 @@ const BacklogView = () => {
                       <div className="flex items-center gap-2 mt-1">
                         <Badge
                           className={
-                            "bg-indigo-50 text-indigo-700 border-indigo-100"
+                            "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800"
                           }
                         >
                           Backlog
@@ -536,7 +538,7 @@ const BacklogView = () => {
 
                     <ChevronRight
                       size={20}
-                      className={`text-slate-400 transition-transform ${isBacklogExpanded ? "rotate-90" : ""
+                      className={`text-slate-400 dark:text-slate-500 transition-transform ${isBacklogExpanded ? "rotate-90" : ""
                         }`}
                     />
                   </div>
@@ -559,7 +561,7 @@ const BacklogView = () => {
                     ) : (
                       <button
                         onClick={() => setShowBacklogCreator(true)}
-                        className="border-2 border-dashed border-slate-100 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 hover:text-indigo-500 hover:border-indigo-100 transition-all"
+                        className="border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 hover:border-indigo-100 dark:hover:border-indigo-800 transition-all"
                       >
                         <Plus size={16} />
                         <span className="text-[10px] font-black uppercase">
@@ -579,7 +581,6 @@ const BacklogView = () => {
 
           {/* Footer Stats */}
 
-          <BacklogHealth project_id={project_id} />
         </div>
       </DndContext>
     </>

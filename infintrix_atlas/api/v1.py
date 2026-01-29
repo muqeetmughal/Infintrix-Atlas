@@ -2,7 +2,7 @@ import frappe
 from frappe.query_builder import DocType, functions as fn
 from datetime import datetime, timedelta
 import json
-
+from infintrix_atlas.permissions import project_permission_query, task_permission_query
 
 @frappe.whitelist()
 def get_tasks():
@@ -463,51 +463,67 @@ def query_tasks(payload=None):
     }
 
 @frappe.whitelist()
-def create_cycles_for_project(cycle_template_name: str, project_id: str):
-    if not cycle_template_name or not project_id:
-        frappe.throw("cycle_template_name and project_id are required")
 
-    # Fetch project
-    project = frappe.get_doc("Project", project_id)
+@frappe.whitelist()
+def get_project_user_stats(user=None):
+    user = user or frappe.session.user
 
-    # Prevent duplicate cycles
-    existing = frappe.db.exists(
-        "Cycle",
-        {"project": project_id}
+    # -----------------------------
+    # PROJECTS
+    # -----------------------------
+    project_conditions = project_permission_query(user)
+    project_where = f"WHERE {project_conditions}" if project_conditions else ""
+
+    projects = frappe.db.sql(f"""
+        SELECT name, IFNULL(percent_complete, 0) AS percent_complete
+        FROM `tabProject`
+        {project_where}
+    """, as_dict=True)
+
+    project_names = [p.name for p in projects]
+
+    total_projects = len(projects)
+
+    if not project_names:
+        return {
+            "total_projects": 0,
+            "active_tasks": 0,
+            "avg_progress": 0,
+            "team_members": 0
+        }
+
+    # -----------------------------
+    # TASKS (active only)
+    # -----------------------------
+    task_conditions = task_permission_query(user)
+    task_where = f"AND {task_conditions}" if task_conditions else ""
+
+    active_tasks = frappe.db.sql("""
+        SELECT COUNT(*)
+        FROM `tabTask`
+        WHERE status NOT IN ('Completed', 'Cancelled')
+        {task_where}
+    """.format(task_where=task_where))[0][0]
+
+    # -----------------------------
+    # AVG PROGRESS
+    # -----------------------------
+    avg_progress = round(
+        sum(p.percent_complete for p in projects) / total_projects
     )
-    if existing:
-        frappe.throw(
-            f"Cycles already exist for Project {project_id}. "
-            "Delete them before recreating."
-        )
 
-    # Fetch cycle template
-    template = frappe.get_doc("Cycle Template", cycle_template_name)
-
-    if not template.cycles:
-        frappe.throw(
-            f"Cycle Template '{cycle_template_name}' has no cycles defined"
-        )
-
-    created = []
-
-    for idx, row in enumerate(template.cycles, start=1):
-        cycle = frappe.get_doc({
-            "doctype": "Cycle",
-            "project": project.name,
-            "project_name": project.project_name,
-            "cycle_name": row.phase_name,
-            "duration": "1 Week",        # default, change if needed
-            "status": "Planned",
-            # "sequence": idx              # strongly recommended field
-        })
-
-        cycle.insert(ignore_permissions=True)
-        created.append(cycle.name)
+    # -----------------------------
+    # TEAM MEMBERS
+    # -----------------------------
+    team_members = frappe.db.sql("""
+        SELECT COUNT(DISTINCT pu.user)
+        FROM `tabProject User` pu
+        WHERE pu.parent IN %(projects)s
+    """, {"projects": tuple(project_names)})[0][0]
 
     return {
-        "status": "success",
-        "project": project_id,
-        "cycles_created": len(created),
-        "cycle_ids": created
+        "total_projects": total_projects,
+        "active_tasks": active_tasks,
+        "avg_progress": avg_progress,
+        "team_members": team_members
     }

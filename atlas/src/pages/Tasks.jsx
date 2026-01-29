@@ -36,12 +36,13 @@ import PreviewAssignees from "../components/PreviewAssignees";
 import CycleModal from "../components/custom/CycleModal";
 import CompleteCycleModal from "../components/custom/CompleteCycleModal";
 import { useQueryParams } from "../hooks/useQueryParams";
+import ProjectHealth from "../components/ProjectHealth";
 
 const Tasks = () => {
   // const [isOpen, setIsOpen] = React.useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
-  const qp = useQueryParams()
+  const qp = useQueryParams();
 
   const view = params.view || "table";
   const project = qp.get("project") || null;
@@ -53,8 +54,14 @@ const Tasks = () => {
   const createMutation = useFrappeCreateDoc();
 
   // const query = useDoctypeSchema("Task");
-  const create_cycles_for_project_mutatation = useFrappePostCall("infintrix_atlas.api.v1.create_cycles_for_project");
-  const project_query = useFrappeGetDoc("Project", project, project ? ["Project", project] : null);
+  const create_cycles_for_project_mutatation = useFrappePostCall(
+    "infintrix_atlas.api.v1.create_cycles_for_project",
+  );
+  const project_query = useFrappeGetDoc(
+    "Project",
+    project,
+    project ? ["Project", project] : null,
+  );
   const active_cycle_query = useFrappeGetDocList("Cycle", {
     filters: { project: project, status: "Active" },
   });
@@ -88,20 +95,28 @@ const Tasks = () => {
 
   return (
     <>
-
       <TaskDetail />
+
+      <ProjectHealth
+        project_id={project}
+        collapsible={true}
+      />
+
+
+
       <div className="space-y-2 md:space-y-1">
         {/* Header Section */}
         {project_data.project_name && (
-          // <h1 className="text-xl md:text-2xl font-bold text-slate-900">
-          //   {project_data.project_name}
-          // </h1>
-          <div className="flex">
+          <>
             <Select
-              // mode="multiple"
               variant="borderless"
               placeholder="Filter by Project"
-              style={{ width: 200, size: "large", fontSize: "24px", fontWeight: "600" }}
+              style={{
+                width: "100%",
+                size: "large",
+                fontSize: "24px",
+                fontWeight: "600",
+              }}
               defaultValue={qp.get("project") || []}
               value={qp.get("project") || []}
               onChange={(value) => {
@@ -109,35 +124,31 @@ const Tasks = () => {
               }}
               options={projects_options_query?.data || []}
             />
-            <Progress percent={project_data.percent_complete} size="small" status="active" />
-
-          </div>
-
-
+          </>
         )}
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
           {/* Tabs */}
 
-          <div className="flex items-center border-b border-slate-100 overflow-x-auto">
+          <div className="flex items-center border-b border-slate-100 dark:border-slate-700 overflow-x-auto">
             <div className="flex space-x-4 md:space-x-6 min-w-max">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => {
                     const oldSearchParams = new URLSearchParams(
-                      searchParams.toString()
+                      searchParams.toString(),
                     );
                     navigate(`/tasks/${tab.id}`);
                     setSearchParams(oldSearchParams);
                   }}
                   className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${view === tab.id
-                    ? "text-blue-600"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
                     }`}
                 >
                   {tab.label}
                   {view === tab.id && (
-                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 animate-in slide-in-from-left-2" />
+                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 animate-in slide-in-from-left-2" />
                   )}
                 </button>
               ))}
@@ -146,20 +157,17 @@ const Tasks = () => {
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            <Button className="p-2 md:p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-all">
+            <Button className="p-2 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
               <Filter size={18} className="md:w-5 md:h-5" />
             </Button>
             <Button
-              // disabled={!isScrum}
               onClick={() => {
                 createMutation
                   .createDoc("Cycle", {
                     project: project,
-                    // name: `New Cycle ${dayjs().format("MM-DD")}`,
                   })
                   .then(() => {
                     mutate(["cycles", project]);
-
                   });
               }}
             >
@@ -167,23 +175,19 @@ const Tasks = () => {
             </Button>
 
             <Select
-              // mode="multiple"
               placeholder="Create Cycle From Template"
               style={{ width: 200 }}
-              // defaultValue={qp.get("project") || []}
-              // value={qp.get("project") || []}
               onChange={(value) => {
-                // qp.set("project", value);
                 create_cycles_for_project_mutatation.call({
                   cycle_template_name: value,
                   project_id: project,
-                })
+                });
               }}
               options={cycles_template_options_query?.data || []}
             />
 
-            {
-              active_cycle_name && (<Button
+            {active_cycle_name && (
+              <Button
                 type="dashed"
                 onClick={() => {
                   searchParams.set("complete_cycle", active_cycle_name);
@@ -191,8 +195,8 @@ const Tasks = () => {
                 }}
               >
                 Complete Cycle
-              </Button>)
-            }
+              </Button>
+            )}
 
             <Button
               type="primary"
@@ -201,7 +205,6 @@ const Tasks = () => {
                 searchParams.set("mode", "create" || "");
                 setSearchParams(searchParams);
               }}
-            // className="cursor-pointer bg-slate-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center space-x-2 shadow-lg hover:bg-slate-800 transition-colors"
             >
               <Plus size={18} className="md:w-5 md:h-5" />
               <span className="text-sm md:text-base">Create Task</span>
@@ -213,7 +216,6 @@ const Tasks = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           {/* Search Bar */}
           <div className="relative flex max-w-full space-x-2">
-
             <Input
               placeholder="Search"
               style={{ width: 200 }}
@@ -222,7 +224,6 @@ const Tasks = () => {
                 setSearchParams(searchParams);
               }}
             />
-
           </div>
 
           {/* User Avatars and Filter Options */}
@@ -231,11 +232,11 @@ const Tasks = () => {
               {/* <PreviewAssignees assignees={assignees} enable_tooltip={true} /> */}
             </div>
 
-            <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-slate-600 font-medium">
-              <button className="hover:text-blue-600 transition-colors whitespace-nowrap">
+            <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium">
+              <button className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors whitespace-nowrap">
                 Only my issues
               </button>
-              <button className="hover:text-blue-600 transition-colors whitespace-nowrap">
+              <button className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors whitespace-nowrap">
                 Recently updated
               </button>
             </div>
@@ -245,7 +246,6 @@ const Tasks = () => {
         {/* View Content */}
         <div className="overflow-x-auto">
           {view === "ai-architect" && <AIArchitect />}
-          {/* {view === "list" && <ListView />} */}
           {view === "list" && <TableView />}
           {view === "kanban" && <KanbanView />}
           {view === "backlog" && <BacklogView />}

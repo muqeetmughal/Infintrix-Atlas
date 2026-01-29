@@ -5,8 +5,6 @@ import {
   ShieldCheck,
   ShieldAlert,
   Shield,
-  ChevronDown,
-  ChevronUp,
   Check,
   X,
   Edit3,
@@ -14,9 +12,6 @@ import {
   AlertCircle,
   Link as LinkIcon,
   Layers,
-  Info,
-  Zap,
-  Coffee,
   CheckSquare,
   Save,
   UserPlus,
@@ -36,33 +31,18 @@ import { Select } from "antd";
 // --- Finite State Machine Definitions ---
 const UI_STATES = {
   IDLE: "IDLE",
-  DECOMPOSING: "DECOMPOSING", // Step 1
-  GUARDING: "GUARDING", // Step 2
-  BLOCKED: "BLOCKED", // Step 2 Failure (Intent invalid)
-  DRAFTING: "DRAFTING", // Step 3
-  VALIDATING: "VALIDATING", // Step 4
-  REVIEWING: "REVIEWING", // Step 5
-  CREATING: "CREATING", // Step 6
-  SUCCESS: "SUCCESS", // Step 7 - All created
-  PARTIAL_SUCCESS: "PARTIAL_SUCCESS", // Step 7 - Some failed
-  ERROR: "ERROR", // Technical/Runtime failure
+  DECOMPOSING: "DECOMPOSING",
+  GUARDING: "GUARDING",
+  BLOCKED: "BLOCKED",
+  DRAFTING: "DRAFTING",
+  VALIDATING: "VALIDATING",
+  REVIEWING: "REVIEWING",
+  CREATING: "CREATING",
+  SUCCESS: "SUCCESS",
+  PARTIAL_SUCCESS: "PARTIAL_SUCCESS",
+  ERROR: "ERROR",
 };
 
-/**
- * FSM Transition Contract (Reference)
- * IDLE + START_PIPELINE -> DECOMPOSING
- * DECOMPOSING + INTENTS_READY -> GUARDING
- * GUARDING + SIGNAL_VALID -> DRAFTING
- * GUARDING + SIGNAL_INSUFFICIENT -> BLOCKED
- * DRAFTING + DRAFTS_READY -> VALIDATING
- * VALIDATING + INTEGRITY_CHECKED -> REVIEWING
- * REVIEWING + DEPLOY_TRIGGERED -> CREATING
- * CREATING + ALL_SUCCESS -> SUCCESS
- * CREATING + SOME_FAILURE -> PARTIAL_SUCCESS
- * ANY + EXCEPTION -> ERROR
- */
-
-// Authoritative mapping for pipeline visualization
 const PIPELINE_VISUALS = {
   [UI_STATES.IDLE]: { active: null, finished: [] },
   [UI_STATES.DECOMPOSING]: { active: 1, finished: [] },
@@ -123,10 +103,10 @@ const AVAILABLE_PROJECTS = [
 ];
 
 const TASK_PRIORITY_COLORS = {
-  Urgent: "bg-rose-50 text-rose-600 border-rose-100",
-  High: "bg-orange-50 text-orange-600 border-orange-100",
-  Medium: "bg-indigo-50 text-indigo-600 border-indigo-100",
-  Low: "bg-slate-50 text-slate-500 border-slate-100",
+  Urgent: "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800",
+  High: "bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-800",
+  Medium: "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800",
+  Low: "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-700",
 };
 
 const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
@@ -136,8 +116,6 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
   const isApproved = task.status === "APPROVED";
   const isValid = task.validation?.valid;
   const isCreated = task.creationStatus === "SUCCESS";
-
-  // Data Integrity: Never allow editing or rejecting of successfully created records
   const isLocked = disabled || isCreated;
 
   const handleSave = () => {
@@ -147,14 +125,14 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
 
   return (
     <div
-      className={`bg-white border-2 rounded-[32px] p-6 transition-all ${
+      className={`bg-white dark:bg-slate-800 border-2 rounded-[32px] p-6 transition-all ${
         isCreated
-          ? "border-emerald-500 bg-emerald-50/20"
+          ? "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-900/20"
           : isApproved
-          ? "border-indigo-500 bg-indigo-50/10 shadow-lg shadow-indigo-100/20"
+          ? "border-indigo-500 bg-indigo-50/10 dark:bg-indigo-900/20 shadow-lg shadow-indigo-100/20 dark:shadow-indigo-900/20"
           : !isValid
-          ? "border-rose-200"
-          : "border-slate-100 hover:border-indigo-200"
+          ? "border-rose-200 dark:border-rose-800"
+          : "border-slate-100 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800"
       } ${isLocked ? "opacity-80" : ""}`}
     >
       <div className="flex flex-col gap-5">
@@ -168,7 +146,7 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
                   ? "bg-indigo-600 text-white border-indigo-600"
                   : task.creationStatus === "FAILED"
                   ? "bg-rose-500 text-white border-rose-500"
-                  : "bg-slate-100 text-slate-400 border-slate-200"
+                  : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600"
               }`}
             >
               {isCreated
@@ -179,7 +157,7 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
                 ? "Failed"
                 : "Drafted"}
             </div>
-            <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
+            <div className="text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">
               Confidence: {(task.confidence * 100).toFixed(0)}%
             </div>
           </div>
@@ -187,13 +165,13 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsEditing(!isEditing)}
-                className="p-2 text-slate-400 hover:text-indigo-600 transition-all"
+                className="p-2 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
               >
                 <Edit3 size={16} />
               </button>
               <button
                 onClick={() => onReject(task.id)}
-                className="p-2 text-slate-400 hover:text-rose-600 transition-all"
+                className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-all"
               >
                 <X size={16} />
               </button>
@@ -204,7 +182,7 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
         {isEditing ? (
           <div className="space-y-4">
             <input
-              className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-slate-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
               value={localData.subject}
               onChange={(e) =>
                 setLocalData({ ...localData, subject: e.target.value })
@@ -212,7 +190,7 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
             />
             <div className="grid grid-cols-2 gap-4">
               <select
-                className="bg-slate-50 border-none rounded-xl px-4 py-3 text-xs font-bold"
+                className="bg-slate-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-slate-100"
                 value={localData.priority}
                 onChange={(e) =>
                   setLocalData({ ...localData, priority: e.target.value })
@@ -226,7 +204,7 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
               </select>
               <input
                 type="number"
-                className="bg-slate-50 border-none rounded-xl px-4 py-3 text-xs font-bold"
+                className="bg-slate-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-slate-100"
                 value={localData.weight}
                 onChange={(e) =>
                   setLocalData({
@@ -238,7 +216,7 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
             </div>
             <button
               onClick={handleSave}
-              className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+              className="w-full py-3 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
             >
               <Save size={14} /> Commit Changes
             </button>
@@ -246,7 +224,7 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
         ) : (
           <div>
             <h4
-              className={`text-lg font-black text-slate-900 tracking-tight leading-tight mb-2 ${
+              className={`text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mb-2 ${
                 !isValid && !isApproved && !isCreated
                   ? "line-through opacity-40"
                   : ""
@@ -262,7 +240,7 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
               >
                 {task.priority}
               </span>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 {task.weight} Points
               </span>
             </div>
@@ -270,13 +248,13 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
         )}
 
         {!isValid && !isApproved && !isCreated && (
-          <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-3">
-            <AlertCircle size={16} className="text-rose-500 mt-0.5 shrink-0" />
+          <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-2xl flex items-start gap-3">
+            <AlertCircle size={16} className="text-rose-500 dark:text-rose-400 mt-0.5 shrink-0" />
             <div className="space-y-1">
-              <div className="text-[10px] font-black text-rose-600 uppercase">
+              <div className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase">
                 Structural Violation
               </div>
-              <ul className="text-[10px] font-bold text-rose-400 list-disc ml-3 leading-tight">
+              <ul className="text-[10px] font-bold text-rose-400 dark:text-rose-500 list-disc ml-3 leading-tight">
                 {task.validation?.errors?.map((err, i) => (
                   <li key={i}>{err}</li>
                 ))}
@@ -286,16 +264,16 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
         )}
 
         {task.creationStatus === "LOADING" && (
-          <div className="flex items-center gap-3 p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
-            <Loader2 size={16} className="text-indigo-600 animate-spin" />
-            <span className="text-[10px] font-black text-indigo-600 uppercase">
+          <div className="flex items-center gap-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl">
+            <Loader2 size={16} className="text-indigo-600 dark:text-indigo-400 animate-spin" />
+            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase">
               Creating ERPNext Record...
             </span>
           </div>
         )}
 
         {task.creationStatus === "FAILED" && (
-          <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2 text-rose-600">
+          <div className="p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-xl flex items-center gap-2 text-rose-600 dark:text-rose-400">
             <AlertCircle size={14} />
             <span className="text-[10px] font-black uppercase tracking-tight">
               Deployment Failed: Record Validation Error
@@ -304,8 +282,8 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
         )}
 
         {isCreated && (
-          <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
-            <div className="flex items-center gap-2 text-emerald-600">
+          <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl">
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
               <CheckSquare size={16} />
               <span className="text-[10px] font-black uppercase tracking-widest">
                 Doc: T-2026-001 Verified
@@ -313,20 +291,20 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
             </div>
             <ExternalLink
               size={14}
-              className="text-emerald-400 cursor-pointer"
+              className="text-emerald-400 dark:text-emerald-500 cursor-pointer"
             />
           </div>
         )}
 
         {!isLocked && !isEditing && !isApproved && !isCreated && (
-          <div className="pt-4 border-t border-slate-50 flex justify-end">
+          <div className="pt-4 border-t border-slate-50 dark:border-slate-700 flex justify-end">
             <button
               disabled={!isValid}
               onClick={() => onApprove(task.id)}
               className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
                 !isValid
-                  ? "bg-slate-100 text-slate-300"
-                  : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100"
+                  ? "bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-600"
+                  : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100 dark:shadow-indigo-900/20"
               }`}
             >
               <Check size={16} /> Approve Suggested Task
@@ -339,24 +317,22 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
 };
 
 export default function AIArchitect() {
-  const [searchParams, setSearchParams] = useSearchParams();
-    const qp = useQueryParams()
-  
+  const qp = useQueryParams();
+
   const project = qp.get("project") || null;
   const [uiState, setUiState] = useState(UI_STATES.IDLE);
   const [prompt, setPrompt] = useState("");
   const [intents, setIntents] = useState([]);
   const [drafts, setDrafts] = useState([]);
-  const [selectedProjectId, setSelectedProjectId] = useState(
-    AVAILABLE_PROJECTS[0].id
-  );
-
+  const [selectedProjectId] = useState(AVAILABLE_PROJECTS[0].id);
   const [selectedCycle, setSelectedCycle] = useState("");
+
   const cycles_options_query = useFrappeGetDocList("Cycle", {
     filters: { project: project },
     fields: ["name as value", "name as label"],
     limit_page_length: 100,
-},["cycles-options", project]);
+  }, ["cycles-options", project]);
+
   const { call: openPipeline } = useFrappePostCall(
     "infintrix_atlas.api.ai_pipeline.open_ai_pipeline"
   );
@@ -379,7 +355,6 @@ export default function AIArchitect() {
     return { valid: errors.length === 0, errors };
   }, []);
 
-  // --- Authoritative State Machine Handler ---
   useEffect(() => {
     let timeout;
 
@@ -387,7 +362,6 @@ export default function AIArchitect() {
       try {
         switch (uiState) {
           case UI_STATES.DECOMPOSING:
-            // Event: INTENTS_READY
             timeout = setTimeout(() => {
               setIntents([
                 { id: "I1", text: `Optimize ${selectedProject.scope}` },
@@ -398,9 +372,7 @@ export default function AIArchitect() {
             break;
 
           case UI_STATES.GUARDING:
-            // Event: GUARD_PASSED or GUARD_BLOCKED
             timeout = setTimeout(() => {
-              // Deep Feasibility Rule: Prompt must convey architectural complexity
               if (prompt.trim().split(/\s+/).length < 3) {
                 setUiState(UI_STATES.BLOCKED);
               } else {
@@ -410,7 +382,6 @@ export default function AIArchitect() {
             break;
 
           case UI_STATES.DRAFTING:
-            // Event: DRAFTS_READY
             timeout = setTimeout(() => {
               const raw = [
                 {
@@ -438,7 +409,6 @@ export default function AIArchitect() {
             break;
 
           case UI_STATES.VALIDATING:
-            // Event: VALIDATION_COMPLETE
             timeout = setTimeout(() => {
               setDrafts((prev) =>
                 prev.map((d) => ({ ...d, validation: validateTask(d) }))
@@ -459,11 +429,6 @@ export default function AIArchitect() {
     return () => clearTimeout(timeout);
   }, [uiState, selectedProject, prompt, validateTask]);
 
-  // const handleStartPipeline = () => {
-  //   if (prompt.trim() && uiState === UI_STATES.IDLE) {
-  //     setUiState(UI_STATES.DECOMPOSING);
-  //   }
-  // };
   const handleStartPipeline = async () => {
     if (!prompt.trim() || uiState !== UI_STATES.IDLE) return;
 
@@ -475,14 +440,13 @@ export default function AIArchitect() {
         prompt,
         cycle: selectedCycle || null,
       });
-      // console.log("Response: ",res)
 
       if (res.status === "BLOCKED") {
         setUiState(UI_STATES.BLOCKED);
         return;
       }
 
-      setIntents(res?.message?.intents || []); // optional if you return them
+      setIntents(res?.message?.intents || []);
       setDrafts(res?.message?.drafts || []);
       setUiState(UI_STATES.REVIEWING);
     } catch (e) {
@@ -491,72 +455,18 @@ export default function AIArchitect() {
     }
   };
 
-  // const handleUpdateTask = (id, newData) => {
-  //   setDrafts(prev => prev.map(t => {
-  //     if (t.id === id) {
-  //       // Integrity: Editing an approved task revokes its approval
-  //       const updated = { ...t, ...newData, status: 'DRAFT' };
-  //       return { ...updated, validation: validateTask(updated) };
-  //     }
-  //     return t;
-  //   }));
-  // };
   const handleUpdateTask = (id, newData) => {
     setDrafts((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...newData, status: "DRAFT" } : t))
     );
   };
 
-  // const handleApproveTask = (id) => {
-  //   setDrafts(prev => prev.map(t => t.id === id ? { ...t, status: 'APPROVED' } : t));
-  // };
   const handleApproveTask = (id) => {
     setDrafts((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status: "APPROVED" } : t))
     );
   };
 
-  // const handleDeploy = async () => {
-  //   if (
-  //     uiState !== UI_STATES.REVIEWING &&
-  //     uiState !== UI_STATES.PARTIAL_SUCCESS
-  //   )
-  //     return;
-
-  //   setUiState(UI_STATES.CREATING);
-  //   const toCreate = drafts.filter(
-  //     (d) => d.status === "APPROVED" && d.creationStatus !== "SUCCESS"
-  //   );
-
-  //   let failures = 0;
-  //   for (const [index, task] of toCreate.entries()) {
-  //     setDrafts((prev) =>
-  //       prev.map((t) =>
-  //         t.id === task.id ? { ...t, creationStatus: "LOADING" } : t
-  //       )
-  //     );
-
-  //     await new Promise((r) => setTimeout(r, 1200));
-
-  //     // Simulation: Occasional record failure
-  //     const success = index !== 1;
-  //     if (!success) failures++;
-
-  //     setDrafts((prev) =>
-  //       prev.map((t) =>
-  //         t.id === task.id
-  //           ? {
-  //               ...t,
-  //               creationStatus: success ? "SUCCESS" : "FAILED",
-  //               status: success ? "APPROVED" : "DRAFT", // Re-unlock failures for manual correction
-  //             }
-  //           : t
-  //       )
-  //     );
-  //   }
-
-  //   setUiState(failures === 0 ? UI_STATES.SUCCESS : UI_STATES.PARTIAL_SUCCESS);
-  // };
   const handleDeploy = async () => {
     if (
       uiState !== UI_STATES.REVIEWING &&
@@ -603,6 +513,7 @@ export default function AIArchitect() {
       setUiState(UI_STATES.ERROR);
     }
   };
+
   const handleReset = () => {
     if (uiState === UI_STATES.CREATING) return;
 
@@ -616,74 +527,60 @@ export default function AIArchitect() {
     PIPELINE_VISUALS[uiState] || PIPELINE_VISUALS[UI_STATES.ERROR];
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 p-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 p-8">
       <div className="mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left: Global Context Panel */}
         <aside className="lg:col-span-4 space-y-6">
-          <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-4xl p-8 shadow-sm">
             <h2 className="text-2xl font-black tracking-tight mb-2 flex items-center gap-2">
-              <Sparkles className="text-indigo-600" size={24} />
+              <Sparkles className="text-indigo-600 dark:text-indigo-400" size={24} />
               Task Architect
             </h2>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-8">
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-8">
               Structural Logic Engine
             </p>
 
             <div className="space-y-6">
-              <div className="space-y-4 pb-6 border-b border-slate-100">
+              <div className="space-y-4 pb-6 border-b border-slate-100 dark:border-slate-700">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
                     <Briefcase size={12} /> Target Context
                   </label>
-                  {project}
-                  {/* <select
-                    disabled={uiState !== UI_STATES.IDLE}
-                    className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
-                    value={selectedProjectId}
-                    onChange={(e) => setSelectedProjectId(e.target.value)}
-                  >
-                    {AVAILABLE_PROJECTS.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select> */}
+                  <div className="text-sm font-bold text-slate-900 dark:text-slate-100">{project}</div>
                 </div>
 
                 {selectedProject.mode === "Scrum" && (
                   <div className="space-y-1.5 animate-in slide-in-from-top-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
                       <Clock size={12} /> Cycle Boundary
                     </label>
 
                     <Select
                       disabled={uiState !== UI_STATES.IDLE}
-                      className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+                      className="w-full"
                       value={selectedCycle}
                       onChange={(v) => setSelectedCycle(v)}
                       options={cycles_options_query?.data ?? []}
                     />
-                     
                   </div>
                 )}
 
-                <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800">
                   <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">
                     Scope Policy
                   </div>
-                  <div className="text-xs font-bold text-indigo-700 leading-tight">
+                  <div className="text-xs font-bold text-indigo-700 dark:text-indigo-300 leading-tight">
                     {selectedProject.scope}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
                   Requirement Prompt
                 </label>
                 <textarea
                   readOnly={uiState !== UI_STATES.IDLE}
-                  className="w-full h-32 bg-slate-50 border-none rounded-2xl p-5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 transition-all resize-none disabled:opacity-50"
+                  className="w-full h-32 bg-slate-50 dark:bg-slate-700 border-none rounded-2xl p-5 text-sm font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 transition-all resize-none disabled:opacity-50"
                   placeholder="Enter architectural requirements..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
@@ -697,7 +594,7 @@ export default function AIArchitect() {
                     !prompt ||
                     (selectedProject.mode === "Scrum" && !selectedCycle)
                   }
-                  className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all"
+                  className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-indigo-700 shadow-xl shadow-indigo-100 dark:shadow-indigo-900/20 transition-all disabled:opacity-50"
                 >
                   <Wand2 size={18} /> Initiate Pipeline
                 </button>
@@ -705,7 +602,7 @@ export default function AIArchitect() {
                 <button
                   onClick={handleReset}
                   disabled={uiState === UI_STATES.CREATING}
-                  className="w-full py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-200 transition-all disabled:opacity-30"
+                  className="w-full py-4 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all disabled:opacity-30"
                 >
                   {uiState === UI_STATES.CREATING ? (
                     <Loader2 size={18} className="animate-spin" />
@@ -720,8 +617,8 @@ export default function AIArchitect() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-4xl p-8 shadow-sm">
+            <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-8">
               Pipeline State
             </h3>
             <div className="space-y-6">
@@ -741,8 +638,8 @@ export default function AIArchitect() {
                         isFinished
                           ? "bg-emerald-500 border-emerald-500 text-white"
                           : isActive
-                          ? "border-indigo-600 text-indigo-600 animate-pulse"
-                          : "border-slate-100 text-slate-200"
+                          ? "border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 animate-pulse"
+                          : "border-slate-100 dark:border-slate-700 text-slate-200 dark:text-slate-700"
                       }`}
                     >
                       {isFinished ? (
@@ -752,10 +649,10 @@ export default function AIArchitect() {
                       )}
                     </div>
                     <div className="pt-1">
-                      <div className="text-xs font-black text-slate-900 leading-none mb-1">
+                      <div className="text-xs font-black text-slate-900 dark:text-slate-100 leading-none mb-1">
                         {step.name}
                       </div>
-                      <div className="text-[9px] font-bold text-slate-400 uppercase leading-tight">
+                      <div className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase leading-tight">
                         {step.desc}
                       </div>
                     </div>
@@ -766,17 +663,16 @@ export default function AIArchitect() {
           </div>
         </aside>
 
-        {/* Right: Authoritative Workbench */}
         <main className="lg:col-span-8">
           {uiState === UI_STATES.IDLE && (
-            <div className="h-full flex flex-col items-center justify-center text-center p-20 border-4 border-dashed border-slate-100 rounded-[48px]">
-              <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center text-slate-200 mb-6">
+            <div className="h-full flex flex-col items-center justify-center text-center p-20 border-4 border-dashed border-slate-100 dark:border-slate-700 rounded-[48px]">
+              <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-3xl shadow-xl flex items-center justify-center text-slate-200 dark:text-slate-700 mb-6">
                 <Target size={40} />
               </div>
-              <h3 className="text-xl font-black text-slate-900 tracking-tight">
+              <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
                 Workbench Idle
               </h3>
-              <p className="text-sm font-bold text-slate-400 max-w-xs mx-auto mt-2 italic leading-relaxed">
+              <p className="text-sm font-bold text-slate-400 dark:text-slate-500 max-w-xs mx-auto mt-2 italic leading-relaxed">
                 Awaiting intent deconstruction sequence. Select context and
                 define prompt to begin.
               </p>
@@ -784,27 +680,27 @@ export default function AIArchitect() {
           )}
 
           {uiState === UI_STATES.ERROR && (
-            <div className="h-full flex flex-col items-center justify-center text-center p-20 bg-rose-50 border-4 border-dashed border-rose-200 rounded-[48px] animate-in fade-in zoom-in-95 duration-300">
-              <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center text-rose-500 mb-6 border border-rose-100">
+            <div className="h-full flex flex-col items-center justify-center text-center p-20 bg-rose-50 dark:bg-rose-900/20 border-4 border-dashed border-rose-200 dark:border-rose-800 rounded-[48px] animate-in fade-in zoom-in-95 duration-300">
+              <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-3xl shadow-xl flex items-center justify-center text-rose-500 dark:text-rose-400 mb-6 border border-rose-100 dark:border-rose-800">
                 <ShieldAlert size={40} />
               </div>
-              <h3 className="text-xl font-black text-rose-900 tracking-tight">
+              <h3 className="text-xl font-black text-rose-900 dark:text-rose-100 tracking-tight">
                 Technical Error Encountered
               </h3>
-              <p className="text-sm font-bold text-rose-700 max-w-sm mx-auto mt-2 leading-relaxed uppercase">
+              <p className="text-sm font-bold text-rose-700 dark:text-rose-300 max-w-sm mx-auto mt-2 leading-relaxed uppercase">
                 Runtime Exception during structural validation. Data integrity
                 maintained.
               </p>
               <div className="flex items-center gap-4 mt-8">
                 <button
                   onClick={() => setUiState(UI_STATES.VALIDATING)}
-                  className="px-8 py-3 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-rose-200 flex items-center gap-2"
+                  className="px-8 py-3 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-rose-200 dark:shadow-rose-900/20 flex items-center gap-2"
                 >
                   <RefreshCcw size={16} /> Retry Last Step
                 </button>
                 <button
                   onClick={handleReset}
-                  className="px-8 py-3 bg-white text-rose-600 border border-rose-200 rounded-2xl font-black text-[10px] uppercase tracking-widest"
+                  className="px-8 py-3 bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-2xl font-black text-[10px] uppercase tracking-widest"
                 >
                   Reset Architect
                 </button>
@@ -813,20 +709,20 @@ export default function AIArchitect() {
           )}
 
           {uiState === UI_STATES.BLOCKED && (
-            <div className="h-full flex flex-col items-center justify-center text-center p-20 bg-rose-50 border-4 border-dashed border-rose-200 rounded-[48px] animate-in fade-in zoom-in-95 duration-300">
-              <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center text-rose-500 mb-6 border border-rose-100">
+            <div className="h-full flex flex-col items-center justify-center text-center p-20 bg-rose-50 dark:bg-rose-900/20 border-4 border-dashed border-rose-200 dark:border-rose-800 rounded-[48px] animate-in fade-in zoom-in-95 duration-300">
+              <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-3xl shadow-xl flex items-center justify-center text-rose-500 dark:text-rose-400 mb-6 border border-rose-100 dark:border-rose-800">
                 <Ban size={40} />
               </div>
-              <h3 className="text-xl font-black text-rose-900 tracking-tight">
+              <h3 className="text-xl font-black text-rose-900 dark:text-rose-100 tracking-tight">
                 Insufficient Signal
               </h3>
-              <p className="text-sm font-bold text-rose-700 max-w-sm mx-auto mt-2 leading-relaxed uppercase">
+              <p className="text-sm font-bold text-rose-700 dark:text-rose-300 max-w-sm mx-auto mt-2 leading-relaxed uppercase">
                 Prompt lacks actionable intent for architectural deconstruction.
                 Please provide detailed requirements.
               </p>
               <button
                 onClick={handleReset}
-                className="mt-8 px-8 py-3 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-rose-200"
+                className="mt-8 px-8 py-3 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-rose-200 dark:shadow-rose-900/20"
               >
                 Modify Intent
               </button>
@@ -837,10 +733,9 @@ export default function AIArchitect() {
             uiState !== UI_STATES.BLOCKED &&
             uiState !== UI_STATES.ERROR && (
               <div className="space-y-10 animate-in fade-in duration-700">
-                {/* Context Verification */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-4xl p-8 shadow-sm">
+                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
                       <Layers size={14} /> Step 1: Intents Extracted
                     </h4>
                     <div className="space-y-2">
@@ -848,13 +743,13 @@ export default function AIArchitect() {
                         intents.map((i) => (
                           <div
                             key={i.id}
-                            className="bg-slate-50 p-4 rounded-2xl text-xs font-bold text-slate-600 border border-slate-100 animate-in slide-in-from-left-2"
+                            className="bg-slate-50 dark:bg-slate-700 p-4 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-600 animate-in slide-in-from-left-2"
                           >
                             {i.text}
                           </div>
                         ))
                       ) : (
-                        <div className="p-4 text-slate-300 italic text-xs flex items-center gap-2">
+                        <div className="p-4 text-slate-300 dark:text-slate-600 italic text-xs flex items-center gap-2">
                           <Loader2 size={14} className="animate-spin" />{" "}
                           Parsing...
                         </div>
@@ -863,30 +758,30 @@ export default function AIArchitect() {
                   </div>
 
                   <div
-                    className={`rounded-[32px] p-8 border transition-all ${
+                    className={`rounded-4xl p-8 border transition-all ${
                       visuals.finished.includes(2)
-                        ? "bg-emerald-50 border-emerald-100 shadow-sm"
-                        : "bg-slate-50 border-slate-200"
+                        ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800 shadow-sm"
+                        : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                     }`}
                   >
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
                       <Shield size={14} /> Step 2: Policy Guard
                     </h4>
                     {visuals.finished.includes(2) ? (
                       <div className="space-y-4">
-                        <div className="flex items-center gap-3 text-emerald-600">
+                        <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
                           <ShieldCheck size={32} />
                           <span className="text-lg font-black tracking-tight">
                             Verified
                           </span>
                         </div>
-                        <div className="text-[10px] font-black text-emerald-700/60 uppercase">
+                        <div className="text-[10px] font-black text-emerald-700/60 dark:text-emerald-400/60 uppercase">
                           • Policy: Capacity within bounds for{" "}
                           {selectedProject.name}
                         </div>
                       </div>
                     ) : (
-                      <div className="p-4 text-slate-300 italic text-xs flex items-center gap-2">
+                      <div className="p-4 text-slate-300 dark:text-slate-600 italic text-xs flex items-center gap-2">
                         <Loader2 size={14} className="animate-spin" />{" "}
                         Validating...
                       </div>
@@ -894,16 +789,15 @@ export default function AIArchitect() {
                   </div>
                 </div>
 
-                {/* Step 5 Workbench */}
                 {(drafts.length > 0 || uiState === UI_STATES.DRAFTING) && (
                   <div className="space-y-6 animate-in slide-in-from-bottom-8 duration-500">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                        <UserPlus size={16} className="text-indigo-600" />
+                      <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <UserPlus size={16} className="text-indigo-600 dark:text-indigo-400" />
                         Task Review Phase
                       </h3>
                       {uiState === UI_STATES.PARTIAL_SUCCESS && (
-                        <div className="bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border border-amber-100 flex items-center gap-2 animate-pulse shadow-sm">
+                        <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-2xl border border-amber-100 dark:border-amber-800 flex items-center gap-2 animate-pulse shadow-sm">
                           <AlertCircle size={14} />
                           <span className="text-[10px] font-black uppercase tracking-tight">
                             Critical: Correct Failed Records
@@ -932,10 +826,10 @@ export default function AIArchitect() {
                           />
                         ))
                       ) : (
-                        <div className="p-20 text-center border-2 border-dashed border-slate-100 rounded-[40px] text-slate-300 space-y-3">
+                        <div className="p-20 text-center border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-[40px] text-slate-300 dark:text-slate-600 space-y-3">
                           <Loader2
                             size={32}
-                            className="animate-spin mx-auto mb-2 text-indigo-200"
+                            className="animate-spin mx-auto mb-2 text-indigo-200 dark:text-indigo-800"
                           />
                           <p className="text-[10px] font-black uppercase tracking-widest">
                             Generating drafts...
@@ -944,20 +838,19 @@ export default function AIArchitect() {
                       )}
                     </div>
 
-                    {/* Commit Phase */}
                     {[
                       UI_STATES.REVIEWING,
                       UI_STATES.CREATING,
                       UI_STATES.SUCCESS,
                       UI_STATES.PARTIAL_SUCCESS,
                     ].includes(uiState) && (
-                      <div className="mt-12 p-10 bg-slate-900 rounded-[48px] text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl relative overflow-hidden">
+                      <div className="mt-12 p-10 bg-slate-900 dark:bg-slate-950 rounded-[48px] text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl relative overflow-hidden">
                         <div className="absolute right-0 top-0 w-64 h-64 bg-indigo-600/20 blur-[100px] pointer-events-none" />
                         <div className="relative z-10 space-y-2 text-center md:text-left">
                           <h3 className="text-2xl font-black tracking-tight">
                             Deploy to ERPNext
                           </h3>
-                          <p className="text-slate-400 text-sm font-bold max-w-sm uppercase tracking-tight">
+                          <p className="text-slate-400 dark:text-slate-500 text-sm font-bold max-w-sm uppercase tracking-tight">
                             High-integrity records will be created in{" "}
                             <span className="text-indigo-400">
                               {selectedProject.name}

@@ -18,49 +18,37 @@ const priorityIcons = {
 };
 
 const PriorityWidget = (props) => {
-  // const {
-  // } = props
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value || []);
 
   const priority_query = useGetDoctypeField("Task", "priority", "options");
-  const { options }=priority_query.data || {};
+  const { options } = priority_query.data || {};
 
   if (priority_query.isLoading) return "Loading";
-
-  // return (
-  //     <Badge className={TASK_PRIORITY_COLORS[priority]}>
-  //         <span className="flex items-center gap-1">
-  //             <span>{priorityIcons[priority]}</span>
-  //             <span>{priority}</span>
-  //         </span>
-  //     </Badge>
-  // )
 
   return (
     <Select
       variant="borderless"
-      //   className="min-w-24"
-      //   placeholder="Assignees"
       open={open}
-      onDropdownVisibleChange={(visible) => setOpen(visible)}
+      onOpenChange={(visible) => setOpen(visible)}
       onSelect={() => setOpen(false)}
       {...props}
       value={selected}
       onChange={(v) => {
         setSelected(v);
-
         props.onChange && props.onChange(v);
       }}
       optionRender={(props) => (
-        <div className="flex items-center" style={{ width: "100%" }}>
+        <div className="flex items-center dark:text-gray-200" style={{ width: "100%" }}>
           <span className="ml-2">{props.label}</span>
         </div>
       )}
-      dropdownStyle={{ width: 150, overflowX: "auto" }}
+      popupMatchSelectWidth={150}
+      dropdownClassName="dark:bg-gray-800"
+      className="dark:text-gray-200"
       maxTagCount="responsive"
     >
-      {options.map((option, index) => (
+      {options.map((option) => (
         <Select.Option key={option} value={option}>
           <Badge className={TASK_PRIORITY_COLORS[option]}>
             <span className="flex items-center gap-1">

@@ -4,6 +4,18 @@ app_publisher = "Muqeet Mughal"
 app_description = "A Project Management Software Built Specifically for the Software Development Teams"
 app_email = "muqeetmughal786@gmail.com"
 app_license = "mit"
+# app_icon_url = "/assets/atlas/images/logo.svg"
+# app_icon_title = "Atlas"
+# app_icon_route = "/atlas"
+# add_to_apps_screen = [
+# 	{
+# 		"name": "atlas",
+# 		"logo": "/assets/atlas/images/logo.svg",
+# 		"title": "Atlas",
+# 		"route": "/atlas",
+# 		"has_permission": "atlas.api.check_app_permission",
+# 	}
+# ]
 
 # Apps
 # ------------------
@@ -251,12 +263,13 @@ doc_events = {
     "Task": {
         "validate": "infintrix_atlas.events.task.validate_task_hierarchy",
         "before_save": "infintrix_atlas.events.task.before_task_save",
+
         # "has_permission": "infintrix_atlas.permissions.task_has_permission"
     },
-     "Project": {
-        "validate": "infintrix_atlas.events.project.validate_project",
-        # "before_save": "infintrix_atlas.events.task.before_task_save"
-    },
+    #  "Project": {
+    #     "before_insert": "infintrix_atlas.events.project.add_creator_to_users"
+    #     # "before_save": "infintrix_atlas.events.task.before_task_save"
+    # },
 
 }
 fixtures = [
@@ -279,7 +292,8 @@ fixtures = [
 			["parent", "in", [
 				"Task",
 				"Cycle Template",
-                "Cycle"
+                "Cycle",
+                "Customer",
 			]]
 		]
 
@@ -297,5 +311,6 @@ permission_query_conditions = {
 
 
 override_doctype_class = {
-"Task": "infintrix_atlas.overrides.task.TaskOverride"
+"Task": "infintrix_atlas.overrides.task.TaskOverride",
+"Project": "infintrix_atlas.overrides.project.ProjectOverride"
 }

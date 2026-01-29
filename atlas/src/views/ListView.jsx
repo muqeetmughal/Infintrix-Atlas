@@ -1,9 +1,6 @@
 import React, {
   useState,
   useMemo,
-  useCallback,
-  useRef,
-  useEffect,
 } from "react";
 import {
   DndContext,
@@ -18,70 +15,51 @@ import {
   PointerSensor,
 } from "@dnd-kit/core";
 import {
-  Search,
-  Filter,
   MoreVertical,
-  ChevronRight,
-  Calendar,
-  CheckSquare,
-  Plus,
-  UserPlus,
-  Trash2,
-  Download,
-  LayoutList,
-  ArrowUpDown,
-  Check,
-  X,
+  ChevronDown,
+  GripVertical,
+  Activity,
   Briefcase,
   AlertCircle,
   Hash,
-  Settings,
-  ChevronDown,
-  GripVertical,
-  RotateCcw,
-  Activity,
-  Tag,
+  CheckSquare,
+  UserPlus,
+  Trash2,
+  Check,
+  X,
 } from "lucide-react";
-import { useFrappeGetCall, useFrappeGetDocList } from "frappe-react-sdk";
+import { useFrappeGetDocList } from "frappe-react-sdk";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Select } from "antd";
-import { useDoctypeSchema, useGetDoctypeField } from "../hooks/doctype";
+import { useDoctypeSchema } from "../hooks/doctype";
 import Card from "../components/ui/Card";
 import PreviewAssignees from "../components/PreviewAssignees";
 
 // --- Constants ---
 
 const STATUS_CONFIG = {
-  Backlog: "bg-slate-100 text-slate-600 border-slate-200",
-  Open: "bg-blue-50 text-blue-600 border-blue-100",
-  Working: "bg-amber-50 text-amber-700 border-amber-100",
-  "Pending Review": "bg-purple-50 text-purple-700 border-purple-100",
-  Completed: "bg-emerald-50 text-emerald-700 border-emerald-100",
-};
-
-const PRIORITY_CONFIG = {
-  Urgent: { color: "text-red-600", bg: "bg-red-50", icon: AlertCircle },
-  High: { color: "text-orange-600", bg: "bg-orange-50", icon: AlertCircle },
-  Medium: { color: "text-indigo-600", bg: "bg-indigo-50", icon: Hash },
-  Low: { color: "text-slate-400", bg: "bg-slate-50", icon: Hash },
+  Backlog: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700",
+  Open: "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800",
+  Working: "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-800",
+  "Pending Review": "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-100 dark:border-purple-800",
+  Completed: "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800",
 };
 
 const COLOR_CONFIG = {
   status: {
-    Backlog: { color: "text-slate-600", bg: "bg-slate-100" },
-    Open: { color: "text-blue-600", bg: "bg-blue-50" },
-    Working: { color: "text-amber-700", bg: "bg-amber-50" },
-    "Pending Review": { color: "text-purple-700", bg: "bg-purple-50" },
-    Completed: { color: "text-emerald-700", bg: "bg-emerald-50" },
+    Backlog: { color: "text-slate-600 dark:text-slate-300", bg: "bg-slate-100 dark:bg-slate-800" },
+    Open: { color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/30" },
+    Working: { color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/30" },
+    "Pending Review": { color: "text-purple-700 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-900/30" },
+    Completed: { color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/30" },
   },
   priority: {
-    Urgent: { color: "text-red-600", bg: "bg-red-100", icon: AlertCircle },
-    High: { color: "text-orange-600", bg: "bg-orange-100", icon: AlertCircle },
-    Medium: { color: "text-indigo-600", bg: "bg-indigo-100", icon: Hash },
-    Low: { color: "text-slate-400", bg: "bg-green-100", icon: Hash },
+    Urgent: { color: "text-red-600 dark:text-red-400", bg: "bg-red-100 dark:bg-red-900/30", icon: AlertCircle },
+    High: { color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-100 dark:bg-orange-900/30", icon: AlertCircle },
+    Medium: { color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-100 dark:bg-indigo-900/30", icon: Hash },
+    Low: { color: "text-slate-400 dark:text-slate-500", bg: "bg-green-100 dark:bg-green-900/30", icon: Hash },
   },
 };
-
 
 // --- Sub-Components ---
 
@@ -91,17 +69,6 @@ const Badge = ({ children, className }) => (
   >
     {children}
   </span>
-);
-
-const Avatar = ({ name }) => (
-  <div className="flex items-center gap-2 group cursor-pointer">
-    <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-      {name?.charAt(0) || "?"}
-    </div>
-    <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
-      {name}
-    </span>
-  </div>
 );
 
 // --- Row UI (Pure Presentation) ---
@@ -114,27 +81,26 @@ const TaskRowUI = ({
   isOverlay = false,
   dragHandleProps = {},
 }) => {
-  const prio = PRIORITY_CONFIG[item.priority];
+  const prio = COLOR_CONFIG.priority[item.priority] || COLOR_CONFIG.priority.Low;
   const PrioIcon = prio.icon;
 
   return (
     <div
-      className={`group flex items-center border-b border-slate-50 min-w-[1000px] md:min-w-full transition-shadow
+      className={`group flex items-center border-b border-slate-50 dark:border-slate-800 min-w-250 md:min-w-full transition-shadow
         ${isDragging && !isOverlay
-          ? "opacity-20 bg-slate-100"
-          : "bg-white hover:bg-indigo-50/30"
-        } 
-        ${isSelected ? "bg-indigo-50/50" : ""} 
+          ? "opacity-20 bg-slate-100 dark:bg-slate-800"
+          : "bg-white dark:bg-slate-900 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/30"
+        }
+        ${isSelected ? "bg-indigo-50/50 dark:bg-indigo-950/50" : ""}
         ${isOverlay
-          ? "shadow-2xl ring-2 ring-indigo-500 rounded-2xl cursor-grabbing"
+          ? "shadow-2xl ring-2 ring-indigo-500 dark:ring-indigo-400 rounded-2xl cursor-grabbing"
           : ""
         }`}
     >
-      {/* Moved Drag Handle to the start for better visibility */}
       <div className="flex-none w-10 flex items-center justify-center p-2">
         <div
           {...dragHandleProps}
-          className="p-2 text-slate-400 hover:text-indigo-600 cursor-grab active:cursor-grabbing transition-all hover:bg-indigo-50 rounded-lg"
+          className="p-2 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-grab active:cursor-grabbing transition-all hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-lg"
           title="Drag to reorder or change status"
         >
           <GripVertical size={18} />
@@ -144,7 +110,7 @@ const TaskRowUI = ({
       <div className="flex-none w-14 flex items-center justify-center p-2">
         <input
           type="checkbox"
-          className="w-5 h-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+          className="w-5 h-5 rounded-lg border-slate-300 dark:border-slate-600 text-indigo-600 dark:text-indigo-500 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-pointer bg-white dark:bg-slate-800"
           checked={isSelected}
           onChange={(e) => {
             e.stopPropagation();
@@ -153,16 +119,16 @@ const TaskRowUI = ({
         />
       </div>
 
-      <div className="flex-none w-36 p-5 font-mono text-[11px] font-bold text-slate-400 uppercase tracking-tight">
+      <div className="flex-none w-36 p-5 font-mono text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">
         {item.id}
       </div>
 
-      <div className="flex-1 p-5 min-w-[300px] overflow-hidden">
+      <div className="flex-1 p-5 min-w-75 overflow-hidden">
         <div className="flex flex-col">
-          <span className="text-sm font-bold text-slate-900 truncate">
+          <span className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
             {item.subject}
           </span>
-          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 mt-0.5 uppercase tracking-wider">
+          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5 uppercase tracking-wider">
             <Briefcase size={10} />
             {item.project}
           </span>
@@ -181,21 +147,20 @@ const TaskRowUI = ({
       </div>
 
       <div className="flex-none w-48 p-5 overflow-hidden">
-        {item.assignee}
         <PreviewAssignees assignees={item.assignees} enable_tooltip={true} />
       </div>
 
       <div className="flex-none w-32 p-5 text-right">
         <div className="flex flex-col items-end">
-          <span className="text-xs font-bold text-slate-700">{item.date}</span>
-          <span className="text-[9px] font-black text-slate-300 uppercase mt-0.5 tracking-tighter">
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.date}</span>
+          <span className="text-[9px] font-black text-slate-300 dark:text-slate-600 uppercase mt-0.5 tracking-tighter">
             Deadline
           </span>
         </div>
       </div>
 
       <div className="flex-none w-16 p-5 flex items-center justify-center">
-        <button className="text-slate-300 hover:text-slate-600 p-2">
+        <button className="text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 p-2">
           <MoreVertical size={16} />
         </button>
       </div>
@@ -231,8 +196,9 @@ const DroppableStatusSection = ({
   selectedIds,
   onToggleSelect,
   searchQuery,
+  groupBy,
 }) => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const group_by = searchParams.get("group_by") || "";
   const { isOver, setNodeRef } = useDroppable({
     id: status,
@@ -244,38 +210,33 @@ const DroppableStatusSection = ({
     <div
       ref={setNodeRef}
       className={`transition-all duration-300 min-h-25 flex flex-col border-l-4 ${isOver
-          ? "bg-indigo-50/50 border-indigo-500 shadow-inner"
+          ? "bg-indigo-50/50 dark:bg-indigo-950/50 border-indigo-500 dark:border-indigo-400 shadow-inner"
           : "border-transparent"
         }`}
     >
       <div
-        className={`sticky top-0 z-10 backdrop-blur-md border-y border-slate-100/50 py-3 px-6 flex items-center justify-between ${isOver ? "bg-indigo-100/60" : "bg-slate-50/80"
+        className={`sticky top-0 z-10 backdrop-blur-md border-y border-slate-100/50 dark:border-slate-800/50 py-3 px-6 flex items-center justify-between ${isOver ? "bg-indigo-100/60 dark:bg-indigo-900/60" : "bg-slate-50/80 dark:bg-slate-900/80"
           }`}
       >
         <div className="flex items-center gap-3">
-          {/* <div
-            className={`w-1 h-4 rounded-full ${STATUS_CONFIG[status]
-              .split(" ")[1]
-              .replace("text-", "bg-")}`}
-          /> */}
           <Badge
-            className={`${COLOR_CONFIG[group_by][status]?.color} ${COLOR_CONFIG[group_by][status]?.bg} border-none shadow-sm`}
+            className={`${COLOR_CONFIG[group_by]?.[status]?.color || ''} ${COLOR_CONFIG[group_by]?.[status]?.bg || ''} border-none shadow-sm`}
           >
             {status}
           </Badge>
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">
+          <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] ml-2">
             {items.length} {items.length === 1 ? "Task" : "Tasks"}
           </span>
         </div>
         <div className="flex items-center gap-3">
           {isOver && (
-            <div className="flex items-center gap-2 px-3 py-1 bg-indigo-600 text-white rounded-full animate-pulse shadow-lg ring-2 ring-white/20">
+            <div className="flex items-center gap-2 px-3 py-1 bg-indigo-600 dark:bg-indigo-500 text-white rounded-full animate-pulse shadow-lg ring-2 ring-white/20">
               <span className="text-[9px] font-black uppercase tracking-widest">
                 Move Here
               </span>
             </div>
           )}
-          <ChevronDown size={16} className="text-slate-300" />
+          <ChevronDown size={16} className="text-slate-300 dark:text-slate-600" />
         </div>
       </div>
 
@@ -290,15 +251,15 @@ const DroppableStatusSection = ({
             />
           ))
         ) : (
-          <div className="p-8 flex justify-center bg-white/40">
+          <div className="p-8 flex justify-center bg-white/40 dark:bg-slate-900/40">
             <div
               className={`w-full max-w-sm py-8 border-2 border-dashed rounded-4xl transition-all flex flex-col items-center gap-2 ${isOver
-                  ? "border-indigo-400 bg-indigo-50/50"
-                  : "border-slate-100 bg-transparent"
+                  ? "border-indigo-400 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/50"
+                  : "border-slate-100 dark:border-slate-800 bg-transparent"
                 }`}
             >
-              <Activity size={24} className="text-slate-100" />
-              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
+              <Activity size={24} className="text-slate-100 dark:text-slate-800" />
+              <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">
                 {isOver ? "Drop to Assign" : `Section Empty`}
               </span>
             </div>
@@ -312,105 +273,80 @@ const DroppableStatusSection = ({
 // --- Main App ---
 
 export default function ListView() {
-  const [items_old, setItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery] = useState("");
   const [activeId, setActiveId] = useState(null);
-  const [filters, setFilters] = useState({ status: [], priority: [] });
-    const schema_query = useDoctypeSchema("Task");
-
+  const schema_query = useDoctypeSchema("Task");
 
   const group_by = searchParams.get("group_by") || null;
-  //   const doctype_field_query = useGetDoctypeField("Task", group_by, "options");
   const params = useParams();
   const project = params.project || null;
   const tasks_list_query = useFrappeGetDocList(
-      `Task`,
-      {
-        filters: { project: project },
-        fields: [
-          "name",
-          "name as id",
-          "subject as title",
-          "status",
-          "type",
-          "custom_cycle as cycle",
-          "priority",
-          "modified",
-          "project",
-        ],
-        // limit_page_length: 1000,
-      },
-      "list_view", {
-          revalidateOnFocus: false,
-          revalidateIfStale: false,
-          revalidateOnReconnect: false,
-      }
-  
-      
-    );
-  
+    `Task`,
+    {
+      filters: { project: project },
+      fields: [
+        "name",
+        "name as id",
+        "subject as title",
+        "status",
+        "type",
+        "custom_cycle as cycle",
+        "priority",
+        "modified",
+        "project",
+      ],
+    },
+    "list_view",
+    {
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+      revalidateOnReconnect: false,
+    }
+  );
 
-    
-    const schema = schema_query.data || {};
-    const fields = schema.fields || [];
-    
-    const group_by_fields = useMemo(() => {
-      return fields.filter(
-        (f) => f.fieldtype === "Select"
-        //   || f.fieldtype === "Link"
-      );
-    }, [fields]);
-    
-    const statuses = Object.keys(STATUS_CONFIG);
-    
-    
-    const sensors = useSensors(
-      useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-      useSensor(MouseSensor),
-      useSensor(TouchSensor)
-    );
-    
-    const selectedGroupByField = useMemo(() => {
-      return group_by_fields.find((f) => f.fieldname === group_by) || {};
-    }, [group_by]);
-    
-    const groups = useMemo(() => {
-      if (selectedGroupByField.fieldtype === "Select") {
-        return selectedGroupByField.options.split("\n").map((opt) => opt.trim());
-      }
-      return [];
-    }, [selectedGroupByField]);
-    
-    // console.log("groups:", groups);
-    const items = tasks_list_query.data?.message || [];
-    
-    const filteredItems = useMemo(() => {
-      return items.filter((item) => {
-        // console.log("item:", item);
+  const schema = schema_query.data || {};
+  const fields = schema.fields || [];
+
+  const group_by_fields = useMemo(() => {
+    return fields.filter((f) => f.fieldtype === "Select");
+  }, [fields]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor),
+    useSensor(TouchSensor)
+  );
+
+  const selectedGroupByField = useMemo(() => {
+    return group_by_fields.find((f) => f.fieldname === group_by) || {};
+  }, [group_by, group_by_fields]);
+
+  const groups = useMemo(() => {
+    if (selectedGroupByField.fieldtype === "Select") {
+      return selectedGroupByField.options?.split("\n").map((opt) => opt.trim()) || [];
+    }
+    return [];
+  }, [selectedGroupByField]);
+
+  const items = tasks_list_query.data?.message || [];
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
       const matchesSearch =
-        item.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.id.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus =
-        filters.status.length === 0 || filters.status.includes(item.status);
-      const matchesPriority =
-        filters.priority.length === 0 ||
-        filters.priority.includes(item.priority);
-      return matchesSearch && matchesStatus && matchesPriority;
+        item.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.id?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
     });
-  }, [items, searchQuery, filters, group_by, tasks_list_query.isLoading]);
+  }, [items, searchQuery]);
 
   const handleDragStart = (event) => setActiveId(event.active.id);
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
-    if (over && statuses.includes(over.id)) {
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === active.id ? { ...item, status: over.id } : item
-        )
-      );
+    if (over && groups.includes(over.id)) {
+      // Handle status update logic here
     }
     setActiveId(null);
   };
@@ -419,12 +355,14 @@ export default function ListView() {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
+
   const activeTask = useMemo(
     () => items.find((t) => t.id === activeId),
     [items, activeId]
   );
 
   if (tasks_list_query.isLoading || schema_query.isLoading) return "Loading...";
+
   return (
     <DndContext
       sensors={sensors}
@@ -433,11 +371,6 @@ export default function ListView() {
       onDragEnd={handleDragEnd}
     >
       <Card className="p-0">
-        {/* <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-indigo-100 p-4 md:p-8 space-y-6"> */}
-        {/* Header */}
-
-        {/* Search Toolbar */}
-
         <Select
           variant="underlined"
           placeholder="Group by"
@@ -454,13 +387,11 @@ export default function ListView() {
         />
 
         {!group_by ? (
-          "Please select a 'Group by' field to display the list."
+          <div className="text-slate-600 dark:text-slate-400">Please select a 'Group by' field to display the list.</div>
         ) : (
           <>
-            {/* List Content */}
             <div className="overflow-x-auto custom-scrollbar">
-              {/* List Header */}
-              <div className="bg-slate-50/80 border-b border-slate-100 flex items-center min-w-[1000px] md:min-w-full font-black text-[10px] text-slate-400 uppercase tracking-[0.2em] py-4">
+              <div className="bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-100 dark:border-slate-800 flex items-center min-w-250 md:min-w-full font-black text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] py-4">
                 <div className="w-10 flex justify-center">
                   <GripVertical size={14} />
                 </div>
@@ -468,35 +399,31 @@ export default function ListView() {
                   <CheckSquare size={16} />
                 </div>
                 <div className="w-36 px-5">ID / Ref</div>
-                <div className="flex-1 px-5 min-w-[300px]">
-                  Subject & Context
-                </div>
+                <div className="flex-1 px-5 min-w-75">Subject & Context</div>
                 <div className="w-36 px-5">Priority</div>
                 <div className="w-48 px-5">Assignee</div>
                 <div className="w-32 px-5 text-right">Deadline</div>
                 <div className="w-16 px-5"></div>
               </div>
 
-              <div className="flex flex-col min-h-[600px]">
+              <div className="flex flex-col min-h-150">
                 {groups.map((group) => (
                   <DroppableStatusSection
                     key={group}
                     status={group}
-                    items={filteredItems.filter(
-                      (item) => item[group_by] === group
-                    )}
+                    items={filteredItems.filter((item) => item[group_by] === group)}
                     selectedIds={selectedIds}
                     onToggleSelect={toggleSelect}
                     searchQuery={searchQuery}
+                    groupBy={group_by}
                   />
                 ))}
               </div>
             </div>
 
-            {/* Drag Overlay */}
             <DragOverlay>
               {activeTask ? (
-                <div className="w-[1000px] opacity-95">
+                <div className="w-250 opacity-95">
                   <TaskRowUI
                     item={activeTask}
                     isSelected={selectedIds.includes(activeTask.id)}
@@ -506,16 +433,15 @@ export default function ListView() {
               ) : null}
             </DragOverlay>
 
-            {/* Batch Actions Bar */}
             {selectedIds.length > 0 && (
-              <div className="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white rounded-[40px] p-4 flex items-center gap-10 shadow-2xl z-50 ring-2 ring-white/10 pr-8">
+              <div className="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-slate-800 text-white rounded-[40px] p-4 flex items-center gap-10 shadow-2xl z-50 ring-2 ring-white/10 dark:ring-white/5 pr-8">
                 <div className="px-10 border-r border-white/10 flex flex-col">
-                  <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                  <span className="text-[10px] font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest">
                     Bulk Manager
                   </span>
                   <span className="text-2xl font-black tracking-tighter">
                     {selectedIds.length}{" "}
-                    <span className="text-sm text-slate-500 font-bold uppercase italic tracking-normal">
+                    <span className="text-sm text-slate-500 dark:text-slate-400 font-bold uppercase italic tracking-normal">
                       Tasks
                     </span>
                   </span>
@@ -525,18 +451,13 @@ export default function ListView() {
                     <UserPlus size={18} />
                     Assign
                   </button>
-                  <button className="flex items-center gap-3 px-6 py-3.5 bg-white/5 hover:bg-white/10 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all text-emerald-400">
+                  <button className="flex items-center gap-3 px-6 py-3.5 bg-white/5 hover:bg-white/10 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all text-emerald-400 dark:text-emerald-300">
                     <Check size={18} />
                     Complete
                   </button>
                   <button
-                    className="flex items-center gap-3 px-6 py-3.5 bg-rose-500/10 hover:bg-rose-500 rounded-2xl text-[11px] font-black uppercase tracking-widest text-rose-500 hover:text-white transition-all"
-                    onClick={() => {
-                      setItems((prev) =>
-                        prev.filter((i) => !selectedIds.includes(i.id))
-                      );
-                      setSelectedIds([]);
-                    }}
+                    className="flex items-center gap-3 px-6 py-3.5 bg-rose-500/10 hover:bg-rose-500 rounded-2xl text-[11px] font-black uppercase tracking-widest text-rose-500 dark:text-rose-400 hover:text-white transition-all"
+                    onClick={() => setSelectedIds([])}
                   >
                     <Trash2 size={18} />
                     Delete
@@ -544,13 +465,12 @@ export default function ListView() {
                 </div>
                 <button
                   onClick={() => setSelectedIds([])}
-                  className="p-2 hover:bg-white/10 text-slate-500 rounded-full transition-all"
+                  className="p-2 hover:bg-white/10 text-slate-500 dark:text-slate-400 rounded-full transition-all"
                 >
                   <X size={24} />
                 </button>
               </div>
             )}
-            {/* </div> */}
           </>
         )}
       </Card>

@@ -77,7 +77,6 @@ export const useTasksQuery = (
 	const filters_string = qp.all;
 	const cacheKey = ["tasks", filters_string, cycle_name];
 
-	console.log("cacheKey:", cacheKey);
   let final_filters = [];
   if (project) {
     final_filters.push(["project", "in", [project]]);
