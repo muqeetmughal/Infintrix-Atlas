@@ -10,6 +10,91 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useDoctypeSchema, useGetDoctypeField } from "../hooks/doctype";
 import { Checkbox, Progress } from "antd";
 
+
+const ProjectCard = ({ project: p }) => {
+  return (
+    <Link key={p.name} to={`/tasks/kanban?project=${p.name}`}>
+      <Card className="hover:shadow-lg hover:shadow-indigo-100 dark:hover:shadow-indigo-900/30 hover:-translate-y-1 transition-all duration-300 cursor-pointer group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
+        {/* Compact Header */}
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 line-clamp-1 mb-1">
+              {p.project_name}
+            </h3>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
+              {p.name}
+            </p>
+          </div>
+          <Badge className={`${PROJECT_STATUS_COLORS[p.status]} text-[10px] px-2 py-0.5 ml-2 shrink-0`}>
+            {p.status}
+          </Badge>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-3 text-xs">
+          <div className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-400">
+            <span className="font-semibold">Priority:</span>
+            <span className={`font-bold ${p.priority === 'High' ? 'text-red-600 dark:text-red-400' : p.priority === 'Medium' ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}`}>
+              {p.priority}
+            </span>
+          </div>
+
+          {p.project_type && (
+            <div className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-400">
+              <span className="font-semibold">Type:</span>
+              <span className="truncate max-w-25">{p.project_type}</span>
+            </div>
+          )}
+
+          {p.custom_execution_mode && (
+            <div className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-400">
+              <span className="font-semibold">Mode:</span>
+              <span className="truncate max-w-25">{p.custom_execution_mode}</span>
+            </div>
+          )}
+
+          {p.department && (
+            <div className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-400">
+              <span className="font-semibold">Dept:</span>
+              <span className="truncate max-w-30">{p.department}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Progress Bar - More Compact */}
+        <div className="mb-3">
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">Progress</span>
+            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{p.percent_complete}%</span>
+          </div>
+          <Progress
+            percent={p.percent_complete}
+            size="small"
+            showInfo={false}
+            strokeColor={{
+              "0%": "#4f46e5",
+              "100%": "#818cf8",
+            }}
+            className="[&_.ant-progress-inner]:bg-slate-100 dark:[&_.ant-progress-inner]:bg-slate-700 [&_.ant-progress-inner]:rounded-full [&_.ant-progress-bg]:h-1.5"
+          />
+        </div>
+
+        {/* Compact Footer */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
+          <Assignee assignees={p?.assignees} size="sm" />
+          {p.expected_end_date && (
+            <div className="flex items-center text-[10px] text-slate-500 dark:text-slate-400 font-medium space-x-1">
+              <Calendar size={11} />
+              <span>{new Date(p.expected_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            </div>
+          )}
+        </div>
+      </Card>
+    </Link>
+  );
+};
+
+
+
 const Projects = () => {
   // const [projects] = useState(INITIAL_PROJECTS);
   const [isOpen, setIsOpen] = React.useState(false);
@@ -22,8 +107,11 @@ const Projects = () => {
   // const query = useDoctypeSchema("Project")
   const projects_query = useFrappeGetDocList("Project", {
     fields: ["*"],
-    limit_page_length: 20,
-    order_by: "modified desc",
+    limit_page_length: 5,
+    orderBy: {
+      field: "modified",
+      order: "desc",
+    },
     filters: status_param ? [["status", "=", status_param]] : [],
   });
 
@@ -73,19 +161,17 @@ const Projects = () => {
                   searchParams.set("status", status);
                   setSearchParams(searchParams);
                 }}
-                className={`flex-shrink-0 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
-                  status_param === status
-                    ? "bg-indigo-600 dark:bg-indigo-500 text-white shadow-md"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700"
-                }`}
+                className={`flex-shrink-0 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${status_param === status
+                  ? "bg-indigo-600 dark:bg-indigo-500 text-white shadow-md"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  }`}
                 key={status}
               >
                 {status}
-                <span className={`ml-2 text-xs font-bold px-1.5 py-0.5 rounded ${
-                  status_param === status
-                    ? "bg-white/20"
-                    : "bg-slate-200 dark:bg-slate-600"
-                }`}>
+                <span className={`ml-2 text-xs font-bold px-1.5 py-0.5 rounded ${status_param === status
+                  ? "bg-white/20"
+                  : "bg-slate-200 dark:bg-slate-600"
+                  }`}>
                   {projects.filter(p => p.status === status).length}
                 </span>
               </button>
@@ -112,59 +198,11 @@ const Projects = () => {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
             {projects.map((p) => (
-              <Card
-                key={p.name}
-                className="hover:shadow-2xl hover:shadow-indigo-100 dark:hover:shadow-indigo-900/30 hover:-translate-y-2 transition-all duration-300 cursor-pointer group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden"
-              >
-                {/* Card Header */}
-                <div className="flex justify-between items-start mb-4">
-                  <Badge className={`${PROJECT_STATUS_COLORS[p.status]} shadow-sm`}>
-                    {p.status}
-                  </Badge>
-                  <button className="text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 p-2 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100">
-                    <MoreVertical size={18} />
-                  </button>
-                </div>
 
-                {/* Card Content */}
-                <Link to={`/tasks/kanban?project=${p.name}`}>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 line-clamp-2">
-                    {p.project_name}
-                  </h3>
-                </Link>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-medium">
-                  <span className="text-indigo-600 dark:text-indigo-400">{p.name}</span> • {p.project_type}
-                </p>
+              <ProjectCard key={p.name} project={p} />
 
-                {/* Progress Bar */}
-                <div className="mb-6">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Progress</span>
-                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{p.percent_complete}%</span>
-                  </div>
-                  <Progress
-                    percent={p.percent_complete}
-                    size="small"
-                    showInfo={false}
-                    strokeColor={{
-                      "0%": "#4f46e5",
-                      "100%": "#818cf8",
-                    }}
-                    className="[&_.ant-progress-inner]:bg-slate-100 dark:[&_.ant-progress-inner]:bg-slate-700 [&_.ant-progress-inner]:rounded-full"
-                  />
-                </div>
-
-                {/* Card Footer */}
-                <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700 group-hover:border-indigo-100 dark:group-hover:border-indigo-900/50 transition-colors duration-200">
-                  <Assignee assignees={p?.assignees} />
-                  <div className="flex items-center text-[10px] text-slate-500 dark:text-slate-400 font-bold space-x-1.5 uppercase tracking-wider group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
-                    <Calendar size={13} className="group-hover:animate-pulse" />
-                    <span>{p.expected_end_date}</span>
-                  </div>
-                </div>
-              </Card>
             ))}
           </div>
         )}

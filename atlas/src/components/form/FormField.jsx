@@ -31,8 +31,10 @@ export function FormField({ field }) {
       case "Check":
         return <Checkbox disabled={isReadOnly}>{label}</Checkbox>;
       case "Select":
+        console
         return (
           <Select
+           defaultValue={field.default}
             options={
               field.options
                 ? field.options.split("\n").map((opt) => ({

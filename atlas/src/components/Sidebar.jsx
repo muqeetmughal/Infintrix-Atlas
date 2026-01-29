@@ -1,19 +1,17 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useFrappeAuth } from "frappe-react-sdk";
 import { menuItems } from "../data/menu";
 
 const Sidebar = () => {
-  const { currentUser } = useFrappeAuth();
   const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const navigate = useNavigate();
-
 
   return (
     <>
+      {/* Desktop Sidebar */}
       <aside
-        className={`bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 fixed lg:relative z-20 transition-all duration-300 h-screen overflow-hidden ${
+        className={`bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 h-screen overflow-y-auto sticky top-0 hidden lg:block ${
           isSidebarOpen ? "w-72" : "w-24"
         }`}
       >
@@ -24,6 +22,7 @@ const Sidebar = () => {
             </div>
             {isSidebarOpen && (
               <span className="font-black text-xl tracking-tighter text-slate-900 dark:text-white">
+                {/* cspell:disable-next-line */}
                 Infintrix Atlas
               </span>
             )}
@@ -34,9 +33,7 @@ const Sidebar = () => {
           {menuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => {
-                navigate(`/${item.id}`);
-              }}
+              onClick={() => navigate(`/${item.id}`)}
               className={`cursor-pointer w-full flex items-center space-x-4 px-5 py-4 rounded-2xl transition-all duration-200 ${
                 location.pathname.includes(item.id)
                   ? "bg-indigo-600 dark:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50 scale-105"
@@ -94,27 +91,37 @@ const Sidebar = () => {
             </svg>
           </button>
         </div>
-
-        <div className="absolute bottom-8 left-0 right-0 px-8">
-          <div
-            className={`bg-slate-100 dark:bg-slate-800 rounded-2xl p-4 flex items-center space-x-3 transition-opacity duration-300 ${
-              isSidebarOpen ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-              PM
-            </div>
-            <div>
-              <div className="text-xs font-black text-slate-900 dark:text-slate-100">
-                {currentUser}
-              </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                Upgrade Available
-              </div>
-            </div>
-          </div>
-        </div>
       </aside>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 z-50 pb-safe">
+        <div className="flex items-center justify-around px-2 py-3">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => navigate(`/${item.id}`)}
+              className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-xl transition-all duration-200 ${
+                location.pathname.includes(item.id)
+                  ? "text-indigo-600 dark:text-indigo-400"
+                  : "text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              <item.icon
+                size={20}
+                className={
+                  item.highlight && !location.pathname.includes(item.id)
+                    ? "text-indigo-500 dark:text-indigo-400 animate-pulse"
+                    : ""
+                }
+              />
+              <span className="text-[10px] font-medium">{item.label}</span>
+              {item.highlight && (
+                <span className="absolute -top-1 right-2 w-2 h-2 bg-indigo-500 rounded-full"></span>
+              )}
+            </button>
+          ))}
+        </div>
+      </nav>
     </>
   );
 };

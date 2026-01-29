@@ -73,6 +73,8 @@ const TaskCard = ({ task, isOverlay = false }) => {
       id: task.id,
     });
 
+    const [searchParams, setSearchParams] = useSearchParams();
+
   const style = transform
     ? {
       transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
@@ -112,7 +114,13 @@ const TaskCard = ({ task, isOverlay = false }) => {
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 font-mono uppercase">
               {task.id}
             </span>
-            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
+            <h4 onClick={(e) => {
+              e.stopPropagation();
+              if (issue.id === "new_item") return;
+              // console.log("Issue clicked:", issue, issue);
+              searchParams.set("selected_task", issue.id);
+              setSearchParams(searchParams);
+            }} className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
               {task.subject}
             </h4>
           </div>

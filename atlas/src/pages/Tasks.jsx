@@ -79,7 +79,7 @@ const Tasks = () => {
   const active_cycle_name = cycle?.name;
 
   const tabs = [
-    { id: "ai-architect", label: "AI Architect" },
+    // { id: "ai-architect", label: "AI Architect" },
     { id: "list", label: "List" },
     { id: "backlog", label: "Backlog" },
     // { id: "list", label: "List" },
@@ -160,43 +160,48 @@ const Tasks = () => {
             <Button className="p-2 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
               <Filter size={18} className="md:w-5 md:h-5" />
             </Button>
-            <Button
-              onClick={() => {
-                createMutation
-                  .createDoc("Cycle", {
-                    project: project,
-                  })
-                  .then(() => {
-                    mutate(["cycles", project]);
-                  });
-              }}
-            >
-              Create Cycle
-            </Button>
+            {
+              project_data.custom_execution_mode === "Scrum" && <>
+                <Button
+                  onClick={() => {
+                    createMutation
+                      .createDoc("Cycle", {
+                        project: project,
+                      })
+                      .then(() => {
+                        mutate(["cycles", project]);
+                      });
+                  }}
+                >
+                  Create Cycle
+                </Button>
 
-            <Select
-              placeholder="Create Cycle From Template"
-              style={{ width: 200 }}
-              onChange={(value) => {
-                create_cycles_for_project_mutatation.call({
-                  cycle_template_name: value,
-                  project_id: project,
-                });
-              }}
-              options={cycles_template_options_query?.data || []}
-            />
+                <Select
+                  placeholder="Create Cycle From Template"
+                  style={{ width: 200 }}
+                  onChange={(value) => {
+                    create_cycles_for_project_mutatation.call({
+                      cycle_template_name: value,
+                      project_id: project,
+                    });
+                  }}
+                  options={cycles_template_options_query?.data || []}
+                />
 
-            {active_cycle_name && (
-              <Button
-                type="dashed"
-                onClick={() => {
-                  searchParams.set("complete_cycle", active_cycle_name);
-                  setSearchParams(searchParams);
-                }}
-              >
-                Complete Cycle
-              </Button>
-            )}
+                {active_cycle_name && (
+                  <Button
+                    type="dashed"
+                    onClick={() => {
+                      searchParams.set("complete_cycle", active_cycle_name);
+                      setSearchParams(searchParams);
+                    }}
+                  >
+                    Complete Cycle
+                  </Button>
+                )}
+              </>
+            }
+
 
             <Button
               type="primary"
