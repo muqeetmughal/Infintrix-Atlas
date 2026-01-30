@@ -7,12 +7,13 @@ import Dashboard from "./pages/Dashboard";
 import AIArchitect from "./pages/AIArchitect";
 import Tasks from "./pages/Tasks";
 import TaskForm from "./pages/TaskForm";
+import ErrorBoundary from "./components/ErrorBoundry";
 export const router = createBrowserRouter(
     [
         {
             path: "/",
             element: <MainLayout />,
-            errorElement: <NotFound />,
+            errorElement: <ErrorBoundary />,
             // loader: rootLoader,
             children: [
                 // {
@@ -56,6 +57,9 @@ export const router = createBrowserRouter(
                 {
                     path: "tasks/:view",
                     element: <Tasks />
+                }, {
+                    path : "*",
+                    element : <NotFound/>
                 }
 
 

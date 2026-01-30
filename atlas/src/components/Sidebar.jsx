@@ -96,30 +96,32 @@ const Sidebar = () => {
       {/* Mobile Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 z-50 pb-safe">
         <div className="flex items-center justify-around px-2 py-3">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => navigate(`/${item.id}`)}
-              className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-xl transition-all duration-200 ${
-                location.pathname.includes(item.id)
-                  ? "text-indigo-600 dark:text-indigo-400"
-                  : "text-slate-600 dark:text-slate-400"
-              }`}
-            >
-              <item.icon
-                size={20}
-                className={
-                  item.highlight && !location.pathname.includes(item.id)
-                    ? "text-indigo-500 dark:text-indigo-400 animate-pulse"
-                    : ""
-                }
-              />
-              <span className="text-[10px] font-medium">{item.label}</span>
-              {item.highlight && (
-                <span className="absolute -top-1 right-2 w-2 h-2 bg-indigo-500 rounded-full"></span>
-              )}
-            </button>
-          ))}
+          {menuItems.map((item) => {
+            return (
+              <button
+                key={item.id}
+                onClick={() => navigate(`/${item.id}`)}
+                className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-xl transition-all duration-200 ${
+                  location.pathname.includes(item.id)
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-600 dark:text-slate-400"
+                }`}
+              >
+                <item.icon
+                  size={20}
+                  className={
+                    item.highlight && !location.pathname.includes(item.id)
+                      ? "text-indigo-500 dark:text-indigo-400 animate-pulse"
+                      : ""
+                  }
+                />
+                <span className="text-[10px] font-medium">{item.label}</span>
+                {item.highlight && (
+                  <span className="absolute -top-1 right-2 w-2 h-2 bg-indigo-500 rounded-full"></span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </nav>
     </>

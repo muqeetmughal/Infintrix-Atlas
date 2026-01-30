@@ -1,23 +1,13 @@
 import { Outlet } from "react-router-dom";
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Search,
-  AlertCircle,
-  ChevronRight as ChevronRightIcon,
-  ChevronDown as ChevronDownIcon,
-  LogOut
-} from 'lucide-react';
+
 import Sidebar from "../components/Sidebar";
 import { useFrappeAuth } from "frappe-react-sdk";
 import { useLocation } from "react-router-dom";
 import { menuItems } from "../data/menu";
 import ModalGenerator from "../components/ModalGenerator";
 import { useTheme } from "../context/ThemeContext";
-import { Button } from "antd";
-import {
-  MoonOutlined,
-  SunOutlined
-} from '@ant-design/icons';
+
 import Header from "../components/Header";
 const MainLayout = () => {
   const location = useLocation();

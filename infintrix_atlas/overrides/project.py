@@ -74,7 +74,7 @@ class ProjectOverride(Project):
 					frappe.log_error(frappe.get_traceback(), f"Failed to send project welcome email to {user.user}")
 
 
-
+	
 
 	def before_insert(self):
 		if not self.users:

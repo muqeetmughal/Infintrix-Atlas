@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { FormField } from "./FormField";
-import { useFrappeCreateDoc } from "frappe-react-sdk";
+import { useFrappeCreateDoc, useSWRConfig } from "frappe-react-sdk";
 import { useDoctypeSchema } from "../../hooks/doctype";
 import { Maximize, Minimize } from "lucide-react";
 import { Button, Collapse, Form, Modal, Row, Col } from "antd";
@@ -19,13 +19,17 @@ function FormRender({
 
   const schemaQuery = useDoctypeSchema(doctype);
   const createMutation = useFrappeCreateDoc();
+  const swr = useSWRConfig();
 
   const schema = useMemo(() => {
     let form_schema = schemaQuery.data || {};
-    
+
     if (doctype == "Cycle" && mode === "edit") {
-      form_schema.fields = (form_schema?.fields||[]).map(field => {
-        if (field.fieldname === "start_date" || field.fieldname === "end_date") {
+      form_schema.fields = (form_schema?.fields || []).map((field) => {
+        if (
+          field.fieldname === "start_date" ||
+          field.fieldname === "end_date"
+        ) {
           return { ...field, reqd: 1 };
         }
         return field;
@@ -44,8 +48,6 @@ function FormRender({
     if (!defaultValues || Object.keys(defaultValues).length === 0) return;
 
     (async () => {
-
-
       const isTimestampString = (v) =>
         typeof v === "string" &&
         /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(v);
@@ -76,7 +78,7 @@ function FormRender({
   const fields = useMemo(() => {
     if (!quickEntry) return allFields;
 
-    const quick = allFields.filter(f => f.allow_in_quick_entry == 1);
+    const quick = allFields.filter((f) => f.allow_in_quick_entry == 1);
     return quick.length ? quick : allFields;
   }, [quickEntry, allFields]);
 
@@ -88,9 +90,9 @@ function FormRender({
     let current = { label: "", columns: [[]] };
     let col = 0;
 
-    fields.forEach(field => {
+    fields.forEach((field) => {
       if (field.fieldtype === "Section Break") {
-        if (current.columns.some(c => c.length) || current.label) {
+        if (current.columns.some((c) => c.length) || current.label) {
           result.push(current);
         }
         current = { label: field.label || "", columns: [[]] };
@@ -109,7 +111,7 @@ function FormRender({
       }
     });
 
-    if (current.columns.some(c => c.length) || current.label) {
+    if (current.columns.some((c) => c.length) || current.label) {
       result.push(current);
     }
 
@@ -128,7 +130,7 @@ function FormRender({
           key="toggle"
           type="text"
           icon={quickEntry ? <Maximize size={16} /> : <Minimize size={16} />}
-          onClick={() => setQuickEntry(v => !v)}
+          onClick={() => setQuickEntry((v) => !v)}
         />,
         <Button key="cancel" onClick={onClose} size="large">
           Cancel
@@ -148,9 +150,18 @@ function FormRender({
         form={form}
         layout="vertical"
         name={schema.name}
-        initialValues={defaultValues}   // used only on first mount
+        initialValues={defaultValues} // used only on first mount
         onFinish={(values) => {
-          createMutation.createDoc(doctype, values).then(onClose);
+          if (mode === "create") {
+            createMutation.createDoc(doctype, values).then((doc) => {
+              onClose();
+              swr.mutate(
+                (key) => Array.isArray(key) && key.some((k) => k === doctype),
+                undefined,
+                { revalidate: true },
+              );
+            });
+          }
         }}
       >
         {sections.map((section, sIdx) => {
@@ -162,15 +173,13 @@ function FormRender({
                   xs={24}
                   md={Math.floor(24 / section.columns.length)}
                 >
-                  {column.map(field => {
-
-                    
+                  {column.map((field) => {
                     return (
                       <>
-                      {/* {field.fieldtype} */}
-                      <FormField key={field.fieldname} field={field} />
+                        {/* {field.fieldtype} */}
+                        <FormField key={field.fieldname} field={field} />
                       </>
-                    )
+                    );
                   })}
                 </Col>
               ))}
@@ -180,10 +189,18 @@ function FormRender({
           if (!section.label) return <div key={sIdx}>{grid}</div>;
 
           return (
-            <Collapse key={sIdx} bordered={false} defaultActiveKey={[section.label]}>
+            <Collapse
+              key={sIdx}
+              bordered={false}
+              defaultActiveKey={[section.label]}
+            >
               <Collapse.Panel
                 key={section.label}
-                header={<span className="text-lg font-semibold text-gray-700">{section.label}</span>}
+                header={
+                  <span className="text-lg font-semibold text-gray-700">
+                    {section.label}
+                  </span>
+                }
               >
                 {grid}
               </Collapse.Panel>
