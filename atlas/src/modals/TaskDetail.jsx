@@ -28,6 +28,8 @@ import { TagsSelectWidget } from "../components/widgets/TagsSelectWidget";
 import StatusWidget from "../components/widgets/StatusWidget";
 import { Button, Dropdown, Space } from "antd";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
+import CommentSection from "../components/CommentSection";
+import HistorySection from "../components/HistorySection";
 
 const TaskDetail = () => {
   const [isResizing, setIsResizing] = useState(false);
@@ -122,7 +124,7 @@ const TaskDetail = () => {
 
   const tabs = [
     { id: "comments", label: "Comments" },
-    { id: "worklog", label: "Work log" },
+    { id: "history", label: "History" },
   ];
 
   if (task_details_query.isLoading || assignee_of_task_query.isLoading) {
@@ -134,7 +136,7 @@ const TaskDetail = () => {
       {/* Navigation Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
         <div className="flex items-center space-x-4 text-sm text-slate-500 dark:text-slate-400">
-          <div className="flex items-center space-x-8 font-medium cursor-pointer hover:underline">
+          <div className="flex items-center font-medium cursor-pointer hover:underline">
             <WorkItemTypeWidget
               value={task.type}
               onChange={(newType) => {
@@ -272,43 +274,28 @@ const TaskDetail = () => {
                   <Filter size={16} />
                 </button>
               </div>
+              {
+                tabs.map((tab) => {
+                  if (tab.id === activeTab) {
+                    return (
+                      <div key={tab.id} className="">
+                        {/* Render content based on active tab */}
+                        {tab.id === "comments" && (
+                          <CommentSection task_id={task.name} />
+                        )}
+                        {tab.id === "history" && (
+                         <HistorySection task_id={task.name} />
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })
+              }
 
-              <div className="flex space-x-3">
-                <div className="w-8 h-8 shrink-0 rounded-full bg-cyan-600 dark:bg-cyan-700 text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
-                  MM
-                </div>
-                <div className="flex-1 space-y-3">
-                  <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-colors focus-within:border-blue-400 dark:focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/30 bg-white dark:bg-slate-800">
-                    <input
-                      type="text"
-                      placeholder="Add a comment..."
-                      className="w-full outline-none text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 mb-4 bg-transparent"
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        "🎉 Looks good!",
-                        "👋 Need help?",
-                        "⛔ This is blocked",
-                      ].map((suggestion) => (
-                        <button
-                          key={suggestion}
-                          className="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center text-[10px] text-slate-400 dark:text-slate-500 space-x-1 pl-1">
-                    <span className="font-bold">Pro tip:</span>
-                    <span>press</span>
-                    <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-400">
-                      M
-                    </span>
-                    <span>to comment</span>
-                  </div>
-                </div>
-              </div>
+            
+
+              
             </section>
           </div>
         </main>
@@ -401,11 +388,8 @@ const TaskDetail = () => {
               <>
                 <div className="text-slate-500 dark:text-slate-400 font-medium py-1">Reporter</div>
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
-                  <AssigneeSelectWidget
-                    mode={undefined}
-                    value={[task.owner]}
-                    onChange={() => {}}
-                  />
+                  {task.owner}
+                 
                 </div>
               </>
             </div>

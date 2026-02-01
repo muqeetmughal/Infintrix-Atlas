@@ -19,11 +19,15 @@ import ModalGenerator from "../components/ModalGenerator";
 import { useTheme } from "../context/ThemeContext";
 import { Button } from "antd";
 import { BellOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
+import { useAuth } from "../hooks/query";
 
 const Header = () => {
   const { toggle, isDark } = useTheme();
 
   const [showNotifications, setShowNotifications] = useState(false);
+
+  const auth = useAuth()
+
 
   const notifications_logs_query = useFrappeGetDocList("Notification Log", {
     fields: ["*"],
@@ -40,7 +44,7 @@ const Header = () => {
   const notifications = notifications_logs_query.data || [];
 
 
-  const auth = useFrappeAuth();
+  // console.log("Current Auth:", auth);
 
   const markAsRead = async (notificationName) => {
     mark_as_read_mutation.mutate({ docname: notificationName });
@@ -157,14 +161,14 @@ const Header = () => {
             className={`rounded-2xl p-2 flex items-center space-x-3 transition-opacity duration-300 opacity-100`}
           >
             <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-              {auth.currentUser?.charAt(0).toUpperCase()}
+            {auth?.user?.user_image ? <img className="rounded-full" src={auth.user.user_image} alt="User Avatar" />  : auth.user?.name?.charAt(0).toUpperCase()}
             </div>
             <div>
               <div className="text-xs font-black text-slate-900 dark:text-slate-100">
-                {auth.currentUser}
+                {auth.user?.full_name || auth.currentUser}
               </div>
               <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                Upgrade Available
+                {auth.user?.role_profiles?.join(", ") || "User"}
               </div>
             </div>
           </div>

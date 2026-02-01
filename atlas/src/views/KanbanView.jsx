@@ -39,9 +39,10 @@ import Confetti from "../components/Confetti";
 const IssueCard = React.forwardRef(
   (
     { issue, isDragging, isOverlay, listeners, attributes, style, ...props },
-    ref
+    ref,
   ) => {
     const [searchParams, setSearchParams] = useSearchParams();
+    const updateMutation = useFrappeUpdateDoc();
     const handleTitleClick = (e) => {
       e.stopPropagation();
       if (issue.id === "new_item") return;
@@ -52,66 +53,77 @@ const IssueCard = React.forwardRef(
 
     return (
       <div
-      ref={ref}
-      style={style}
-      className={`
-      group bg-white dark:bg-slate-800 p-4 rounded-lg border shadow-sm mb-3 select-none transition-shadow
-      ${isDragging
-        ? "opacity-40 border-blue-400 dark:border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900"
-        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md"
-        }
-      ${isOverlay
-        ? "shadow-xl cursor-grabbing ring-2 ring-blue-500 border-blue-500 scale-105 transition-transform"
-        : "cursor-grab"
-        }
+        ref={ref}
+        style={style}
+        className={`
+      group bg-white dark:bg-slate-900 p-4 rounded-lg border shadow-sm mb-3 select-none transition-shadow
+      ${
+        isDragging
+          ? "opacity-40 border-blue-400 dark:border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900"
+          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md"
+      }
+      ${
+        isOverlay
+          ? "shadow-xl cursor-grabbing ring-2 ring-blue-500 border-blue-500 scale-105 transition-transform"
+          : "cursor-grab"
+      }
       `}
-      {...attributes}
-      {...listeners}
-      {...props}
+        {...attributes}
+        {...listeners}
+        {...props}
       >
-      <div className="flex items-start justify-between mb-2">
-        <p
-        onClick={handleTitleClick}
-        className="text-sm font-medium text-slate-800 dark:text-slate-100 leading-snug cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
-        >
-        {issue.subject}
-        </p>
-        {issue.id !== "new_item" && (
-        <div
-          className="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors p-1 -mr-2"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical size={16} />
+        <div className="flex items-start justify-between mb-2">
+          <p
+            onClick={handleTitleClick}
+            className="text-sm font-medium text-slate-800 dark:text-slate-100 leading-snug cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
+          >
+            {issue.subject}
+          </p>
+          {issue.id !== "new_item" && (
+            <div
+              className="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors p-1 -mr-2"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical size={16} />
+            </div>
+          )}
         </div>
-        )}
-      </div>
 
-      <div className="flex justify-between items-center mt-4">
-        <div className="flex items-center gap-2">
-        <Tooltip title={issue.type}>
-          <WorkItemTypeWidget
-          value={issue?.type || "Task"}
-          disabled
-          show_label={false}
-          />
-        </Tooltip>
-        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold tracking-tight uppercase">
-          {issue.id}
-        </span>
+        <div className="flex justify-between items-center mt-4">
+          <div className="flex items-center gap-2">
+            <Tooltip title={issue.type}>
+            
+
+              <WorkItemTypeWidget
+                value={issue?.type || "Task"}
+                onChange={(newType) => {
+                  updateMutation
+                    .updateDoc("Task", issue.name, {
+                      type: newType,
+                    })
+                    .then(() => {
+                      // task_details_query.mutate();
+                    });
+                }}
+              />
+            </Tooltip>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold tracking-tight uppercase">
+              {issue.id}
+            </span>
+          </div>
+          <div
+            className={`w-7 h-7 rounded-full ${issue.assigneeColor} text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm`}
+          >
+            <PreviewAssignees
+              assignees={issue.assignees}
+              enable_tooltip={false}
+            />
+          </div>
         </div>
-        <div
-        className={`w-7 h-7 rounded-full ${issue.assigneeColor} text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm`}
-        >
-        <PreviewAssignees
-          assignees={issue.assignees}
-          enable_tooltip={false}
-        />
-        </div>
-      </div>
       </div>
     );
-  }
+  },
 );
 
 const SortableIssue = ({ issue }) => {
@@ -261,12 +273,11 @@ const Column = ({ id, title, tasks_list, createTask }) => {
 };
 
 export default function KanbanView() {
-
   const [activeIssue, setActiveIssue] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const { mutate } = useSWRConfig()
+  const { mutate } = useSWRConfig();
   // const { project } = useParams();
-  const qp = useQueryParams()
+  const qp = useQueryParams();
   const project = qp.get("project") || null;
   const createMutation = useFrappeCreateDoc();
 
@@ -280,11 +291,10 @@ export default function KanbanView() {
   const cycle = (active_cycle_query?.data || [])[0];
   const cycle_name = cycle?.name;
 
-
   const project_data = project_query.data || {};
   const isScrum = project_data.custom_execution_mode === "Scrum";
 
-  const tasks_list_query = useTasksQuery(cycle_name)
+  const tasks_list_query = useTasksQuery(cycle_name);
 
   const { options } = columns_query.data || [];
 
@@ -305,12 +315,14 @@ export default function KanbanView() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   const findIssue = useCallback(
     (id) => tasks_list.find((i) => i.id === id),
-    [tasks_list]
+    [tasks_list],
   );
 
   const handleDragStart = (event) => {
@@ -331,21 +343,13 @@ export default function KanbanView() {
   };
 
   const mutateTaskStatus = async (task, newStatus) => {
-    await tasks_list_query.mutate(
-      async (current) => {
-        await updateTaskMutation.updateDoc("Task", task, {
-          status: newStatus,
-        });
+    await tasks_list_query
+      .mutate(
+        async (current) => {
+          await updateTaskMutation.updateDoc("Task", task, {
+            status: newStatus,
+          });
 
-        return current.map((t) => {
-          if (t.name === task) {
-            return { ...t, status: newStatus };
-          }
-          return t;
-        });
-      },
-      {
-        optimisticData: (current) => {
           return current.map((t) => {
             if (t.name === task) {
               return { ...t, status: newStatus };
@@ -353,13 +357,23 @@ export default function KanbanView() {
             return t;
           });
         },
-        rollbackOnError: true,
-        revalidate: false,
-        populateCache: true,
-      }
-    ).then(() => {
-      mutate(["Project", project]);
-    });
+        {
+          optimisticData: (current) => {
+            return current.map((t) => {
+              if (t.name === task) {
+                return { ...t, status: newStatus };
+              }
+              return t;
+            });
+          },
+          rollbackOnError: true,
+          revalidate: false,
+          populateCache: true,
+        },
+      )
+      .then(() => {
+        mutate(["Project", project]);
+      });
   };
 
   const createNewTask = async (newTask) => {
@@ -392,12 +406,10 @@ export default function KanbanView() {
         rollbackOnError: true,
         revalidate: false,
         populateCache: true,
-      }
+      },
     );
   };
   // console.log("Tasks:", tasks_list_query);
-
-
 
   // useEffect(() => {
   //   if (isAllTasksDone) {
@@ -550,8 +562,6 @@ export default function KanbanView() {
           </DragOverlay>
         </DndContext>
       </div>
-
-
     </div>
   );
 }

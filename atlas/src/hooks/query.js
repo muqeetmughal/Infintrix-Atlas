@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createAvatar } from "@dicebear/core";
 import { initials } from "@dicebear/collection";
-import { useFrappeGetDoc, useFrappeGetDocList } from "frappe-react-sdk";
+import { useFrappeAuth, useFrappeGetDoc, useFrappeGetDocList } from "frappe-react-sdk";
 import { db } from "../lib/frappeClient";
 import { useQueryParams } from "./useQueryParams";
 export const useAvatarQuery = (name) => {
@@ -66,7 +66,7 @@ export const useTasksQuery = (
 		"modified",
 		"project",
 	],
-	options = {}
+	options = {},
 ) => {
 	const qp = useQueryParams();
 	const project = qp.get("project") || null;
@@ -77,13 +77,13 @@ export const useTasksQuery = (
 	const filters_string = qp.all;
 	const cacheKey = ["tasks", filters_string, cycle_name];
 
-  let final_filters = [];
-  if (project) {
-    final_filters.push(["project", "in", [project]]);
-  }
-  if (cycle_name) {
-    final_filters.push(["custom_cycle", "=", cycle_name]);
-  }
+	let final_filters = [];
+	if (project) {
+		final_filters.push(["project", "in", [project]]);
+	}
+	if (cycle_name) {
+		final_filters.push(["custom_cycle", "=", cycle_name]);
+	}
 
 	return useFrappeGetDocList(
 		"Task",
@@ -97,17 +97,13 @@ export const useTasksQuery = (
 			revalidateIfStale: false,
 			revalidateOnReconnect: false,
 			...options,
-		}
+		},
 	);
 };
 
 export const useProjectDetailsQuery = (project) => {
-	return useFrappeGetDoc(
-		"Project",
-		project,
-		project ? ["Project", project] : null
-	);
-}
+	return useFrappeGetDoc("Project", project, project ? ["Project", project] : null);
+};
 
 // export const useTasksQuery = (filters, options) => {
 //   return  useFrappeGetDocList(
@@ -137,3 +133,20 @@ export const useProjectDetailsQuery = (project) => {
 
 //     );
 // };
+export const useAuth = () => {
+	const auth = useFrappeAuth();
+	const { data: userDetails } = useFrappeGetDoc(
+		"User",
+		auth.currentUser,
+		auth.currentUser ? ["current_user_details", auth.currentUser] : null,
+		{
+			revalidateOnFocus: false,
+			revalidateIfStale: false,
+			revalidateOnReconnect: false,
+		},
+	);
+	return {
+		user: userDetails,
+		...auth,
+	};
+};

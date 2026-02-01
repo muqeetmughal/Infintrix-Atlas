@@ -55,6 +55,7 @@ import BacklogHealth from "../../components/ProjectHealth";
 import FormRender from "../../components/form/FormRender";
 import { useQueryParams } from "../../hooks/useQueryParams";
 import { useProjectDetailsQuery, useTasksQuery } from "../../hooks/query";
+import WorkItemTypeWidget from "../../components/widgets/WorkItemTypeWidget";
 // --- Constants ---
 
 const TASK_STATUS_COLORS = {
@@ -81,7 +82,7 @@ const TaskCard = ({ task, isOverlay = false }) => {
     });
 
   const [searchParams, setSearchParams] = useSearchParams();
-
+  const swr = useSWRConfig();
   const style = transform
     ? {
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
@@ -109,8 +110,21 @@ const TaskCard = ({ task, isOverlay = false }) => {
       </div>
       <div className="flex-1 pointer-events-none">
         <div className="flex justify-between items-start mb-1">
-          <div className="flex justify-start space-x-4 items-center">
-            <Badge
+          <div className="flex justify-start space-x-4 items-center pointer-events-auto cursor-pointer">
+            <WorkItemTypeWidget
+              value={task.type}
+              onChange={(newType) => {
+                updateMutation
+                  .updateDoc("Task", task.name, {
+                    type: newType,
+                  })
+                  .then(() => {
+                    swr.mutate(['Task'])
+                    // task_details_query.mutate();
+                  });
+              }}
+            />
+            {/* <Badge
               className={
                 task.type === "Bug"
                   ? "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800"
@@ -118,7 +132,7 @@ const TaskCard = ({ task, isOverlay = false }) => {
               }
             >
               {task.type}
-            </Badge>
+            </Badge> */}
             {/* <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 font-mono uppercase">
               {task.id}
             </span> */}

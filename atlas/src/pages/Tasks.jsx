@@ -13,6 +13,7 @@ import {
   useFrappeGetDoc,
   useFrappeGetDocList,
   useFrappePostCall,
+  useFrappeUpdateDoc,
   useSWRConfig,
 } from "frappe-react-sdk";
 import dayjs from "dayjs";
@@ -52,6 +53,7 @@ const Tasks = () => {
   // const project = searchParams.get("project") || null;
   const navigate = useNavigate();
   const createMutation = useFrappeCreateDoc();
+  const updateMutation = useFrappeUpdateDoc();
 
   // const query = useDoctypeSchema("Task");
   const create_cycles_for_project_mutatation = useFrappePostCall(
@@ -97,22 +99,17 @@ const Tasks = () => {
     <>
       <TaskDetail />
 
-      <ProjectHealth
-        project_id={project}
-        collapsible={true}
-      />
-
-
+      <ProjectHealth project_id={project} collapsible={true} />
 
       <div className="space-y-2 md:space-y-1">
         {/* Header Section */}
         {project_data.project_name && (
-          <>
+          <div className="flex items-center justify-between space-x-3">
             <Select
               variant="borderless"
               placeholder="Filter by Project"
               style={{
-                width: "100%",
+                // width: "100%",
                 size: "large",
                 fontSize: "24px",
                 fontWeight: "600",
@@ -124,7 +121,39 @@ const Tasks = () => {
               }}
               options={projects_options_query?.data || []}
             />
-          </>
+            <Select
+              variant="borderless"
+              placeholder="Filter by Project"
+              style={{
+                // width: "100%",
+                size: "large",
+                fontSize: "14px",
+                fontWeight: "600",
+              }}
+              defaultValue={project_data.custom_execution_mode || "Kanban"}
+              value={project_data.custom_execution_mode || "Kanban"}
+              onChange={(value) => {
+                updateMutation
+                  .updateDoc("Project", project, {
+                    custom_execution_mode: value,
+                  })
+                  .then(() => {
+                    project_query.mutate();
+                    projects_options_query.mutate();
+                  });
+              }}
+              options={[
+                {
+                  label: "Scrum",
+                  value: "Scrum",
+                },
+                {
+                  label: "Kanban",
+                  value: "Kanban",
+                },
+              ]}
+            />
+          </div>
         )}
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
           {/* Tabs */}
@@ -141,10 +170,11 @@ const Tasks = () => {
                     navigate(`/tasks/${tab.id}`);
                     setSearchParams(oldSearchParams);
                   }}
-                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${view === tab.id
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                    }`}
+                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${
+                    view === tab.id
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                  }`}
                 >
                   {tab.label}
                   {view === tab.id && (
@@ -160,8 +190,8 @@ const Tasks = () => {
             <Button className="p-2 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
               <Filter size={18} className="md:w-5 md:h-5" />
             </Button>
-            {
-              project_data.custom_execution_mode === "Scrum" && <>
+            {project_data.custom_execution_mode === "Scrum" && (
+              <>
                 <Button
                   onClick={() => {
                     createMutation
@@ -200,8 +230,7 @@ const Tasks = () => {
                   </Button>
                 )}
               </>
-            }
-
+            )}
 
             <Button
               type="primary"

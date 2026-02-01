@@ -10,31 +10,29 @@ export const AssigneeSelectWidget = (props) => {
 
   const collegues_list_query = useFrappeGetDocList("User", {
     fields: ["name as const", "full_name as title"],
-    filters: [["enabled", "=", 1]],
+    filters: [["enabled", "=", 1], ["name", "!=", "Guest"]],
     limit_page_length: 50,
     order_by: "full_name asc",
   });
 
-
   const tagRender = (tag_props) => {
     const { label, value, closable, onClose } = tag_props;
-    // return <AvatarGen id={value} name={label} enable_tooltip={true} />
-    return String(label).includes("+") ? (
-      label
-    ) : (
-      <AvatarGen id={value} name={label} enable_tooltip={true} />
-    );
+    return <AvatarGen id={value} name={label} enable_tooltip={true} />;
+    // return String(label).includes("+") ? (
+    //   label
+    // ) : (
+    //   <AvatarGen id={value} name={label} enable_tooltip={true} />
+    // );
   };
 
   if (collegues_list_query.isLoading) return null;
-  
 
   return (
     <Select
       mode="multiple"
       allowClear
       variant="borderless"
-    //   className="min-w-24"
+      //   className="min-w-24"
       placeholder="Assignees"
       tagRender={tagRender}
       open={open}
@@ -42,9 +40,9 @@ export const AssigneeSelectWidget = (props) => {
       onSelect={() => setOpen(false)}
       {...props}
       value={selected}
-      onChange={(v)=>{
+      onChange={(v) => {
         setSelected(v);
-       
+
         props.onChange && props.onChange(v);
       }}
       optionRender={(props) => (

@@ -1,21 +1,15 @@
 import { Select, Spin } from "antd";
-import React, { useState } from "react";
-// import { LoadingOutlined } from '@ant-design/icons';
+import { useState } from "react";
 import { useFrappeGetDocList } from "frappe-react-sdk";
 import { IconRenderer } from "../IconRenderer";
 
 const WorkItemTypeWidget = (props) => {
-  // const {
-  // } = props
-  const {
-    show_icon = true,
-    show_label = true,
-  } = props;
+  const { show_icon = true, show_label = true } = props;
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value || null);
   const task_type_query = useFrappeGetDocList("Task Type", {
     fields: ["name", "custom_icon", "custom_color"],
-    limit_page_length: 100,
+    limit_page_length: 9999999,
   });
   const task_types = (task_type_query?.data || []).map((task_type) => {
     return {
@@ -54,29 +48,38 @@ const WorkItemTypeWidget = (props) => {
   }
   if (task_type_query.isLoading) return <Spin />;
 
+  const selected_type = task_types.find((t) => t.label === selected);
+
   return (
     <>
-      <Select
+     
+      {(!open && selected_type) ? (
+        <div className="flex items-center" onClick={()=>{
+          setOpen(true)
+        }}>
+          <IconRenderer
+            name={
+              selected_type.icon
+                ? selected_type.icon.props.name
+                : "QuestionOutlined"
+            }
+            style={{ color: selected_type.color }}
+          />
+        </div>
+      ) :  <Select
         variant="borderless"
         {...props}
         open={open}
-        onDropdownVisibleChange={(visible) => setOpen(visible)}
+        onOpenChange={(visible) => setOpen(visible)}
         onSelect={() => setOpen(false)}
         value={selected}
         onChange={(v) => {
           setSelected(v);
-
           props.onChange && props.onChange(v);
         }}
-        // optionRender={(props) => (
-        //   <div className="flex items-center" style={{ width: "100%" }}>
-        //     <span className="ml-2">{props.label}</span>
-        //   </div>
-        // )}
-        dropdownStyle={{ width: 150, overflowX: "auto" }}
-        // maxTagCount="responsive"
+        popupMatchSelectWidth={false}
       >
-        {task_types.map((option, index) => (
+        {task_types.map((option) => (
           <Select.Option key={option.key} value={option.label}>
             <IconRenderer
               name={option.icon ? option.icon.props.name : "QuestionOutlined"}
@@ -92,7 +95,7 @@ const WorkItemTypeWidget = (props) => {
             </span>
           </Select.Option>
         ))}
-      </Select>
+      </Select>}
     </>
   );
 };
