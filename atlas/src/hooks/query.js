@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createAvatar } from "@dicebear/core";
 import { initials } from "@dicebear/collection";
-import { useFrappeAuth, useFrappeGetDoc, useFrappeGetDocList } from "frappe-react-sdk";
+import { useFrappeAuth, useFrappeGetCall, useFrappeGetDoc, useFrappeGetDocList } from "frappe-react-sdk";
 import { db } from "../lib/frappeClient";
 import { useQueryParams } from "./useQueryParams";
 export const useAvatarQuery = (name) => {
@@ -149,4 +149,17 @@ export const useAuth = () => {
 		user: userDetails,
 		...auth,
 	};
+};
+export const useProjectUsers = (project) => {
+	return useFrappeGetCall(
+		"infintrix_atlas.api.v1.users_on_project",
+		{
+			project: project, // You can replace this with a prop or state variable
+		},
+		project ? ["users_on_project", project] : null,
+		{
+			revalidateOnFocus: false,
+			revalidateIfStale: false,
+		},
+	);
 };

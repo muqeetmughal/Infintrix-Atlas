@@ -1,4 +1,4 @@
-import { Select } from "antd";
+import { Select, Tag } from "antd";
 import {
   useFrappeGetDocList,
   useFrappePostCall,
@@ -7,6 +7,10 @@ import { useEffect, useState } from "react";
 
 export const TagsSelectWidget = (props) => {
   const [selected, setSelected] = useState(props.value || []);
+  const [tagColors, setTagColors] = useState(() => {
+    const saved = localStorage.getItem("tagColors");
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const addTag = useFrappePostCall(
     "frappe.desk.doctype.tag.tag.add_tag"
@@ -26,7 +30,36 @@ export const TagsSelectWidget = (props) => {
     setSelected(props.value || []);
   }, [props.value]);
 
+  // persist tagColors to localStorage
+  useEffect(() => {
+    localStorage.setItem("tagColors", JSON.stringify(tagColors));
+  }, [tagColors]);
+
   if (tagsList.isLoading) return null;
+
+  const colors = [
+    "red",
+    "blue",
+    "green",
+    "cyan",
+    "magenta",
+    "orange",
+    "purple",
+    "geekblue",
+    "gold",
+  ];
+
+  const getOrAssignColor = (tagName) => {
+    if (tagColors[tagName]) {
+      return tagColors[tagName];
+    }
+    const newColor = colors[Math.floor(Math.random() * colors.length)];
+    setTagColors((prev) => ({
+      ...prev,
+      [tagName]: newColor,
+    }));
+    return newColor;
+  };
 
   return (
     <Select
@@ -35,13 +68,14 @@ export const TagsSelectWidget = (props) => {
       placeholder="Labels"
       value={selected}
       style={{
-        width : "100%"
+        width: "100%",
       }}
       onChange={(values) => {
         setSelected(values);
         props.onChange?.(values);
       }}
       onSelect={(value) => {
+        getOrAssignColor(value);
         addTag.call({
           tag: value,
           dt: "Task",
@@ -59,84 +93,11 @@ export const TagsSelectWidget = (props) => {
         label: t.name,
         value: t.name,
       }))}
+      tagRender={(props) => (
+        <Tag color={getOrAssignColor(props.label)} {...props}>
+          {props.label}
+        </Tag>
+      )}
     />
   );
 };
-
-// import { Badge, Select, Tag } from "antd";
-// import {
-//   useFrappeGetCall,
-//   useFrappeGetDocList,
-//   useFrappePostCall,
-// } from "frappe-react-sdk";
-// import { useState } from "react";
-// export const TagsSelectWidget = (props) => {
-//   const [open, setOpen] = useState(false);
-//   const [selected, setSelected] = useState(props.value || []);
-
-//   const add_tag_mutation = useFrappePostCall("frappe.desk.doctype.tag.tag.add_tag");
-//   const remove_tag_mutation = useFrappePostCall(
-//     "frappe.desk.doctype.tag.tag.remove_tag"
-//   );
-//   const tags_list_query = useFrappeGetDocList("Tag", {
-//     fields: ["name as const", "name as title"],
-//     limit_page_length: 100,
-//     order_by: "name asc",
-//   });
-
-//   const get_tags_query = useFrappePostCall(
-//     "frappe.desk.doctype.tag.tag.get_tags"
-//   );
-
-//   if (tags_list_query.isLoading) return null;
-
-//   return (
-//     <Select
-//       mode="multiple"
-      
-//       variant="borderless"
-//       placeholder="Labels"
-//       // tagRender={tagRender}
-//       open={open}
-//       onDropdownVisibleChange={(visible) => setOpen(visible)}
-//       onSelect={() => setOpen(false)}
-//       {...props}
-//       value={selected}
-//       onChange={(v) => {
-//         console.log("Tags changed to", v);
-//         setSelected(v);
-
-//         // props.onChange && props.onChange(v);
-//         add_tag_mutation.call({
-//           tag: v[v.length - 1],
-//           dt: "Task",
-//           dn: props.docname,
-//         });
-//       }}
-     
-      
-//       onDeselect={(value) => {
-//         console.log("Deselect", value);
-//         remove_tag_mutation.call({
-//           tag: value,
-//           dt: "Task",
-//           dn: props.docname,
-//         });
-//       }}
-
-//       // optionRender={(props) => (
-//       //   <div className="flex items-center" style={{ width: "100%" }}>
-//       //     <span>{props.label}</span>
-//       //   </div>
-//       // )}
-//       // dropdownStyle={{ width: 300, overflowX: "auto" }}
-//       // maxTagCount="responsive"
-//     >
-//       {tags_list_query?.data.map((option, index) => (
-//         <Select.Option key={option.const || index} value={option.const}>
-//           {option.title}
-//         </Select.Option>
-//       ))}
-//     </Select>
-//   );
-// };

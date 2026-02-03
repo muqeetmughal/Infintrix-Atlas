@@ -11,7 +11,7 @@ class ProjectOverride(Project):
 		print("Custom Project Validate Logic Here")
 		if not self.is_new():
 			self.copy_from_template()  # nosemgrep
-		self.send_welcome_email()
+		# self.send_welcome_email()
 		self.update_costing()
 		self.update_percent_complete()
 		self.validate_from_to_dates("expected_start_date", "expected_end_date")

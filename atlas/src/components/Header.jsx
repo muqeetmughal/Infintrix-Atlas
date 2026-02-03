@@ -10,6 +10,7 @@ import {
 import Sidebar from "../components/Sidebar";
 import {
   useFrappeAuth,
+  useFrappeEventListener,
   useFrappeGetDocList,
   useFrappePostCall,
 } from "frappe-react-sdk";
@@ -20,22 +21,27 @@ import { useTheme } from "../context/ThemeContext";
 import { Button } from "antd";
 import { BellOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import { useAuth } from "../hooks/query";
+import useRealtime from "../hooks/realtime";
 
 const Header = () => {
   const { toggle, isDark } = useTheme();
 
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const auth = useAuth()
+  const auth = useAuth();
 
 
   const notifications_logs_query = useFrappeGetDocList("Notification Log", {
     fields: ["*"],
-    filters: [["document_type", "in", ["Task", "Project", "Cycle"]]],
+    // filters: [["document_type", "in", ["Task", "Project", "Cycle"]]],
     orderBy: {
       field: "creation",
       order: "desc",
     },
+  });
+    useFrappeEventListener("update_system_notifications", (data) => {
+    console.log("Realtime notification received:", data);
+    notifications_logs_query.mutate();
   });
   const mark_as_read_mutation = useFrappePostCall(
     "frappe.desk.doctype.notification_log.notification_log.mark_as_read",
@@ -43,11 +49,10 @@ const Header = () => {
 
   const notifications = notifications_logs_query.data || [];
 
-
   // console.log("Current Auth:", auth);
 
   const markAsRead = async (notificationName) => {
-    mark_as_read_mutation.mutate({ docname: notificationName });
+    mark_as_read_mutation.call({ docname: notificationName });
     notifications_logs_query.mutate();
   };
 
@@ -161,7 +166,15 @@ const Header = () => {
             className={`rounded-2xl p-2 flex items-center space-x-3 transition-opacity duration-300 opacity-100`}
           >
             <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-            {auth?.user?.user_image ? <img className="rounded-full" src={auth.user.user_image} alt="User Avatar" />  : auth.user?.name?.charAt(0).toUpperCase()}
+              {auth?.user?.user_image ? (
+                <img
+                  className="rounded-full"
+                  src={auth.user.user_image}
+                  alt="User Avatar"
+                />
+              ) : (
+                auth.user?.name?.charAt(0).toUpperCase()
+              )}
             </div>
             <div>
               <div className="text-xs font-black text-slate-900 dark:text-slate-100">

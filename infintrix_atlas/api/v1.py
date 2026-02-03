@@ -3,6 +3,7 @@ from frappe.query_builder import DocType, functions as fn
 from datetime import datetime, timedelta
 import json
 from infintrix_atlas.permissions import project_permission_query, task_permission_query
+from .utils import create_custom_notification
 
 @frappe.whitelist()
 def get_tasks():
@@ -107,7 +108,7 @@ def switch_assignee_of_task(task_name, new_assignee):
     if not task_name or not new_assignee:
         frappe.throw("Task and assignee are required")
 
-    # Update existing assignee or create new one
+    # Close existing assignee
     existing_todo = frappe.db.get_value(
         "ToDo",
         {
@@ -119,20 +120,21 @@ def switch_assignee_of_task(task_name, new_assignee):
     )
 
     if existing_todo:
-        frappe.db.set_value("ToDo", existing_todo, "allocated_to", new_assignee)
-    else:
-        frappe.get_doc(
-            {
-                "doctype": "ToDo",
-                "reference_type": "Task",
-                "reference_name": task_name,
-                "allocated_to": new_assignee,
-                "description": f"Task assigned to {new_assignee}",
-                "status": "Open",
-                "due_date": None,
-                "assigned_by": frappe.session.user,
-            }
-        ).insert()
+        frappe.db.set_value("ToDo", existing_todo, "status", "Closed")
+
+    # Create new todo for new assignee
+    frappe.get_doc(
+        {
+            "doctype": "ToDo",
+            "reference_type": "Task",
+            "reference_name": task_name,
+            "allocated_to": new_assignee,
+            "description": f"Task assigned to {new_assignee}",
+            "status": "Open",
+            "due_date": None,
+            "assigned_by": frappe.session.user,
+        }
+    ).insert()
 
     frappe.db.commit()
     return {"success": True, "message": "Assignee updated"}
@@ -249,7 +251,7 @@ def get_project_flow_metrics(project):
 
 
 @frappe.whitelist()
-def start_cycle(name,cycle_name, duration, start_date, end_date):
+def start_cycle(name, cycle_name, duration, start_date, end_date):
     cycle = frappe.get_doc("Cycle", name)
     project_cycle_belongs_to = cycle.project
     print("Cycle Name:", cycle.project)
@@ -258,15 +260,14 @@ def start_cycle(name,cycle_name, duration, start_date, end_date):
         frappe.throw("Only planned cycles can be started")
 
     active_cycles = frappe.get_all(
-		"Cycle",
-		filters={
-			"status": "Active",
-			"project": project_cycle_belongs_to,
-			"name": ["!=", name]
-		},
-		fields=["name"],
-	)
-
+        "Cycle",
+        filters={
+            "status": "Active",
+            "project": project_cycle_belongs_to,
+            "name": ["!=", name],
+        },
+        fields=["name"],
+    )
 
     if active_cycles:
         frappe.throw(
@@ -289,6 +290,7 @@ def start_cycle(name,cycle_name, duration, start_date, end_date):
     frappe.db.commit()
 
     return {"success": True, "message": f"Cycle {cycle_name} started successfully"}
+
 
 @frappe.whitelist()
 def complete_cycle(name, move_tasks_to):
@@ -322,7 +324,6 @@ def complete_cycle(name, move_tasks_to):
     frappe.db.commit()
 
     return {"success": True, "message": f"Cycle {name} completed successfully"}
-
 
 
 @frappe.whitelist()
@@ -462,8 +463,8 @@ def query_tasks(payload=None):
         "total": frappe.db.count("Task", filters),
     }
 
-@frappe.whitelist()
 
+@frappe.whitelist()
 @frappe.whitelist()
 def get_project_user_stats(user=None):
     user = user or frappe.session.user
@@ -474,11 +475,14 @@ def get_project_user_stats(user=None):
     project_conditions = project_permission_query(user)
     project_where = f"WHERE {project_conditions}" if project_conditions else ""
 
-    projects = frappe.db.sql(f"""
+    projects = frappe.db.sql(
+        f"""
         SELECT name, IFNULL(percent_complete, 0) AS percent_complete
         FROM `tabProject`
         {project_where}
-    """, as_dict=True)
+    """,
+        as_dict=True,
+    )
 
     project_names = [p.name for p in projects]
 
@@ -489,7 +493,7 @@ def get_project_user_stats(user=None):
             "total_projects": 0,
             "active_tasks": 0,
             "avg_progress": 0,
-            "team_members": 0
+            "team_members": 0,
         }
 
     # -----------------------------
@@ -498,32 +502,127 @@ def get_project_user_stats(user=None):
     task_conditions = task_permission_query(user)
     task_where = f"AND {task_conditions}" if task_conditions else ""
 
-    active_tasks = frappe.db.sql("""
+    active_tasks = frappe.db.sql(
+        """
         SELECT COUNT(*)
         FROM `tabTask`
         WHERE status NOT IN ('Completed', 'Cancelled')
         {task_where}
-    """.format(task_where=task_where))[0][0]
+    """.format(
+            task_where=task_where
+        )
+    )[0][0]
 
     # -----------------------------
     # AVG PROGRESS
     # -----------------------------
-    avg_progress = round(
-        sum(p.percent_complete for p in projects) / total_projects
-    )
+    avg_progress = round(sum(p.percent_complete for p in projects) / total_projects)
 
     # -----------------------------
     # TEAM MEMBERS
     # -----------------------------
-    team_members = frappe.db.sql("""
+    team_members = frappe.db.sql(
+        """
         SELECT COUNT(DISTINCT pu.user)
         FROM `tabProject User` pu
         WHERE pu.parent IN %(projects)s
-    """, {"projects": tuple(project_names)})[0][0]
+    """,
+        {"projects": tuple(project_names)},
+    )[0][0]
 
     return {
         "total_projects": total_projects,
         "active_tasks": active_tasks,
         "avg_progress": avg_progress,
-        "team_members": team_members
+        "team_members": team_members,
     }
+
+
+@frappe.whitelist()
+def users_on_project(project):
+    users = frappe.db.sql(
+        """
+        SELECT u.name, u.full_name, u.email
+        FROM `tabProject User` pu
+        JOIN `tabUser` u ON u.name = pu.user
+        WHERE pu.parent = %s
+    """,
+        (project,),
+        as_dict=True,
+    )
+
+    plain_array = [u.name for u in users]
+
+    return plain_array
+
+
+@frappe.whitelist()
+def update_users_on_project(project, users):
+    if isinstance(users, str):
+        users = json.loads(users)
+
+    # Get existing users
+    existing_users = frappe.db.sql(
+        """
+            SELECT user FROM `tabProject User`
+            WHERE parent = %s
+        """,
+        (project,),
+        as_dict=True,
+    )
+    existing_user_list = [u.user for u in existing_users]
+
+    # Find removed and added users
+    users_set = set(users)
+    existing_set = set(existing_user_list)
+    removed_users = existing_set - users_set
+    added_users = users_set - existing_set
+
+    # Remove existing users
+    frappe.db.sql(
+        """
+            DELETE FROM `tabProject User`
+            WHERE parent = %s
+        """,
+        (project,),
+    )
+
+    # Add new users
+    for user in users:
+        frappe.get_doc(
+            {
+                "doctype": "Project User",
+                "parent": project,
+                "parenttype": "Project",
+                "parentfield": "users",
+                "user": user,
+            }
+        ).insert()
+
+    frappe.db.commit()
+
+    # Send notifications
+    project_name = frappe.db.get_value("Project", project, "project_name")
+
+    for user in removed_users:
+        create_custom_notification(
+            user=user,
+            subject=f"Removed from Project: {project_name}",
+            content=f"You have been removed from project '{project_name}'.",
+            document_type="Project",
+            document_name=project,
+            icons='<i class="fa fa-exclamation-triangle"></i>',
+        )
+        
+
+    for user in added_users:
+        create_custom_notification(
+            user=user,
+            subject=f"Added to Project: {project_name}",
+            content=f"You have been added to project '{project_name}'.",
+            document_type="Project",
+            document_name=project,
+            icons='<i class="fa fa-check-circle"></i>',
+        )
+
+    return {"success": True, "message": "Project users updated"}

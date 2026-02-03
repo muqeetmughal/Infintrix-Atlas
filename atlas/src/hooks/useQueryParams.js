@@ -100,6 +100,8 @@ export function useQueryParams() {
     return obj;
   }, [searchParams]);
 
+  
+
   return {
     get,
     getArray,

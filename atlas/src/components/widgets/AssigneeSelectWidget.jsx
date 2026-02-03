@@ -2,8 +2,6 @@ import { Select, Tag } from "antd";
 import { useFrappeGetDocList, useFrappePostCall } from "frappe-react-sdk";
 import { useState } from "react";
 import AvatarGen from "../AvatarGen";
-// import AvatarGen from "../common/AvatarGen";
-// import { useCollegueNamesQuery } from "../../queries/collegues";
 export const AssigneeSelectWidget = (props) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value || []);
@@ -16,13 +14,20 @@ export const AssigneeSelectWidget = (props) => {
   });
 
   const tagRender = (tag_props) => {
-    const { label, value, closable, onClose } = tag_props;
-    return <AvatarGen id={value} name={label} enable_tooltip={true} />;
-    // return String(label).includes("+") ? (
-    //   label
-    // ) : (
-    //   <AvatarGen id={value} name={label} enable_tooltip={true} />
-    // );
+    const { value, closable, onClose } = tag_props;
+    if (!value) return null;
+    return (
+      <Tag
+        closable={closable}
+        onClose={onClose}
+        style={{ marginRight: 8, marginBottom: 4 }}
+        className="flex items-center gap-2 px-2 py-1"
+      >
+        <AvatarGen name={value} enable_tooltip={true} />
+        <span className="text-sm">{value}</span>
+    
+      </Tag>
+    );
   };
 
   if (collegues_list_query.isLoading) return null;
@@ -32,17 +37,16 @@ export const AssigneeSelectWidget = (props) => {
       mode="multiple"
       allowClear
       variant="borderless"
-      //   className="min-w-24"
+      className="min-w-24"
       placeholder="Assignees"
       tagRender={tagRender}
-      open={open}
-      onDropdownVisibleChange={(visible) => setOpen(visible)}
+      // open={open}
+      // onOpenChange={(visible) => setOpen(visible)}
       onSelect={() => setOpen(false)}
       {...props}
       value={selected}
       onChange={(v) => {
         setSelected(v);
-
         props.onChange && props.onChange(v);
       }}
       optionRender={(props) => (
@@ -51,8 +55,10 @@ export const AssigneeSelectWidget = (props) => {
           <span className="ml-2">{props.label}</span>
         </div>
       )}
-      dropdownStyle={{ width: 300, overflowX: "auto" }}
-      maxTagCount="responsive"
+      popupMatchSelectWidth={false}
+      popupStyle={{ width: 300, overflowX: "auto", maxHeight: 400 }}
+      maxTagCount={Number.MAX_SAFE_INTEGER}
+      maxCount={props.single ? 1 : undefined}
     >
       {collegues_list_query?.data.map((option, index) => (
         <Select.Option key={option.const || index} value={option.const}>

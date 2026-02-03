@@ -5,6 +5,17 @@ import frappe
 from erpnext.projects.doctype.task.task import Task
 
 class TaskOverride(Task):
+    
+    # def validate(self):
+        # self.validate_dates()
+        # self.validate_progress()
+        # self.validate_status()
+        # self.update_depends_on()
+        # self.validate_dependencies_for_template_task()
+        # self.validate_completed_on()
+        # self.validate_parent_is_group()
+        # pass
+
 
     def has_permission(self, permission_type=None, user=None):
         user = user or frappe.session.user

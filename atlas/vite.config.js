@@ -1,26 +1,33 @@
-import path from 'path';
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react'
-import proxyOptions from './proxyOptions';
-import tailwindcss from '@tailwindcss/vite'
+import path from "path";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import proxyOptions from "./proxyOptions";
+import tailwindcss from "@tailwindcss/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-	plugins: [react(),    tailwindcss(),
-],
+	plugins: [react(), tailwindcss()],
 	server: {
 		port: 8080,
-		host: '0.0.0.0',
-		proxy: proxyOptions
+		host: "0.0.0.0",
+		proxy: proxyOptions,
 	},
 	resolve: {
 		alias: {
-			'@': path.resolve(__dirname, 'src')
-		}
+			"@": path.resolve(__dirname, "src"),
+		},
 	},
 	build: {
-		outDir: '../infintrix_atlas/public/atlas',
+		outDir: "../infintrix_atlas/public/atlas",
 		emptyOutDir: true,
-		target: 'es2015',
+		target: "es2015",
+		rollupOptions: {
+			onwarn(warning, warn) {
+				if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
+					return;
+				}
+				warn(warning);
+			},
+		},
 	},
 });

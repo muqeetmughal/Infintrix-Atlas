@@ -30,6 +30,7 @@ import { Button, Dropdown, Space } from "antd";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
 import CommentSection from "../components/CommentSection";
 import HistorySection from "../components/HistorySection";
+import SubTasks from "../components/SubTasks";
 
 const TaskDetail = () => {
   const [isResizing, setIsResizing] = useState(false);
@@ -200,14 +201,14 @@ const TaskDetail = () => {
             />
           </h1>
 
-          <div className="flex space-x-2 mb-10">
+          {/* <div className="flex space-x-2 mb-10">
             <button className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 p-2 rounded transition-all active:scale-95">
               <Plus size={20} />
             </button>
             <button className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 p-2 rounded transition-all active:scale-95">
               <Settings size={20} />
             </button>
-          </div>
+          </div> */}
 
           {/* Content Sections */}
           <div className="space-y-10">
@@ -226,30 +227,23 @@ const TaskDetail = () => {
                       .then(() => {
                         task_details_query.mutate();
                       });
-                  }}
-                />
-              </div>
-            </section>
+                    }}
+                  />
+                  </div>
+                </section>
 
-            <section>
-              <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-3 uppercase tracking-wider">
-                Subtasks
-              </h3>
-              <button className="flex items-center text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 -ml-2 rounded transition-colors">
-                <Plus size={16} className="mr-1" /> Add subtask
-              </button>
-            </section>
+               {/* <SubTasks task={selectedTask} />
 
-            <section>
-              <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-3 uppercase tracking-wider">
-                Linked work items
-              </h3>
-              <button className="flex items-center text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 -ml-2 rounded transition-colors">
-                <Plus size={16} className="mr-1" /> Add linked work item
-              </button>
-            </section>
+                <section>
+                  <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-3 uppercase tracking-wider">
+                  Linked work items
+                  </h3>
+                  <button className="flex items-center text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 -ml-2 rounded transition-colors">
+                  <Plus size={16} className="mr-1" /> Add linked work item
+                  </button>
+                </section> */}
 
-            {/* Activity Section */}
+                {/* Activity Section */}
             <section className="mt-12">
               <div className="flex items-center justify-between mb-6 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex space-x-6">
@@ -362,14 +356,16 @@ const TaskDetail = () => {
             <div className="grid grid-cols-[100px_1fr] gap-y-5 text-sm">
               <>
                 <div className="text-slate-500 dark:text-slate-400 font-medium py-1">Assignee</div>
+                {console.log("assignees_of_task", assignees_of_task)}
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
                   <AssigneeSelectWidget
-                    mode={undefined}
+                    single={true}
                     value={assignees_of_task || []}
                     onChange={(newAssignee) => {
+                      if (!newAssignee || newAssignee.length === 0) return;
                       assignee_mutation.call({
                         task_name: task.name,
-                        new_assignee: newAssignee,
+                        new_assignee: newAssignee[0],
                       });
                     }}
                   />
@@ -379,7 +375,7 @@ const TaskDetail = () => {
                 <div className="text-slate-500 dark:text-slate-400 font-medium py-1">Labels</div>
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
                   <TagsSelectWidget
-                    mode={"multiple"}
+                    mode={"tags"}
                     docname={task.name}
                     value={labels_of_task || []}
                   />

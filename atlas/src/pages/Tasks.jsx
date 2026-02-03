@@ -1,4 +1,4 @@
-import { Filter, Plus, Search } from "lucide-react";
+import { Filter, Hamburger, Menu, Plus, Search } from "lucide-react";
 import React, { act, useEffect } from "react";
 import Card from "../components/ui/Card";
 import {
@@ -26,7 +26,15 @@ import TaskDetail from "../modals/TaskDetail";
 import TableView from "../views/TableView";
 import KanbanView from "../views/KanbanView";
 import LinkField from "../components/form/LinkField";
-import { Avatar, Button, Input, Progress, Select, Tooltip } from "antd";
+import {
+  Avatar,
+  Button,
+  Dropdown,
+  Input,
+  Progress,
+  Select,
+  Tooltip,
+} from "antd";
 import BacklogView from "../views/BacklogView/BacklogView";
 import { set } from "react-hook-form";
 import AIArchitect from "./AIArchitect";
@@ -38,6 +46,7 @@ import CycleModal from "../components/custom/CycleModal";
 import CompleteCycleModal from "../components/custom/CompleteCycleModal";
 import { useQueryParams } from "../hooks/useQueryParams";
 import ProjectHealth from "../components/ProjectHealth";
+import ManageProjectPeople from "../modals/ManageProjectPeople";
 
 const Tasks = () => {
   // const [isOpen, setIsOpen] = React.useState(false);
@@ -94,33 +103,48 @@ const Tasks = () => {
 
   const project_data = project_query?.data || {};
   const assignees = (project_data?.users || []).map((u) => u.user);
-
   return (
     <>
-      <TaskDetail />
-
-      <ProjectHealth project_id={project} collapsible={true} />
-
       <div className="space-y-2 md:space-y-1">
         {/* Header Section */}
         {project_data.project_name && (
           <div className="flex items-center justify-between space-x-3">
-            <Select
-              variant="borderless"
-              placeholder="Filter by Project"
-              style={{
-                // width: "100%",
-                size: "large",
-                fontSize: "24px",
-                fontWeight: "600",
-              }}
-              defaultValue={qp.get("project") || []}
-              value={qp.get("project") || []}
-              onChange={(value) => {
-                qp.set("project", value);
-              }}
-              options={projects_options_query?.data || []}
-            />
+            <div>
+              <Select
+                variant="borderless"
+                placeholder="Filter by Project"
+                style={{
+                  // width: "100%",
+                  size: "large",
+                  fontSize: "24px",
+                  fontWeight: "600",
+                }}
+                defaultValue={qp.get("project") || []}
+                value={qp.get("project") || []}
+                onChange={(value) => {
+                  qp.set("project", value);
+                }}
+                options={projects_options_query?.data || []}
+              />
+              <Dropdown
+                trigger={"click"}
+                menu={{
+                  onClick: ({ key }) => {
+                    if (key === "manage_people") {
+                      qp.set("manage_project_people", "1");
+                    }
+                  },
+                  items: [
+                    {
+                      key: "manage_people",
+                      label: "Manage People",
+                    },
+                  ],
+                }}
+              >
+                <Button icon={<Menu size={16} />}></Button>
+              </Dropdown>
+            </div>
             <Select
               variant="borderless"
               placeholder="Filter by Project"
@@ -287,6 +311,10 @@ const Tasks = () => {
       </div>
       <CompleteCycleModal />
       <CycleModal />
+      <ManageProjectPeople />
+      <TaskDetail />
+
+      <ProjectHealth project_id={project} collapsible={true} />
     </>
   );
 };

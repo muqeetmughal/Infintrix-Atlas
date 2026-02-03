@@ -1,20 +1,31 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
 import "./index.css";
+import ReactDOM from 'react-dom/client'
 import App from "./App.jsx";
+import React from "react";
 
-//  const { darkModeEnabled } = useSelector((state) => state.theme);
-// const themeAlgorithm = React.useMemo(() => {
-//   return darkModeEnabled
-//     ? [theme.darkAlgorithm, theme.compactAlgorithm]
-//     : [theme.compactAlgorithm];
-// }, [darkModeEnabled]);
-
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-
+if (import.meta.env.DEV) {
+  fetch("/api/method/infintrix_atlas.www.atlas.get_context_for_dev", {
+    method: "POST",
+  })
+    .then((response) => response.json())
+    .then((values) => {
+      const v = JSON.parse(values.message);
+      //@ts-expect-error
+      if (!window.frappe) window.frappe = {};
+      //@ts-ignore
+      window.frappe.boot = v;
+      // registerServiceWorker();
+      ReactDOM.createRoot(document.getElementById("root")).render(
+        <React.StrictMode>
           <App />
-  </StrictMode>
-);
+        </React.StrictMode>,
+      );
+    });
+} else {
+  registerServiceWorker();
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  );
+}
