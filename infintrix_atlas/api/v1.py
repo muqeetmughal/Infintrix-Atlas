@@ -5,6 +5,7 @@ import json
 from infintrix_atlas.permissions import project_permission_query, task_permission_query
 from .utils import create_custom_notification
 
+
 @frappe.whitelist()
 def get_tasks():
     project = frappe.request.args.get("project")
@@ -102,42 +103,47 @@ def get_doctype_meta(doctype_name):
 
 @frappe.whitelist()  # Adjust permissions as needed
 def switch_assignee_of_task(task_name, new_assignee):
-    # task_name = frappe.request.args.get("task")
-    # new_assignee = frappe.request.args.get("assignee")
+	# task_name = frappe.request.args.get("task")
+	# new_assignee = frappe.request.args.get("assignee")
+	if not task_name:
+		frappe.throw("Task is required")
+	
+	if new_assignee == "unassigned":
+		new_assignee = None
+	elif new_assignee == "auto":
+		new_assignee = frappe.session.user
 
-    if not task_name or not new_assignee:
-        frappe.throw("Task and assignee are required")
+	# Close existing assignee
+	existing_todo = frappe.db.get_value(
+		"ToDo",
+		{
+			"reference_type": "Task",
+			"reference_name": task_name,
+			"status": ["!=", "Cancelled"],
+		},
+		"name",
+	)
 
-    # Close existing assignee
-    existing_todo = frappe.db.get_value(
-        "ToDo",
-        {
-            "reference_type": "Task",
-            "reference_name": task_name,
-            "status": ["!=", "Cancelled"],
-        },
-        "name",
-    )
+	if existing_todo:
+		frappe.db.set_value("ToDo", existing_todo, "status", "Closed")
 
-    if existing_todo:
-        frappe.db.set_value("ToDo", existing_todo, "status", "Closed")
+	# Create new todo for new assignee only if not unassigned
+	if new_assignee:
+		frappe.get_doc(
+			{
+				"doctype": "ToDo",
+				"reference_type": "Task",
+				"reference_name": task_name,
+				"allocated_to": new_assignee,
+				"description": f"Task assigned to {new_assignee}",
+				"status": "Open",
+				"due_date": None,
+				"assigned_by": frappe.session.user,
+			}
+		).insert()
 
-    # Create new todo for new assignee
-    frappe.get_doc(
-        {
-            "doctype": "ToDo",
-            "reference_type": "Task",
-            "reference_name": task_name,
-            "allocated_to": new_assignee,
-            "description": f"Task assigned to {new_assignee}",
-            "status": "Open",
-            "due_date": None,
-            "assigned_by": frappe.session.user,
-        }
-    ).insert()
-
-    frappe.db.commit()
-    return {"success": True, "message": "Assignee updated"}
+	frappe.db.commit()
+	return {"success": True, "message": "Assignee updated"}
 
 
 @frappe.whitelist()
@@ -465,7 +471,6 @@ def query_tasks(payload=None):
 
 
 @frappe.whitelist()
-@frappe.whitelist()
 def get_project_user_stats(user=None):
     user = user or frappe.session.user
 
@@ -613,7 +618,6 @@ def update_users_on_project(project, users):
             document_name=project,
             icons='<i class="fa fa-exclamation-triangle"></i>',
         )
-        
 
     for user in added_users:
         create_custom_notification(

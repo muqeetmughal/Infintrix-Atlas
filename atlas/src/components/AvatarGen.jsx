@@ -8,8 +8,18 @@ const AvatarGen = ({ name = null, size = 30, enable_tooltip = false }) => {
   const [opened, setOpened] = useState(false);
   const avatar_query = useAvatarQuery(name);
   const { token } = theme.useToken();
-
-  const user_detail_query = useFrappeGetDoc("User", name);
+  const shouldFetchUserDetails = name && name !== "unassigned" && name !== "auto";
+  
+  const user_detail_query = useFrappeGetDoc(
+    "User", 
+    name, 
+    shouldFetchUserDetails ? ["current_user_details", name] : null, 
+    {
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+      revalidateOnReconnect: false,
+    }
+  );
 
   if (avatar_query.isLoading && user_detail_query.isLoading) {
     return <Spin />;
@@ -63,6 +73,7 @@ const AvatarGen = ({ name = null, size = 30, enable_tooltip = false }) => {
         }}
       >
         <Avatar
+        size="small"
           src={user_info?.user_image || avatar_query.data}
           style={{ backgroundColor: "#87d068" }}
           className="cursor-pointer"
@@ -80,6 +91,7 @@ const AvatarGen = ({ name = null, size = 30, enable_tooltip = false }) => {
   } else {
     return (
       <Avatar
+      size="small"
         src={user_info?.user_image || avatar_query.data}
         style={{ backgroundColor: "#87d068" }}
         className="cursor-pointer"

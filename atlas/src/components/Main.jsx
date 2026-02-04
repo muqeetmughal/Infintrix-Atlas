@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  CheckSquare, 
-  Clock, 
-  Settings, 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreVertical, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  CheckSquare,
+  Clock,
+  Settings,
+  Plus,
+  Search,
+  Filter,
+  MoreVertical,
   ChevronRight,
   Calendar,
   Users,
@@ -138,8 +138,8 @@ const AIGeneratorView = ({ onAcceptTask }) => {
               onClick={handleGenerate}
               disabled={isGenerating || !prompt}
               className={`flex items-center space-x-3 px-8 py-4 rounded-2xl font-black transition-all transform active:scale-95 ${
-                isGenerating || !prompt 
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                isGenerating || !prompt
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                   : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200'
               }`}
             >
@@ -172,13 +172,13 @@ const AIGeneratorView = ({ onAcceptTask }) => {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <button 
+                  <button
                     onClick={() => setSuggestedTasks(prev => prev.filter(t => t.id !== task.id))}
                     className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
                   >
                     <X size={20} />
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       onAcceptTask(task);
                       setSuggestedTasks(prev => prev.filter(t => t.id !== task.id));
@@ -228,8 +228,8 @@ const BulkAssignView = ({ tasks, onBulkUpdate }) => {
           <thead className="bg-slate-50/50 border-b border-slate-100">
             <tr>
               <th className="p-6 w-12">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   className="rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500 w-5 h-5 cursor-pointer"
                   onChange={(e) => setSelectedIds(e.target.checked ? tasks.map(t => t.id) : [])}
                   checked={selectedIds.length === tasks.length && tasks.length > 0}
@@ -245,8 +245,8 @@ const BulkAssignView = ({ tasks, onBulkUpdate }) => {
             {tasks.map(task => (
               <tr key={task.id} className={`hover:bg-indigo-50/30 transition-colors group ${selectedIds.includes(task.id) ? 'bg-indigo-50/50' : ''}`}>
                 <td className="p-6">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     className="rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500 w-5 h-5 cursor-pointer"
                     checked={selectedIds.includes(task.id)}
                     onChange={() => toggleSelect(task.id)}
@@ -289,8 +289,8 @@ const BulkAssignView = ({ tasks, onBulkUpdate }) => {
           <div className="flex items-center space-x-6">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assign Member</label>
-              <select 
-                value={bulkAssignee} 
+              <select
+                value={bulkAssignee}
                 onChange={(e) => setBulkAssignee(e.target.value)}
                 className="block w-44 text-sm bg-slate-800 border-none rounded-xl focus:ring-indigo-500 text-white"
               >
@@ -301,8 +301,8 @@ const BulkAssignView = ({ tasks, onBulkUpdate }) => {
 
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Set Urgency</label>
-              <select 
-                value={bulkPriority} 
+              <select
+                value={bulkPriority}
                 onChange={(e) => setBulkPriority(e.target.value)}
                 className="block w-44 text-sm bg-slate-800 border-none rounded-xl focus:ring-indigo-500 text-white"
               >
@@ -312,14 +312,14 @@ const BulkAssignView = ({ tasks, onBulkUpdate }) => {
             </div>
           </div>
 
-          <button 
+          <button
             onClick={handleBulkUpdate}
             className="bg-indigo-500 hover:bg-indigo-400 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg shadow-indigo-500/20 transition-all flex items-center space-x-2"
           >
             <UserPlus size={20} />
             <span>Apply Changes</span>
           </button>
-          
+
           <button onClick={() => setSelectedIds([])} className="text-slate-400 hover:text-white transition-colors">
             <X size={24} />
           </button>
@@ -331,7 +331,7 @@ const BulkAssignView = ({ tasks, onBulkUpdate }) => {
 
 const KanbanView = ({ tasks }) => {
   const statuses = ['Backlog', 'Open', 'Working', 'Pending Review', 'Completed'];
-  
+
   return (
     <div className="h-full flex flex-col space-y-6">
       <div className="flex items-center justify-between">
@@ -404,11 +404,11 @@ const GanttView = ({ tasks }) => {
                     <div className="text-[10px] text-slate-400">{task.project}</div>
                   </div>
                   <div className="flex-1 p-4 relative min-h-[60px]">
-                    <div 
+                    <div
                       className={`absolute h-8 rounded-full shadow-sm flex items-center px-4 text-[10px] font-bold text-white transition-all ${
                         task.status === 'Completed' ? 'bg-emerald-400' : 'bg-indigo-400'
                       }`}
-                      style={{ 
+                      style={{
                         left: `${Math.random() * 40}%`, // Simplified for mock visuals
                         width: `${20 + Math.random() * 40}%`
                       }}
@@ -439,7 +439,7 @@ const TreeView = ({ projects, tasks }) => {
       <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-sm">
         {projects.map(proj => (
           <div key={proj.name} className="space-y-2">
-            <div 
+            <div
               onClick={() => toggleExpand(proj.name)}
               className="flex items-center space-x-3 p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl cursor-pointer transition-all"
             >
@@ -538,19 +538,19 @@ export default function Main() {
       <aside className={`bg-white border-r border-slate-200 fixed lg:relative z-20 transition-all duration-300 h-screen overflow-hidden ${isSidebarOpen ? 'w-72' : 'w-24'}`}>
         <div className="p-8 mb-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-xl shadow-indigo-200 transform rotate-3">IA</div>
-            {isSidebarOpen && <span className="font-black text-xl tracking-tighter text-slate-900">InfintrixAtlas</span>}
+            <img src='/images/logo.png' />
+            {isSidebarOpen && <span className="font-black text-xl tracking-tighter text-slate-900">Infintrix Atlas</span>}
           </div>
         </div>
-        
+
         <nav className="px-4 space-y-2">
           {menuItems.map(item => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center space-x-4 px-5 py-4 rounded-2xl transition-all duration-200 ${
-                activeTab === item.id 
-                  ? 'bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-200 scale-105' 
+                activeTab === item.id
+                  ? 'bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-200 scale-105'
                   : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
@@ -583,7 +583,7 @@ export default function Main() {
             <h1 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Module / {activeTab}</h1>
             <p className="text-2xl font-black text-slate-900 tracking-tight">Project Workspace</p>
           </div>
-          
+
           <div className="flex items-center space-x-6">
              <div className="hidden md:flex items-center bg-slate-100 px-4 py-2 rounded-2xl border border-slate-200">
                 <Search size={18} className="text-slate-400 mr-2" />
@@ -666,13 +666,13 @@ export default function Main() {
                 </div>
               </div>
             )}
-            
+
             {activeTab === 'ai-gen' && <AIGeneratorView onAcceptTask={handleAcceptAITask} />}
             {activeTab === 'bulk-assign' && <BulkAssignView tasks={tasks} onBulkUpdate={handleBulkUpdate} />}
             {activeTab === 'kanban' && <KanbanView tasks={tasks} />}
             {activeTab === 'gantt' && <GanttView tasks={tasks} />}
             {activeTab === 'tree' && <TreeView projects={projects} tasks={tasks} />}
-            
+
             {activeTab === 'projects' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
@@ -691,7 +691,7 @@ export default function Main() {
                         </div>
                         <h3 className="text-xl font-bold text-slate-900 mb-1">{p.project_name}</h3>
                         <p className="text-xs text-slate-400 mb-6">{p.name} • {p.project_type}</p>
-                        
+
                         <div className="space-y-2 mb-6">
                            <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
                               <span>Completion</span>
@@ -701,7 +701,7 @@ export default function Main() {
                               <div className="h-full bg-indigo-500 transition-all duration-1000" style={{width: `${p.percent_complete}%`}} />
                            </div>
                         </div>
-                        
+
                         <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                            <div className="flex -space-x-2">
                               {[1,2,3].map(i => (

@@ -22,7 +22,7 @@ if (import.meta.env.DEV) {
       );
     });
 } else {
-  registerServiceWorker();
+  // registerServiceWorker();
   ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>
       <App />

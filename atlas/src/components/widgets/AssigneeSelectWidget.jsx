@@ -1,70 +1,188 @@
-import { Select, Tag } from "antd";
+import {
+  Avatar,
+  Button,
+  Divider,
+  Dropdown,
+  Input,
+  Select,
+  Space,
+  Spin,
+  Tag,
+  theme,
+} from "antd";
 import { useFrappeGetDocList, useFrappePostCall } from "frappe-react-sdk";
-import { useState } from "react";
+import React, { useState } from "react";
 import AvatarGen from "../AvatarGen";
+import { UserOutlined } from "@ant-design/icons";
+import {
+  useAssigneeOfTask,
+  useAssigneeUpdateMutation,
+} from "../../hooks/query";
+
 export const AssigneeSelectWidget = (props) => {
+  // console.log("AssigneeSelectWidget props:", props);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value || []);
+  const assignee_of_task_query = useAssigneeOfTask(props.task);
+  const assignees_of_task = (assignee_of_task_query?.data || []).map((todo) => {
+    return todo.allocated_to;
+  });
+
+  // console.log("Assignee of task query data:", assignees_of_task);
 
   const collegues_list_query = useFrappeGetDocList("User", {
-    fields: ["name as const", "full_name as title"],
-    filters: [["enabled", "=", 1], ["name", "!=", "Guest"]],
+    fields: ["name", "full_name"],
+    filters: [
+      ["enabled", "=", 1],
+      ["name", "!=", "Guest"],
+    ],
     limit_page_length: 50,
     order_by: "full_name asc",
   });
+  const { token } = theme.useToken();
 
-  const tagRender = (tag_props) => {
-    const { value, closable, onClose } = tag_props;
-    if (!value) return null;
-    return (
-      <Tag
-        closable={closable}
-        onClose={onClose}
-        style={{ marginRight: 8, marginBottom: 4 }}
-        className="flex items-center gap-2 px-2 py-1"
-      >
-        <AvatarGen name={value} enable_tooltip={true} />
-        <span className="text-sm">{value}</span>
-    
-      </Tag>
-    );
+  const assignee_mutation = useAssigneeUpdateMutation();
+  const contentStyle = {
+    backgroundColor: token.colorBgElevated,
+    borderRadius: token.borderRadiusLG,
+    boxShadow: token.boxShadowSecondary,
+  };
+  const menuStyle = {
+    boxShadow: "none",
   };
 
-  if (collegues_list_query.isLoading) return null;
+  // const tagRender = (tag_props) => {
+  //   const { value, closable, onClose } = tag_props;
+  //   if (!value) return null;
+  //   return (
+  //     <div
+  //       style={{ marginRight: 8, marginBottom: 4 }}
+  //       className="flex items-center gap-2 px-2 py-1"
+  //     >
+  //       <AvatarGen name={value} enable_tooltip={true} />
 
+  //       {(props.show_label || true) && <span className="text-sm">{value}</span>}
+  //     </div>
+  //     // <Tag
+  //     //   closable={closable}
+  //     //   onClose={onClose}
+  //     //   style={{ marginRight: 8, marginBottom: 4 }}
+  //     //   className="flex items-center gap-2 px-2 py-1"
+  //     // >
+  //     //   <AvatarGen name={value} enable_tooltip={true} />
+
+  //     //   {
+  //     //     props.show_label && <span className="text-sm">{value}</span>
+  //     //   }
+
+  //     // </Tag>
+  //   );
+  // };
+
+  if (collegues_list_query.isLoading) return <Spin />;
+
+  const defaultOptions = [
+    {
+      name: "unassigned",
+      full_name: "Unassigned",
+    },
+    {
+      name: "auto",
+      full_name: "Automatic",
+    },
+  ];
+
+  const items = defaultOptions
+    .concat(collegues_list_query?.data || [])
+    .map((colleague) => {
+      return {
+        key: colleague.name,
+        label: (
+          <div className="flex items-center gap-2">
+            <AvatarGen name={colleague.name} enable_tooltip={false} />
+            <span>{colleague.full_name}</span>
+          </div>
+        ),
+      };
+    });
+
+  const getNameByValue = (value) => {
+    const user = collegues_list_query.data.find(
+      (colleague) => colleague.name === value,
+    );
+    return user ? user.full_name : value;
+  };
   return (
-    <Select
-      mode="multiple"
-      allowClear
-      variant="borderless"
-      className="min-w-24"
-      placeholder="Assignees"
-      tagRender={tagRender}
-      // open={open}
-      // onOpenChange={(visible) => setOpen(visible)}
-      onSelect={() => setOpen(false)}
-      {...props}
-      value={selected}
-      onChange={(v) => {
-        setSelected(v);
-        props.onChange && props.onChange(v);
+    <Dropdown
+      disabled={props.disabled}
+      menu={{
+        items,
+        selectedKeys: assignees_of_task.concat(selected),
+        onClick: ({ key }) => {
+          console.log("updateing assignee:", key);
+
+          let newSelected = [];
+          if (props.single) {
+            newSelected = [key];
+          } else {
+            if (selected.includes(key)) {
+              newSelected = selected.filter((s) => s !== key);
+            } else {
+              newSelected = [...selected, key];
+            }
+          }
+          setSelected(newSelected);
+          assignee_mutation
+            .call({
+              task_name: props.task,
+              new_assignee: key,
+            })
+            .then(() => {
+              assignee_of_task_query.mutate();
+            });
+        },
       }}
-      optionRender={(props) => (
-        <div className="flex items-center" style={{ width: "100%" }}>
-          <AvatarGen name={props.value} enable_tooltip={false} />
-          <span className="ml-2">{props.label}</span>
+      trigger={["click"]}
+      onOpenChange={(flag) => setOpen(flag)}
+      open={open}
+      popupRender={(menu) => (
+        <div style={contentStyle}>
+          <Space style={{ padding: 8 }}>
+            <Input
+              prefix={<Avatar size={24} icon={<UserOutlined />} />}
+              placeholder=""
+              style={{
+                width: "100%",
+              }}
+            />
+          </Space>
+          <Divider style={{ margin: 0 }} />
+          {React.cloneElement(menu, { style: menuStyle })}
         </div>
       )}
-      popupMatchSelectWidth={false}
-      popupStyle={{ width: 300, overflowX: "auto", maxHeight: 400 }}
-      maxTagCount={Number.MAX_SAFE_INTEGER}
-      maxCount={props.single ? 1 : undefined}
     >
-      {collegues_list_query?.data.map((option, index) => (
-        <Select.Option key={option.const || index} value={option.const}>
-          {option.title}
-        </Select.Option>
-      ))}
-    </Select>
+      <Button size="small" type="text">
+        {assignees_of_task.length > 0 ? (
+          <div className="flex items-center -space-x-2">
+            {assignees_of_task.map((assignee) => (
+              <div key={assignee} className="inline-block">
+                <AvatarGen name={assignee} enable_tooltip={false} />
+              </div>
+            ))}
+            {props.show_label && (
+              <span className="ml-3 text-sm">
+                {assignees_of_task.length === 1
+                  ? getNameByValue(assignees_of_task[0])
+                  : `${assignees_of_task.length} assignees`}
+              </span>
+            )}
+          </div>
+        ) : (
+          <>
+          <Avatar size={24} icon={<UserOutlined />} /> {props.show_label && "Unassigned"}
+          </>
+        )}
+      </Button>
+    </Dropdown>
   );
 };

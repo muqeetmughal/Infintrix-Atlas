@@ -4,18 +4,18 @@ app_publisher = "Muqeet Mughal"
 app_description = "A Project Management Software Built Specifically for the Software Development Teams"
 app_email = "muqeetmughal786@gmail.com"
 app_license = "mit"
-# app_icon_url = "/assets/atlas/images/logo.svg"
-# app_icon_title = "Atlas"
-# app_icon_route = "/atlas"
-# add_to_apps_screen = [
-# 	{
-# 		"name": "atlas",
-# 		"logo": "/assets/atlas/images/logo.svg",
-# 		"title": "Atlas",
-# 		"route": "/atlas",
-# 		"has_permission": "atlas.api.check_app_permission",
-# 	}
-# ]
+app_icon_url = "/assets/infintrix_atlas/atlas/images/logo.svg"
+app_icon_title = "Atlas"
+app_icon_route = "/atlas"
+add_to_apps_screen = [
+	{
+		"name": "atlas",
+		"logo": "/assets/infintrix_atlas/atlas/images/logo.svg",
+		"title": "Atlas",
+		"route": "/atlas",
+		"has_permission": "infintrix_atlas.api.check_app_permission",
+	}
+]
 
 # Apps
 # ------------------

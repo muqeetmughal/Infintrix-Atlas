@@ -11,7 +11,7 @@ class ProjectOverride(Project):
 		print("Custom Project Validate Logic Here")
 		if not self.is_new():
 			self.copy_from_template()  # nosemgrep
-		# self.send_welcome_email()
+		self.send_welcome_email()
 		self.update_costing()
 		self.update_percent_complete()
 		self.validate_from_to_dates("expected_start_date", "expected_end_date")
@@ -71,10 +71,11 @@ class ProjectOverride(Project):
 					)
 					user.welcome_email_sent = 1
 				except Exception as e:
+					print("Error sending email to:", user.user, "Error:", str(e))
 					frappe.log_error(frappe.get_traceback(), f"Failed to send project welcome email to {user.user}")
 
 
-	
+
 
 	def before_insert(self):
 		if not self.users:

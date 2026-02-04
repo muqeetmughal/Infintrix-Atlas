@@ -17,9 +17,7 @@ const Sidebar = () => {
       >
         <div className="p-8 mb-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-indigo-600 dark:bg-indigo-500 rounded-2xl flex items-center justify-center text-white font-black shadow-xl shadow-indigo-200 dark:shadow-indigo-900/50 transform rotate-3">
-              IA
-            </div>
+            <img src='/images/logo.png' alt="Infintrix Atlas Logo" width={50} height={50}/>
             {isSidebarOpen && (
               <span className="font-black text-xl tracking-tighter text-slate-900 dark:text-white">
                 {/* cspell:disable-next-line */}

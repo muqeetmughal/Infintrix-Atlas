@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createAvatar } from "@dicebear/core";
 import { initials } from "@dicebear/collection";
-import { useFrappeAuth, useFrappeGetCall, useFrappeGetDoc, useFrappeGetDocList } from "frappe-react-sdk";
+import { useFrappeAuth, useFrappeGetCall, useFrappeGetDoc, useFrappeGetDocList, useFrappePostCall } from "frappe-react-sdk";
 import { db } from "../lib/frappeClient";
 import { useQueryParams } from "./useQueryParams";
 export const useAvatarQuery = (name) => {
@@ -104,7 +104,17 @@ export const useTasksQuery = (
 export const useProjectDetailsQuery = (project) => {
 	return useFrappeGetDoc("Project", project, project ? ["Project", project] : null);
 };
-
+export const useAssigneeOfTask = (selectedTask) => {
+	return useFrappeGetDocList("ToDo", {
+		filters: [
+			["reference_type", "=", "Task"],
+			["reference_name", "=", selectedTask || ""],
+			["status", "=", "Open"],
+		],
+		fields: ["allocated_to"],
+		limit_page_length: 1,
+	});
+}
 // export const useTasksQuery = (filters, options) => {
 //   return  useFrappeGetDocList(
 //       `Task`,
@@ -163,3 +173,10 @@ export const useProjectUsers = (project) => {
 		},
 	);
 };
+export const useAssigneeUpdateMutation = () => {
+
+	return useFrappePostCall(
+		"infintrix_atlas.api.v1.switch_assignee_of_task"
+	);
+}
+

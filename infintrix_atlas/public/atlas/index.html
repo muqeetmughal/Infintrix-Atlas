@@ -1,15 +1,24 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/assets/infintrix_atlas/atlas/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>atlas</title>
-    <script type="module" crossorigin src="/assets/infintrix_atlas/atlas/assets/index-BROgZYBS.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/infintrix_atlas/atlas/assets/index-D5TXbPlZ.css">
-  </head>
-  <body>
-    <div id="root"></div>
-		<script>window.csrf_token = '{{ frappe.session.csrf_token }}';</script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/assets/infintrix_atlas/atlas/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>atlas</title>
+  <script type="module" crossorigin src="/assets/infintrix_atlas/atlas/assets/index-BXtrIeXe.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/infintrix_atlas/atlas/assets/index-D5TXbPlZ.css">
+</head>
+
+<body>
+  <div id="root" vaul-drawer-wrapper="true"></div>
+  <script>window.csrf_token = '{{ csrf_token }}';
+    if (!window.frappe) window.frappe = {};
+
+    window.app_name = "{{ app_name }}";
+
+    frappe.boot = JSON.parse({{ boot }});
+  </script>
+</body>
+
 </html>

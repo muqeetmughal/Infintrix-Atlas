@@ -12,6 +12,8 @@ import {
   Zap,
   Filter,
   GripVertical,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -31,9 +33,11 @@ import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
 import CommentSection from "../components/CommentSection";
 import HistorySection from "../components/HistorySection";
 import SubTasks from "../components/SubTasks";
+import { useAssigneeOfTask } from "../hooks/query";
 
 const TaskDetail = () => {
   const [isResizing, setIsResizing] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
   const containerRef = useRef(null);
   const [position] = useState("modal");
   const [activeTab, setActiveTab] = useState("comments");
@@ -43,17 +47,9 @@ const TaskDetail = () => {
 
   const task_details_query = useFrappeGetDoc("Task", selectedTask || "");
 
-  const assignee_of_task_query = useFrappeGetDocList("ToDo", {
-    filters: [
-      ["reference_type", "=", "Task"],
-      ["reference_name", "=", selectedTask || ""],
-      ["status", "=", "Open"],
-    ],
-    fields: ["allocated_to"],
-    limit_page_length: 1,
-  });
+  const assignee_of_task_query = useAssigneeOfTask(selectedTask)
   const assignee_mutation = useFrappePostCall(
-    "infintrix_atlas.api.v1.switch_assignee_of_task"
+    "infintrix_atlas.api.v1.switch_assignee_of_task",
   );
 
   const assignees_of_task = (assignee_of_task_query?.data || []).map((todo) => {
@@ -63,7 +59,7 @@ const TaskDetail = () => {
   const task = task_details_query.data || {};
 
   const labels_of_task = ((task?._user_tags || "").split(",") || []).filter(
-    (tag) => tag.trim() !== ""
+    (tag) => tag.trim() !== "",
   );
 
   const onClose = () => {
@@ -99,25 +95,25 @@ const TaskDetail = () => {
         }
       }
     },
-    [isResizing]
+    [isResizing],
   );
 
   useEffect(() => {
     if (isResizing) {
-      window.addEventListener('mousemove', resize);
-      window.addEventListener('mouseup', stopResizing);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
+      window.addEventListener("mousemove", resize);
+      window.addEventListener("mouseup", stopResizing);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
     } else {
-      window.removeEventListener('mousemove', resize);
-      window.removeEventListener('mouseup', stopResizing);
-      document.body.style.cursor = 'default';
-      document.body.style.userSelect = 'auto';
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+      document.body.style.cursor = "default";
+      document.body.style.userSelect = "auto";
     }
 
     return () => {
-      window.removeEventListener('mousemove', resize);
-      window.removeEventListener('mouseup', stopResizing);
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
     };
   }, [isResizing, resize, stopResizing]);
 
@@ -127,10 +123,6 @@ const TaskDetail = () => {
     { id: "comments", label: "Comments" },
     { id: "history", label: "History" },
   ];
-
-  if (task_details_query.isLoading || assignee_of_task_query.isLoading) {
-    return <div className="text-slate-900 dark:text-slate-100">Loading...</div>;
-  }
 
   const TaskBody = (
     <div className="task-body overflow-hidden flex flex-col h-full bg-white dark:bg-slate-900">
@@ -150,7 +142,9 @@ const TaskDetail = () => {
                   });
               }}
             />
-            <span className="text-slate-900 dark:text-slate-100">{task.name}</span>
+            <span className="text-slate-900 dark:text-slate-100">
+              {task.name}
+            </span>
           </div>
         </div>
 
@@ -170,6 +164,10 @@ const TaskDetail = () => {
           <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
             <MoreHorizontal size={18} />
           </button>
+          <Button
+            icon={fullScreen ? <Maximize size={18} /> : <Minimize size={18} />}
+            onClick={() => setFullScreen(!fullScreen)}
+          ></Button>
           <button
             onClick={onClose}
             className="cursor-pointer p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors ml-1 text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
@@ -180,7 +178,10 @@ const TaskDetail = () => {
       </header>
 
       {/* Content Area */}
-      <div ref={containerRef} className="flex flex-1 overflow-hidden flex-col lg:flex-row">
+      <div
+        ref={containerRef}
+        className="flex flex-1 overflow-hidden flex-col lg:flex-row"
+      >
         {/* Main Content (Left) */}
         <main className="flex-1 p-6 sm:p-10 overflow-y-auto custom-scrollbar border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
           <h1 className="text-3xl font-semibold mb-6 leading-tight text-slate-900 dark:text-slate-100">
@@ -227,12 +228,12 @@ const TaskDetail = () => {
                       .then(() => {
                         task_details_query.mutate();
                       });
-                    }}
-                  />
-                  </div>
-                </section>
+                  }}
+                />
+              </div>
+            </section>
 
-               {/* <SubTasks task={selectedTask} />
+            {/* <SubTasks task={selectedTask} />
 
                 <section>
                   <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-3 uppercase tracking-wider">
@@ -243,7 +244,7 @@ const TaskDetail = () => {
                   </button>
                 </section> */}
 
-                {/* Activity Section */}
+            {/* Activity Section */}
             <section className="mt-12">
               <div className="flex items-center justify-between mb-6 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex space-x-6">
@@ -268,28 +269,22 @@ const TaskDetail = () => {
                   <Filter size={16} />
                 </button>
               </div>
-              {
-                tabs.map((tab) => {
-                  if (tab.id === activeTab) {
-                    return (
-                      <div key={tab.id} className="">
-                        {/* Render content based on active tab */}
-                        {tab.id === "comments" && (
-                          <CommentSection task_id={task.name} />
-                        )}
-                        {tab.id === "history" && (
-                         <HistorySection task_id={task.name} />
-                        )}
-                      </div>
-                    );
-                  }
-                  return null;
-                })
-              }
-
-            
-
-              
+              {tabs.map((tab) => {
+                if (tab.id === activeTab) {
+                  return (
+                    <div key={tab.id} className="">
+                      {/* Render content based on active tab */}
+                      {tab.id === "comments" && (
+                        <CommentSection task_id={task.name} />
+                      )}
+                      {tab.id === "history" && (
+                        <HistorySection task_id={task.name} />
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              })}
             </section>
           </div>
         </main>
@@ -299,11 +294,13 @@ const TaskDetail = () => {
           onMouseDown={startResizing}
           className={`
             w-1.5 cursor-col-resize transition-all duration-200 z-10 relative shrink-0
-            ${isResizing ? 'bg-blue-500 dark:bg-blue-400 w-2' : 'bg-slate-200 dark:bg-slate-700 hover:bg-blue-400 dark:hover:bg-blue-500 hover:w-2'}
+            ${isResizing ? "bg-blue-500 dark:bg-blue-400 w-2" : "bg-slate-200 dark:bg-slate-700 hover:bg-blue-400 dark:hover:bg-blue-500 hover:w-2"}
           `}
         >
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-            <div className={`rounded-full p-0.5 ${isResizing ? 'bg-blue-500 dark:bg-blue-400 text-white shadow-lg' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500'}`}>
+            <div
+              className={`rounded-full p-0.5 ${isResizing ? "bg-blue-500 dark:bg-blue-400 text-white shadow-lg" : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500"}`}
+            >
               <GripVertical size={14} />
             </div>
           </div>
@@ -343,7 +340,10 @@ const TaskDetail = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between group">
               <div className="flex items-center text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wider cursor-pointer">
-                <ChevronDown size={14} className="mr-1 text-slate-400 dark:text-slate-500" />
+                <ChevronDown
+                  size={14}
+                  className="mr-1 text-slate-400 dark:text-slate-500"
+                />
                 Details
               </div>
               <Settings
@@ -355,24 +355,23 @@ const TaskDetail = () => {
             {/* Attributes Grid */}
             <div className="grid grid-cols-[100px_1fr] gap-y-5 text-sm">
               <>
-                <div className="text-slate-500 dark:text-slate-400 font-medium py-1">Assignee</div>
+                <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
+                  Assignee
+                </div>
                 {console.log("assignees_of_task", assignees_of_task)}
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
                   <AssigneeSelectWidget
                     single={true}
+                    show_label={true}
                     value={assignees_of_task || []}
-                    onChange={(newAssignee) => {
-                      if (!newAssignee || newAssignee.length === 0) return;
-                      assignee_mutation.call({
-                        task_name: task.name,
-                        new_assignee: newAssignee[0],
-                      });
-                    }}
+                    task={selectedTask}
                   />
                 </div>
               </>
               <>
-                <div className="text-slate-500 dark:text-slate-400 font-medium py-1">Labels</div>
+                <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
+                  Labels
+                </div>
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
                   <TagsSelectWidget
                     mode={"tags"}
@@ -382,10 +381,17 @@ const TaskDetail = () => {
                 </div>
               </>
               <>
-                <div className="text-slate-500 dark:text-slate-400 font-medium py-1">Reporter</div>
+                <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
+                  Reporter
+                </div>
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
-                  {task.owner}
-                 
+                  <AssigneeSelectWidget
+                    task={selectedTask}
+                    disabled={true}
+                    single={true}
+                    show_label={true}
+                    value={task.owner || []}
+                  />
                 </div>
               </>
             </div>
@@ -413,9 +419,17 @@ const TaskDetail = () => {
 
   if (position === "modal") {
     return (
-      <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 flex items-center justify-center">
-        <div className="bg-white dark:bg-slate-900 w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl overflow-hidden">
-          {TaskBody}
+      <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 flex items-center justify-center animate-in fade-in duration-200">
+        <div
+          className={`bg-white dark:bg-slate-900 overflow-hidden transition-all duration-300 ease-in-out ${
+            fullScreen
+              ? "w-full h-screen max-w-none rounded-none shadow-none"
+              : "w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl"
+          }`}
+        >
+          {task_details_query.isLoading || assignee_of_task_query.isLoading
+            ? "Loading..."
+            : TaskBody}{" "}
         </div>
       </div>
     );
@@ -423,7 +437,9 @@ const TaskDetail = () => {
 
   return (
     <div className="fixed top-0 right-0 h-full bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-hidden">
-      {TaskBody}
+      {task_details_query.isLoading || assignee_of_task_query.isLoading
+        ? "Loading..."
+        : TaskBody}
     </div>
   );
 };

@@ -35,6 +35,7 @@ import PreviewAssignees from "../components/PreviewAssignees";
 import { useTasksQuery } from "../hooks/query";
 import { useQueryParams } from "../hooks/useQueryParams";
 import Confetti from "../components/Confetti";
+import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 
 const IssueCard = React.forwardRef(
   (
@@ -93,8 +94,6 @@ const IssueCard = React.forwardRef(
         <div className="flex justify-between items-center mt-4">
           <div className="flex items-center gap-2">
             <Tooltip title={issue.type}>
-            
-
               <WorkItemTypeWidget
                 value={issue?.type || "Task"}
                 onChange={(newType) => {
@@ -115,10 +114,26 @@ const IssueCard = React.forwardRef(
           <div
             className={`w-7 h-7 rounded-full ${issue.assigneeColor} text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm`}
           >
-            <PreviewAssignees
+            <AssigneeSelectWidget
+              single={true}
+              show_label={false}
+              value={issue.assignees || []}
+              task={issue.id}
+              // onChange={(newAssignees) => {
+              //   updateMutation
+              //     .updateDoc("Task", issue.name, {
+              //       assignees: newAssignees,
+              //     })
+              //     .then(() => {
+              //       // task_details_query.mutate();
+              //     });
+              // }}
+            />
+
+            {/* <PreviewAssignees
               assignees={issue.assignees}
               enable_tooltip={false}
-            />
+            /> */}
           </div>
         </div>
       </div>
