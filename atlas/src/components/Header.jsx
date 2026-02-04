@@ -22,6 +22,7 @@ import { Button } from "antd";
 import { BellOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import { useAuth } from "../hooks/query";
 import useRealtime from "../hooks/realtime";
+import GlobalSearch from "./GlobalSearch";
 
 const Header = () => {
   const { toggle, isDark } = useTheme();
@@ -33,7 +34,7 @@ const Header = () => {
 
   const notifications_logs_query = useFrappeGetDocList("Notification Log", {
     fields: ["*"],
-    // filters: [["document_type", "in", ["Task", "Project", "Cycle"]]],
+    filters: [["document_type", "in", ["Task", "Project", "Cycle"]]],
     orderBy: {
       field: "creation",
       order: "desc",
@@ -56,20 +57,21 @@ const Header = () => {
     notifications_logs_query.mutate();
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNotifications && !event.target.closest('.notification-container')) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
+
   return (
     <>
       <header className="h-16 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 px-10 flex items-center justify-between sticky top-0 z-10">
-        <div className="hidden md:flex items-center bg-slate-100 dark:bg-slate-700 px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-600">
-          <Search
-            size={18}
-            className="text-slate-400 dark:text-slate-400 mr-2"
-          />
-          <input
-            type="text"
-            placeholder="Global Search..."
-            className="bg-transparent dark:text-slate-100 dark:placeholder:text-slate-400 border-none text-sm focus:ring-0 focus:outline-none w-48 font-medium"
-          />
-        </div>
+        <GlobalSearch/>
 
         <div className="flex items-center space-x-6">
           <button
@@ -83,7 +85,7 @@ const Header = () => {
             )}
           </button>
 
-          <div className="relative">
+          <div className="relative notification-container">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="h-12 w-12 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/30 cursor-pointer shadow-sm transition-all duration-300 relative"
@@ -97,68 +99,62 @@ const Header = () => {
             </button>
 
             {showNotifications && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowNotifications(false)}
-                />
-                <div className="absolute right-0 top-14 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 z-20 overflow-hidden">
-                  <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-                    <h3 className="font-bold text-slate-900 dark:text-slate-100">
-                      Notifications
-                    </h3>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    {notifications.length > 0 ? (
-                      notifications.map((notification) => (
-                        <div
-                          key={notification.name}
-                          onClick={() =>
-                            notification.read === 0 &&
-                            markAsRead(notification.name)
-                          }
-                          className={`p-4 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors ${
-                            notification.read === 0
-                              ? "bg-blue-50 dark:bg-blue-900/20"
-                              : ""
-                          }`}
-                        >
-                          <div className="flex items-start space-x-3">
-                            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                              <BellOutlined size={16} />
-                            </div>
-                            <div className="flex-1">
-                              <p
-                                className={`text-sm ${notification.read === 0 ? "font-semibold" : "font-medium"} text-slate-900 dark:text-slate-100`}
+              <div className="absolute right-0 top-14 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 z-20 overflow-hidden">
+                <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100">
+                    Notifications
+                  </h3>
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.length > 0 ? (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.name}
+                        onClick={() =>
+                          notification.read === 0 &&
+                          markAsRead(notification.name)
+                        }
+                        className={`p-4 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors ${
+                          notification.read === 0
+                            ? "bg-blue-50 dark:bg-blue-900/20"
+                            : ""
+                        }`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                            <BellOutlined size={16} />
+                          </div>
+                          <div className="flex-1">
+                            <p
+                              className={`text-sm ${notification.read === 0 ? "font-semibold" : "font-medium"} text-slate-900 dark:text-slate-100`}
+                              dangerouslySetInnerHTML={{
+                                __html: notification.subject,
+                              }}
+                            />
+                            {notification.email_content && (
+                              <div
+                                className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2"
                                 dangerouslySetInnerHTML={{
-                                  __html: notification.subject,
+                                  __html: notification.email_content,
                                 }}
                               />
-                              {notification.email_content && (
-                                <div
-                                  className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2"
-                                  dangerouslySetInnerHTML={{
-                                    __html: notification.email_content,
-                                  }}
-                                />
-                              )}
-                              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                                {new Date(
-                                  notification.creation,
-                                ).toLocaleString()}
-                              </p>
-                            </div>
+                            )}
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                              {new Date(
+                                notification.creation,
+                              ).toLocaleString()}
+                            </p>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center text-slate-500 dark:text-slate-400">
-                        No notifications
                       </div>
-                    )}
-                  </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-slate-500 dark:text-slate-400">
+                      No notifications
+                    </div>
+                  )}
                 </div>
-              </>
+              </div>
             )}
           </div>
 

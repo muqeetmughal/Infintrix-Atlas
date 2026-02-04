@@ -1,8 +1,8 @@
-import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import { Modal, Form, Button } from "antd";
 import { useFrappePostCall } from "frappe-react-sdk";
 import { useQueryParams } from "../hooks/useQueryParams";
 import { useProjectUsers } from "../hooks/query";
+import { AssigneeFormWidget } from "../components/widgets/AssigneeFormWidget";
 
 const ManageProjectPeople = () => {
   const [form] = Form.useForm();
@@ -66,7 +66,7 @@ const ManageProjectPeople = () => {
             label="Select People"
             rules={[{ required: true, message: "Please select people" }]}
           >
-            <AssigneeSelectWidget style={{ width: "100%" }} />
+            <AssigneeFormWidget style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item>
             <Button

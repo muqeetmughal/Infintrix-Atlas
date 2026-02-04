@@ -107,7 +107,7 @@ def switch_assignee_of_task(task_name, new_assignee):
 	# new_assignee = frappe.request.args.get("assignee")
 	if not task_name:
 		frappe.throw("Task is required")
-	
+
 	if new_assignee == "unassigned":
 		new_assignee = None
 	elif new_assignee == "auto":
@@ -630,3 +630,75 @@ def update_users_on_project(project, users):
         )
 
     return {"success": True, "message": "Project users updated"}
+import frappe
+
+@frappe.whitelist()
+def global_search(query: str, limit: int = 10):
+    """
+    Global search for Tasks and Projects
+    """
+    if not query or len(query) < 2:
+        return []
+
+    query = f"%{query}%"
+    results = []
+
+    # ---- TASKS ----
+    tasks = frappe.db.sql(
+        """
+        SELECT
+            name,
+            subject
+        FROM `tabTask`
+        WHERE
+            docstatus < 2
+            AND (
+                name LIKE %(query)s
+                OR subject LIKE %(query)s
+            )
+        ORDER BY modified DESC
+        LIMIT %(limit)s
+        """,
+        {"query": query, "limit": limit},
+        as_dict=True,
+    )
+
+    for task in tasks:
+        if frappe.has_permission("Task", "read", task.name):
+            results.append({
+                "type": "Task",
+                "name": task.name,
+                "title": task.subject,
+                "route": f"/app/task/{task.name}"
+            })
+
+    # ---- PROJECTS ----
+    projects = frappe.db.sql(
+        """
+        SELECT
+            name,
+            project_name
+        FROM `tabProject`
+        WHERE
+            docstatus < 2
+            AND (
+                name LIKE %(query)s
+                OR project_name LIKE %(query)s
+            )
+        ORDER BY modified DESC
+        LIMIT %(limit)s
+        """,
+        {"query": query, "limit": limit},
+        as_dict=True,
+    )
+
+    for project in projects:
+        if frappe.has_permission("Project", "read", project.name):
+            results.append({
+                "type": "Project",
+                "name": project.name,
+                "title": project.project_name,
+                "route": f"/app/project/{project.name}"
+            })
+
+    return results

@@ -1,10 +1,21 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { menuItems } from "../data/menu";
-
+import logo from "../assets/logo.png";
 const Sidebar = () => {
   const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem("sidebarOpen");
+    return saved !== null ? JSON.parse(saved) : false;
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen((prev) => {
+      const newState = !prev;
+      localStorage.setItem("sidebarOpen", JSON.stringify(newState));
+      return newState;
+    });
+  };
   const navigate = useNavigate();
 
   return (
@@ -17,7 +28,7 @@ const Sidebar = () => {
       >
         <div className="p-8 mb-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <img src='/images/logo.png' alt="Infintrix Atlas Logo" width={50} height={50}/>
+            <img src={logo} alt="Infintrix Atlas Logo" width={50} height={50} />
             {isSidebarOpen && (
               <span className="font-black text-xl tracking-tighter text-slate-900 dark:text-white">
                 {/* cspell:disable-next-line */}
@@ -68,7 +79,7 @@ const Sidebar = () => {
 
         <div className="px-4 mt-8">
           <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            onClick={() => toggleSidebar()}
             className="w-full flex items-center justify-center px-5 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-all duration-200"
           >
             <svg
