@@ -1,3 +1,4 @@
+import { CheckCircle, Circle, ClipboardList, Clock, Cog, XCircle } from "lucide-react";
 
 export const PROJECT_STATUS_COLORS = {
   'Open': 'bg-blue-100 text-blue-700 border-blue-200',
@@ -7,13 +8,21 @@ export const PROJECT_STATUS_COLORS = {
 };
 
 export const TASK_STATUS_COLORS = {
-  'Backlog': 'bg-slate-100 text-slate-600 border-slate-200',
-  'Open': 'bg-blue-50 text-blue-600 border-blue-100',
-  'Working': 'bg-amber-50 text-amber-700 border-amber-100',
-  'Pending Review': 'bg-purple-50 text-purple-700 border-purple-100',
-  'Completed': 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  'Backlog': 'slate',
+  'Open': 'blue',
+  'Working': 'amber',
+  'Pending Review': 'purple',
+  'Completed': 'emerald',
+  'Cancelled': 'red'
 };
-
+export const TASK_STATUS_ICONS = {
+  'Backlog': ClipboardList ,
+  'Open': Circle ,
+  'Working': Cog,
+  'Pending Review': Clock,
+  'Completed': CheckCircle,
+  'Cancelled': XCircle
+}
 export const TASK_PRIORITY_COLORS = {
   'Low': 'bg-slate-100 text-slate-600',
   'Medium': 'bg-orange-100 text-orange-600',

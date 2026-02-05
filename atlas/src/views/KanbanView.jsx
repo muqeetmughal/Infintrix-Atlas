@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { Plus, MoreHorizontal, GripVertical } from "lucide-react";
+import { Plus, MoreHorizontal, GripVertical, Edit, X } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -28,7 +28,7 @@ import {
 } from "frappe-react-sdk";
 import { useGetDoctypeField } from "../hooks/doctype";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { message, Tooltip } from "antd";
+import { Badge, Button, Input, message, Tooltip } from "antd";
 import { IconRenderer } from "../components/IconRenderer";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
 import PreviewAssignees from "../components/PreviewAssignees";
@@ -36,6 +36,8 @@ import { useTasksQuery } from "../hooks/query";
 import { useQueryParams } from "../hooks/useQueryParams";
 import Confetti from "../components/Confetti";
 import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
+import SubjectWidget from "../components/widgets/SubjectWidget";
+import { TASK_STATUS_COLORS, TASK_STATUS_ICONS } from "../data/constants";
 
 const IssueCard = React.forwardRef(
   (
@@ -43,14 +45,8 @@ const IssueCard = React.forwardRef(
     ref,
   ) => {
     const [searchParams, setSearchParams] = useSearchParams();
+    const [editingSubject, setEditingSubject] = useState(false);
     const updateMutation = useFrappeUpdateDoc();
-    const handleTitleClick = (e) => {
-      e.stopPropagation();
-      if (issue.id === "new_item") return;
-      // console.log("Issue clicked:", issue, issue);
-      searchParams.set("selected_task", issue.id);
-      setSearchParams(searchParams);
-    };
 
     return (
       <div
@@ -74,13 +70,9 @@ const IssueCard = React.forwardRef(
         {...props}
       >
         <div className="flex items-start justify-between mb-2">
-          <p
-            onClick={handleTitleClick}
-            className="text-sm font-medium text-slate-800 dark:text-slate-100 leading-snug cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
-          >
-            {issue.subject}
-          </p>
-          {issue.id !== "new_item" && (
+          <SubjectWidget task={issue} />
+
+          {/* {issue.id !== "new_item" && (
             <div
               className="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors p-1 -mr-2"
               {...attributes}
@@ -88,7 +80,7 @@ const IssueCard = React.forwardRef(
             >
               <GripVertical size={16} />
             </div>
-          )}
+          )} */}
         </div>
 
         <div className="flex justify-between items-center mt-4">
@@ -215,7 +207,19 @@ const Column = ({ id, title, tasks_list, createTask }) => {
     >
       <div className="flex items-center justify-between mb-4 px-1">
         <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
-          {title}
+          <div>
+            <div className="flex justify-start items-center">
+              <span>
+                {React.createElement(TASK_STATUS_ICONS[title], {
+                  size: 18,
+                  className: `text-${TASK_STATUS_COLORS[title]}-600 mr-1`,
+                })}
+              </span>
+              <span className={`text-${TASK_STATUS_COLORS[title]}-600`}>
+                {title}
+              </span>
+            </div>
+          </div>
           <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-[10px]">
             {tasks_list.length}
           </span>
@@ -237,7 +241,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
 
         {addNew ? (
           <div data-create-item>
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm mb-3">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm mb-3">
               <input
                 type="text"
                 className="w-full border-0 bg-transparent focus:ring-0 p-0 m-0 outline-none text-sm font-medium text-slate-800 dark:text-slate-100"

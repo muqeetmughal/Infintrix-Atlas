@@ -1,7 +1,7 @@
 import { Select } from "antd";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useGetDoctypeField } from "../../hooks/doctype";
-import { TASK_STATUS_COLORS } from "../../data/constants";
+import { TASK_STATUS_COLORS, TASK_STATUS_ICONS } from "../../data/constants";
 import Badge from "../ui/Badge";
 
 const StatusWidget = (props) => {
@@ -40,12 +40,21 @@ const StatusWidget = (props) => {
         {options.map((option) => {
           if (option.trim() === "Template") return null;
           return (
-          <Select.Option key={option} value={option}>
-            <Badge className={TASK_STATUS_COLORS[option]}>
-              <span>{option}</span>
-            </Badge>
-          </Select.Option>
-        )})}
+            <Select.Option key={option} value={option}>
+              <Badge className={`text-${TASK_STATUS_COLORS[option]}-600`}>
+                <div className="flex justify-start items-center">
+                  <span>
+                    {React.createElement(TASK_STATUS_ICONS[option], {
+                      size: 14,
+                      className: `text-${TASK_STATUS_COLORS[option]}-600 mr-1`,
+                    })}
+                  </span>
+                  <span>{option}</span>
+                </div>
+              </Badge>
+            </Select.Option>
+          );
+        })}
       </Select>
     </div>
   );
