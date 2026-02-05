@@ -11,10 +11,10 @@ import { useGetDoctypeField } from "../../hooks/doctype";
 import { Select } from "antd";
 
 const priorityIcons = {
-  Low: <ChevronsDown size={12} />,
-  Medium: <ChevronUp size={12} />,
-  High: <ChevronsUp size={12} />,
-  Urgent: <TriangleAlert size={12} />,
+  Low: <ChevronsDown size={16} />,
+  Medium: <ChevronUp size={16} />,
+  High: <ChevronsUp size={16} />,
+  Urgent: <TriangleAlert size={16} />,
 };
 
 const PriorityWidget = (props) => {
@@ -50,7 +50,7 @@ const PriorityWidget = (props) => {
     >
       {options.map((option) => (
         <Select.Option key={option} value={option}>
-          <Badge className={TASK_PRIORITY_COLORS[option]}>
+          <Badge className={`text-${TASK_PRIORITY_COLORS[option]}-600 bg-${TASK_PRIORITY_COLORS[option]}-100`}>
             <span className="flex items-center gap-1">
               <span>{priorityIcons[option]}</span>
               <span>{option}</span>

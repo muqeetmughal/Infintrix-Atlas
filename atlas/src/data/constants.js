@@ -24,10 +24,10 @@ export const TASK_STATUS_ICONS = {
   'Cancelled': XCircle
 }
 export const TASK_PRIORITY_COLORS = {
-  'Low': 'bg-slate-100 text-slate-600',
-  'Medium': 'bg-orange-100 text-orange-600',
-  'High': 'bg-red-300 text-red-600',
-  'Urgent': 'bg-purple-100 text-purple-600'
+  'Low': 'green',
+  'Medium': 'orange',
+  'High': 'red',
+  'Urgent': 'purple'
 };
 
 export const TEAM_MEMBERS = ['John Doe', 'Jane Smith', 'Alex Rivera', 'Sarah Chen', 'Mike Ross'];

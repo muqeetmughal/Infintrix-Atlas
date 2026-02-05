@@ -14,7 +14,7 @@ const StatusWidget = (props) => {
   if (status_query.isLoading) return "Loading...";
 
   return (
-    <div className="w-full">
+    <>
       <Select
         variant="borderless"
         open={open}
@@ -31,10 +31,10 @@ const StatusWidget = (props) => {
         //     <span className="ml-2">{props.label}</span>
         //   </div>
         // )}
-        popupClasses="dark:bg-gray-800 w-full"
-        className="w-full dark:text-gray-200"
+        popupClasses="dark:bg-gray-800"
+        className=" dark:text-gray-200"
         maxTagCount="responsive"
-        style={{ width: "100%" }}
+        // style={{ width: "100%" }}
         popupMatchSelectWidth={false}
       >
         {options.map((option) => {
@@ -56,7 +56,7 @@ const StatusWidget = (props) => {
           );
         })}
       </Select>
-    </div>
+    </>
   );
 };
 
