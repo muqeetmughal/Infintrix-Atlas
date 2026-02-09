@@ -14,31 +14,6 @@
  {
   "custom_allowed_child_type": [
    {
-    "parent": "Epic",
-    "parentfield": "custom_allowed_child_type",
-    "parenttype": "Task Type",
-    "task_type": "Feature"
-   },
-   {
-    "parent": "Epic",
-    "parentfield": "custom_allowed_child_type",
-    "parenttype": "Task Type",
-    "task_type": "Task"
-   }
-  ],
-  "custom_color": "#449CF0",
-  "custom_icon": "RocketOutlined",
-  "custom_is_container": 1,
-  "description": null,
-  "docstatus": 0,
-  "doctype": "Task Type",
-  "modified": "2026-01-03 17:11:49.558565",
-  "name": "Epic",
-  "weight": 0.0
- },
- {
-  "custom_allowed_child_type": [
-   {
     "parent": "Feature",
     "parentfield": "custom_allowed_child_type",
     "parenttype": "Task Type",
@@ -65,6 +40,31 @@
   "doctype": "Task Type",
   "modified": "2026-01-03 17:45:58.871560",
   "name": "Bug",
+  "weight": 0.0
+ },
+ {
+  "custom_allowed_child_type": [
+   {
+    "parent": "Epic",
+    "parentfield": "custom_allowed_child_type",
+    "parenttype": "Task Type",
+    "task_type": "Feature"
+   },
+   {
+    "parent": "Epic",
+    "parentfield": "custom_allowed_child_type",
+    "parenttype": "Task Type",
+    "task_type": "Task"
+   }
+  ],
+  "custom_color": "#449CF0",
+  "custom_icon": "RocketOutlined",
+  "custom_is_container": 1,
+  "description": null,
+  "docstatus": 0,
+  "doctype": "Task Type",
+  "modified": "2026-01-03 17:11:49.558565",
+  "name": "Epic",
   "weight": 0.0
  },
  {

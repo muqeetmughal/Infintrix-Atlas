@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { menuItems } from "../data/menu";
 import logo from "../assets/logo.png";
+import Logo from "./Logo";
 const Sidebar = () => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -27,15 +28,8 @@ const Sidebar = () => {
         }`}
       >
         <div className="p-8 mb-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <img src={logo} alt="Infintrix Atlas Logo" width={50} height={50} />
-            {isSidebarOpen && (
-              <span className="font-black text-xl tracking-tighter text-slate-900 dark:text-white">
-                {/* cspell:disable-next-line */}
-                Infintrix Atlas
-              </span>
-            )}
-          </div>
+
+            <Logo fullLogo={isSidebarOpen} />
         </div>
 
         <nav className="px-4 space-y-2">

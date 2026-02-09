@@ -193,7 +193,7 @@ const TaskDetail = () => {
                 fontSize: "2rem",
               }}
               style={{ fontSize: "2rem", fontWeight: "600", marginBottom: "1.5rem" }}
-              // value={task.subject}
+              value={task.subject}
               // onSubmit={(newValue) => {
               //   updateMutation
               //     .updateDoc("Task", task.name, {

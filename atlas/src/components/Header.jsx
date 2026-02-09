@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet, useNavigate } from "react-router-dom";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Search,
@@ -6,6 +6,8 @@ import {
   ChevronRight as ChevronRightIcon,
   ChevronDown as ChevronDownIcon,
   LogOut,
+  Settings,
+  User,
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import {
@@ -18,7 +20,7 @@ import { useLocation } from "react-router-dom";
 import { menuItems } from "../data/menu";
 import ModalGenerator from "../components/ModalGenerator";
 import { useTheme } from "../context/ThemeContext";
-import { Button } from "antd";
+import { Button, Dropdown } from "antd";
 import { BellOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import { useAuth } from "../hooks/query";
 import useRealtime from "../hooks/realtime";
@@ -27,10 +29,11 @@ import GlobalSearch from "./GlobalSearch";
 const Header = () => {
   const { toggle, isDark } = useTheme();
 
+  const navigate = useNavigate();
+
   const [showNotifications, setShowNotifications] = useState(false);
 
   const auth = useAuth();
-
 
   const notifications_logs_query = useFrappeGetDocList("Notification Log", {
     fields: ["*"],
@@ -40,7 +43,7 @@ const Header = () => {
       order: "desc",
     },
   });
-    useFrappeEventListener("update_system_notifications", (data) => {
+  useFrappeEventListener("update_system_notifications", (data) => {
     console.log("Realtime notification received:", data);
     notifications_logs_query.mutate();
   });
@@ -59,19 +62,22 @@ const Header = () => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showNotifications && !event.target.closest('.notification-container')) {
+      if (
+        showNotifications &&
+        !event.target.closest(".notification-container")
+      ) {
         setShowNotifications(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showNotifications]);
 
   return (
     <>
       <header className="h-16 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 px-10 flex items-center justify-between sticky top-0 z-10">
-        <GlobalSearch/>
+        <GlobalSearch />
 
         <div className="flex items-center space-x-6">
           <button
@@ -99,7 +105,7 @@ const Header = () => {
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 top-14 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 z-20 overflow-hidden">
+              <div className="absolute right-0 top-14 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 z-99999 overflow-hidden">
                 <div className="p-4 border-b border-slate-200 dark:border-slate-700">
                   <h3 className="font-bold text-slate-900 dark:text-slate-100">
                     Notifications
@@ -140,9 +146,7 @@ const Header = () => {
                               />
                             )}
                             <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                              {new Date(
-                                notification.creation,
-                              ).toLocaleString()}
+                              {new Date(notification.creation).toLocaleString()}
                             </p>
                           </div>
                         </div>
@@ -157,40 +161,62 @@ const Header = () => {
               </div>
             )}
           </div>
-
-          <div
-            className={`rounded-2xl p-2 flex items-center space-x-3 transition-opacity duration-300 opacity-100`}
-          >
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-              {auth?.user?.user_image ? (
-                <img
-                  className="rounded-full"
-                  src={auth.user.user_image}
-                  alt="User Avatar"
-                />
-              ) : (
-                auth.user?.name?.charAt(0).toUpperCase()
-              )}
-            </div>
-            <div>
-              <div className="text-xs font-black text-slate-900 dark:text-slate-100">
-                {auth.user?.full_name || auth.currentUser}
-              </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                {auth.user?.role_profiles?.join(", ") || "User"}
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              auth.logout();
+          <Dropdown
+            trigger={"click"}
+            menu={{
+              items: [
+                {
+                  key: "profile",
+                  label: "Profile",
+                  icon: <User size={16} />,
+                  onClick: () => navigate("/profile"),
+                },
+                {
+                  key: "settings",
+                  label: "Settings",
+                  icon : <Settings size={16} />,
+                  onClick: () => navigate("/settings"),
+                },
+                {
+                  key: "logout",
+                  label: "Logout",
+                  icon: <LogOut size={16} />,
+                  danger : true,
+                  onClick: () => {
+                    auth.logout().then(() => {
+                      navigate("/login");
+                    });
+                  },
+                },
+              ],
             }}
-            className="h-12 w-12 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl flex items-center justify-center text-red-500 dark:text-red-400 hover:bg-red-500 hover:text-white dark:hover:bg-red-600 dark:hover:text-white cursor-pointer shadow-sm relative transition-colors"
           >
-            <LogOut size={24} />
-            {/* <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-slate-700" /> */}
-          </button>
+            <div
+              className={`rounded-2xl p-2 flex items-center space-x-3 transition-opacity duration-300 opacity-100 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700`}
+            >
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                {auth?.user?.user_image ? (
+                  <img
+                    className="rounded-full"
+                    src={auth.user.user_image}
+                    alt="User Avatar"
+                  />
+                ) : (
+                  auth.user?.name?.charAt(0).toUpperCase()
+                )}
+              </div>
+              <div>
+                <div className="text-xs font-black text-slate-900 dark:text-slate-100">
+                  {auth.user?.full_name || auth.currentUser}
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                  {auth.user?.role_profiles?.join(", ") || "User"}
+                </div>
+              </div>
+            </div>
+          </Dropdown>
+
+
         </div>
       </header>
     </>

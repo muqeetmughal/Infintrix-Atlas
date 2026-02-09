@@ -89,12 +89,17 @@ export const useTasksQuery = (
 		{
 			filters: final_filters,
 			fields: fields,
+			orderBy: {
+				field: "modified",
+				order: "desc",
+			},
+			limit_page_length: 999999,
 		},
 		cacheKey,
 		{
-			revalidateOnFocus: true,
-			revalidateIfStale: true,
-			revalidateOnReconnect: true,
+			// revalidateOnFocus: false,
+			// revalidateIfStale: false,
+			// revalidateOnReconnect: false,
 			...options,
 		},
 	);
@@ -144,16 +149,17 @@ export const useAssigneeOfTask = (selectedTask) => {
 // };
 export const useAuth = () => {
 	const auth = useFrappeAuth();
-	const { data: userDetails } = useFrappeGetDoc(
+	const userDoc = useFrappeGetDoc(
 		"User",
 		auth.currentUser,
 		auth.currentUser ? ["current_user_details", auth.currentUser] : null,
-		{
-			revalidateOnFocus: false,
-			revalidateIfStale: false,
-			revalidateOnReconnect: false,
-		},
+		// {
+		// 	revalidateOnFocus: false,
+		// 	revalidateIfStale: false,
+		// 	revalidateOnReconnect: false,
+		// },
 	);
+	const userDetails = userDoc?.data || {};
 	return {
 		user: userDetails,
 		...auth,
