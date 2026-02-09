@@ -6,28 +6,28 @@ APP_DIR=~/infintrix-erp/apps/infintrix_atlas
 BENCH_DIR=~/infintrix-erp
 SITE_NAME=$1  # pass the site name as argument
 
-echo "==> Pulling latest code..."
+echo "🚀 ==> Pulling latest code..."
 cd $APP_DIR
 git reset --hard
 git clean -fd
 git pull
 
-echo "==> Installing Python dependencies..."
+echo "📦 ==> Installing Python dependencies..."
 cd $BENCH_DIR
-source env/bin/activate  # adjust if your virtualenv path differs
-bench setup requirements --app infintrix_atlas
+source env/bin/activate
+nvm use 20
+bench setup requirements infintrix_atlas
 
-echo "==> Building assets..."
-nvm use 20  # make sure Node 20 is installed
+echo "🏗️  ==> Building assets..."
 bench build --apps infintrix_atlas --skip-redis
 
-echo "==> Running migrations..."
+echo "🔄 ==> Running migrations..."
 bench --site $SITE_NAME migrate
 
-echo "==> Clearing cache..."
+echo "🗑️  ==> Clearing cache..."
 bench --site $SITE_NAME clear-cache
 
-echo "==> Restarting services..."
+echo "♻️  ==> Restarting services..."
 sudo supervisorctl restart all
 
-echo "==> Deployment complete!"
+echo "✅ ==> Deployment complete!"
