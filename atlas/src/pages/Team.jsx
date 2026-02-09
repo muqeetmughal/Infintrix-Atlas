@@ -3,7 +3,7 @@ import { useFrappeGetDocList } from "frappe-react-sdk";
 import { Search, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import RelativeTime from "../components/RelativeTIme";
+import RelativeTime from "../components/RelativeTime";
 
 const ROLES = {
   PM: "Project Manager",
