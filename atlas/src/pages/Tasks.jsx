@@ -90,7 +90,7 @@ const Tasks = () => {
   const active_cycle_name = cycle?.name;
 
   const tabs = [
-    // { id: "ai-architect", label: "AI Architect" },
+    { id: "ai-architect", label: "AI Architect" },
     { id: "list", label: "List" },
     { id: "backlog", label: "Backlog" },
     // { id: "list", label: "List" },

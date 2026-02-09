@@ -321,11 +321,11 @@ export default function AIArchitect() {
 
   const project = qp.get("project") || null;
   const [uiState, setUiState] = useState(UI_STATES.IDLE);
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState("Scope of Work: Design and develop a responsive To-Do application with user authentication, task creation/editing/deletion, task status tracking, priorities, due dates, filtering and search, persistent data storage, basic notifications, and a scalable, maintainable architecture, excluding collaboration, third-party integrations, and advanced analytics.");
   const [intents, setIntents] = useState([]);
   const [drafts, setDrafts] = useState([]);
-  const [selectedProjectId] = useState(AVAILABLE_PROJECTS[0].id);
   const [selectedCycle, setSelectedCycle] = useState("");
+
 
   const cycles_options_query = useFrappeGetDocList("Cycle", {
     filters: { project: project },
@@ -340,10 +340,7 @@ export default function AIArchitect() {
     "infintrix_atlas.api.ai.create_from_ai"
   );
 
-  const selectedProject = useMemo(
-    () => AVAILABLE_PROJECTS.find((p) => p.id === selectedProjectId),
-    [selectedProjectId]
-  );
+  const selectedProject = project
 
   const validateTask = useCallback((task) => {
     const errors = [];
@@ -436,7 +433,7 @@ export default function AIArchitect() {
 
     try {
       const res = await openPipeline({
-        project: selectedProjectId,
+        project: selectedProject,
         prompt,
         cycle: selectedCycle || null,
       });
@@ -483,7 +480,7 @@ export default function AIArchitect() {
 
     try {
       const res = await createTasks({
-        project: selectedProjectId,
+        project: selectedProject,
         tasks: approved.map((t) => ({
           subject: t.subject,
           priority: t.priority,
@@ -745,7 +742,7 @@ export default function AIArchitect() {
                             key={i.id}
                             className="bg-slate-50 dark:bg-slate-700 p-4 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-600 animate-in slide-in-from-left-2"
                           >
-                            {i.text}
+                            {i.text ?? i}
                           </div>
                         ))
                       ) : (

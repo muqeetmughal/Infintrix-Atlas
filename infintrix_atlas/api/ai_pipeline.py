@@ -3,7 +3,7 @@ import json
 from frappe.utils import now
 import requests
 
-GEMINI_KEY = "AIzaSyDZCtpL86p23BBIEzkqeiE7dzmBASXkPvA"
+GEMINI_KEY = ""
 
 
 def make_ai_request(prompt="",system_prompt=""):
@@ -109,10 +109,15 @@ def _feasibility_guard(prompt, project_doc):
     return {"status": "PASS"}
 
 def _draft_tasks(intents, project_doc):
+
+    print(f"Drafting tasks for project '{project_doc}' with {len(intents)} intents",intents)
     """
     STEP 3: Task Drafting (AI)
     """
-    intent_string = "\n".join([f"- {i['text']}" for i in intents])
+    try:
+        intent_string = "\n".join([f"- {i['text']}" for i in intents])
+    except:
+        intent_string = "\n".join([f"- {i}" for i in intents])
     
     system_prompt = f"""
     You are the Project Task Architect. 

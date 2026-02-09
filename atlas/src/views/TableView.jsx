@@ -7,13 +7,17 @@ import PreviewAssignees from "../components/PreviewAssignees";
 import { useTasksQuery } from "../hooks/query";
 import { Table } from "antd";
 import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
+import { useQueryParams } from "../hooks/useQueryParams";
 
 const TableView = () => {
+  const qp = useQueryParams();
+
   const tasks_list_query = useTasksQuery();
   const navigate = useNavigate();
   const updateMutation = useFrappeUpdateDoc();
 
   const tasks = tasks_list_query.data || [];
+  const project = qp.get("project") || null;
 
   if (tasks_list_query.isLoading) {
     return <div className="dark:text-slate-200">Loading...</div>;
@@ -32,7 +36,7 @@ const TableView = () => {
           render: (text, record) => (
             <div
               onClick={() => {
-                navigate(`?selected_task=${record.name}`);
+                qp.set("selected_task", record.name);
               }}
               className="font-mono text-slate-900 dark:text-slate-100 cursor-pointer hover:underline"
             >

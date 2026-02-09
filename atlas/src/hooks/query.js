@@ -70,10 +70,7 @@ export const useTasksQuery = (
 ) => {
 	const qp = useQueryParams();
 	const project = qp.get("project") || null;
-	// const final_filters = {
-	//   ...filters,
-	//   ...(cycle_name && { custom_cycle: cycle_name }),
-	// };
+	
 	const filters_string = qp.all;
 	const cacheKey = ["tasks", filters_string, cycle_name];
 
@@ -85,6 +82,8 @@ export const useTasksQuery = (
 		final_filters.push(["custom_cycle", "=", cycle_name]);
 	}
 
+	console.log("cacheKey:", cacheKey);
+
 	return useFrappeGetDocList(
 		"Task",
 		{
@@ -93,9 +92,9 @@ export const useTasksQuery = (
 		},
 		cacheKey,
 		{
-			revalidateOnFocus: false,
-			revalidateIfStale: false,
-			revalidateOnReconnect: false,
+			revalidateOnFocus: true,
+			revalidateIfStale: true,
+			revalidateOnReconnect: true,
 			...options,
 		},
 	);
