@@ -8,68 +8,85 @@ import AIArchitect from "./pages/AIArchitect";
 import Tasks from "./pages/Tasks";
 import TaskForm from "./pages/TaskForm";
 import ErrorBoundary from "./components/ErrorBoundry";
+import Login from "./pages/Login";
+import Profile from "./pages/Profile";
+import Team from "./pages/Team";
+import TeamDetail from "./pages/TeamDetail";
 export const router = createBrowserRouter(
-    [
-        {
-            path: "/",
-            element: <MainLayout />,
-            errorElement: <ErrorBoundary />,
-            // loader: rootLoader,
-            children: [
-                // {
-                //   path: "auth",
-                //   element: <PublicLayout />,
-                //   children: [
-                //     {
-                //       path: "login",
-                //       element: <Login />,
-                //     }
-                //   ],
-                // },
-                {
-                    path: "",
-                    element: <Navigate to={`dashboard`} />,
-                },
-                // {
-                //     path: "tasks",
-                //     element: <Tasks />,
-                // },
-                {
-                    path: "dashboard",
-                    element: <Dashboard />,
-                },
-                {
-                    path: "projects",
-                    element: <Projects />,
-                },
-                {
-                    path: ":doctype_plural/create",
-                    element: <TaskForm />
-                }, {
-                    path: "ai-gen",
-                    element: <AIArchitect />
-                }
-                ,
-                // {
-                //     path: "tasks/:project/:view",
-                //     element: <Tasks />
-                // },
-                {
-                    path: "tasks/:view",
-                    element: <Tasks />
-                }, {
-                    path : "*",
-                    element : <NotFound/>
-                }
-
-
-
-            ],
-
-
-        },
-    ],
+  [
     {
-        basename: `/${import.meta.env.VITE_BASE_NAME}`,
+      path: "/",
+      element: <MainLayout />,
+      errorElement: <ErrorBoundary />,
+      // loader: rootLoader,
+      children: [
+        // {
+        //   path: "auth",
+        //   element: <PublicLayout />,
+        //   children: [
+        //     {
+        //       path: "login",
+        //       element: <Login />,
+        //     }
+        //   ],
+        // },
+        {
+          path: "",
+          element: <Navigate to={`dashboard`} />,
+        },
+        // {
+        //     path: "tasks",
+        //     element: <Tasks />,
+        // },
+        {
+          path: "dashboard",
+          element: <Dashboard />,
+        },
+        {
+          path: "projects",
+          element: <Projects />,
+        },
+        {
+          path: ":doctype_plural/create",
+          element: <TaskForm />,
+        },
+        {
+          path: "ai-gen",
+          element: <AIArchitect />,
+        },
+        // {
+        //     path: "tasks/:project/:view",
+        //     element: <Tasks />
+        // },
+        {
+          path: "tasks/:view",
+          element: <Tasks />,
+        },
+        {
+            path : "profile",
+            element : <Profile/>
+        },
+        {
+            path : "team",
+            element : <Team/>
+        },
+        {
+            path : "team/:id",
+            element : <TeamDetail/>
+        },
+        {
+          path: "*",
+          element: <NotFound />,
+        },
+      ],
+    },
+    {
+        path: "login",
+        errorElement: <ErrorBoundary />,
+        element: <Login />,
     }
+  ],
+  {
+    basename: `/${import.meta.env.VITE_BASE_NAME}`,
+  },
 );

@@ -15,10 +15,24 @@ const MainLayout = () => {
 
   const auth = useFrappeAuth();
 
-
   const currentMenuItem = useMemo(() => {
     return menuItems.find(item => item.id === location.pathname.split('/')[1]);
   }, [location.pathname]);
+
+
+  // const redirectPath = encodeURIComponent(location.pathname);
+
+  // console.log("redirectPath:", location.pathname);
+  // if (!auth.currentUser || location.pathname === "/login") {
+  //   if (redirectPath && redirectPath !== "/login") {
+  //     window.location.href = `/login?redirect-to=${redirectPath}`;
+  //           return null; // or a loading spinner
+
+  //   } else {
+  //     window.location.href = "/login";
+  //     return null; // or a loading spinner
+  //   }
+  // }
 
   return (
     <>

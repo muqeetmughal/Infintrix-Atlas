@@ -1,16 +1,28 @@
-import { Button, Input } from "antd";
+import { Button, Input, Skeleton } from "antd";
 import { useFrappeUpdateDoc } from "frappe-react-sdk";
 import { Edit, X, Check } from "lucide-react";
 import React from "react";
 import { useSearchParams } from "react-router-dom";
 
-const SubjectWidget = ({ task, disableClick,style , inputStyle}) => {
+const SubjectWidget = ({ task, disableClick, style, inputStyle }) => {
   const [editingSubject, setEditingSubject] = React.useState(false);
   const [subject, setSubject] = React.useState(task.subject);
   const [searchParams, setSearchParams] = useSearchParams();
   const updateMutation = useFrappeUpdateDoc();
   const handleSave = () => {
     // Add save logic here
+    updateMutation.mutate(
+      {
+        doctype: "Task",
+        name: task.id,
+        subject: subject,
+      },
+      {
+        onSuccess: () => {
+          // Optionally show a success message or perform additional actions
+        },
+      },
+    );
     setEditingSubject(false);
   };
 
@@ -19,14 +31,18 @@ const SubjectWidget = ({ task, disableClick,style , inputStyle}) => {
     setEditingSubject(false);
   };
   const handleTitleClick = (e) => {
-      e.stopPropagation();
-      if (disableClick ||task.id === "new_item") return;
+    e.stopPropagation();
+    if (disableClick || task.id === "new_item") return;
     // console.log("Issue clicked:", issue, issue);
     searchParams.set("selected_task", task.id);
     setSearchParams(searchParams);
   };
+
+  if (updateMutation.loading) {
+    return <Skeleton active paragraph={false} title={{ width: "80%" }} />;
+  }
   return (
-    <div className="flex items-center gap-2 group">
+    <div className="flex items-center gap-2 group min-w-0">
       {editingSubject ? (
         <>
           <Input
@@ -35,19 +51,24 @@ const SubjectWidget = ({ task, disableClick,style , inputStyle}) => {
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="Enter subject"
-            className="flex-1"
+            className="flex-1 min-w-0"
             style={{
-                width: "auto",
-                inlineSize: "auto",
-                ...inputStyle
+              width: "auto",
+              inlineSize: "auto",
+              ...inputStyle,
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+            onKeyUp={(e) => {
+              e.stopPropagation();
+              if (e.key == "Enter") {
+                handleSave();
+              } else if (e.key == "Escape") {
+                handleCancel();
+              } else {
+                return;
+              }
             }}
           />
-          {/* <Button
-            type="primary"
-            size="small"
-            icon={<Check size={16} />}
-            onClick={handleSave}
-          /> */}
           <Button
             danger
             size="small"
@@ -59,9 +80,9 @@ const SubjectWidget = ({ task, disableClick,style , inputStyle}) => {
       ) : (
         <>
           <p
-          style={style}
+            style={style}
             onClick={handleTitleClick}
-            className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-100 leading-snug cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 truncate"
+            className="flex-1 min-w-0 text-sm font-medium text-slate-800 dark:text-slate-100 leading-snug cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 overflow-hidden text-ellipsis whitespace-nowrap"
           >
             {subject}
           </p>

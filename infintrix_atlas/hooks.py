@@ -8,13 +8,13 @@ app_icon_url = "/assets/infintrix_atlas/atlas/images/logo.svg"
 app_icon_title = "Atlas"
 app_icon_route = "/atlas"
 add_to_apps_screen = [
-	{
-		"name": "atlas",
-		"logo": "/assets/infintrix_atlas/atlas/images/logo.svg",
-		"title": "Atlas",
-		"route": "/atlas",
-		"has_permission": "infintrix_atlas.api.check_app_permission",
-	}
+    {
+        "name": "atlas",
+        "logo": "/assets/infintrix_atlas/atlas/images/logo.svg",
+        "title": "Atlas",
+        "route": "/atlas",
+        "has_permission": "infintrix_atlas.api.check_app_permission",
+    }
 ]
 
 # Apps
@@ -263,54 +263,50 @@ doc_events = {
     "Task": {
         "validate": "infintrix_atlas.events.task.validate_task_hierarchy",
         "before_save": "infintrix_atlas.events.task.before_task_save",
-
         # "has_permission": "infintrix_atlas.permissions.task_has_permission"
     },
     #  "Project": {
     #     "before_insert": "infintrix_atlas.events.project.add_creator_to_users"
     #     # "before_save": "infintrix_atlas.events.task.before_task_save"
     # },
-
 }
 fixtures = [
-
-    {"dt": "Custom Field", "filters": [
-        ["module", "in", [
-            "Infintrix Atlas"
-        ]]
-    ]},
-     {"dt": "Property Setter", "filters": [
-        ["module", "in", [
-            "Infintrix Atlas"
-        ]]
-    ]},
+    {"dt": "Custom Field", "filters": [["module", "in", ["Infintrix Atlas"]]]},
+    {"dt": "Property Setter", "filters": [["module", "in", ["Infintrix Atlas"]]]},
     {"dt": "Task Type"},
     {"dt": "Cycle Template"},
     {
         "dt": "Custom DocPerm",
-		"filters": [
-			["parent", "in", [
-				"Task",
-				"Cycle Template",
-                "Cycle",
-                "Customer",
-			]]
-		]
-
-	}
+        "filters": [
+            [
+                "parent",
+                "in",
+                [
+                    "Task",
+                    "Cycle Template",
+                    "Cycle",
+                    "Customer",
+                    "Comment",
+                    "Version",
+                ],
+            ]
+        ],
+    },
 ]
 
 
-website_route_rules = [{'from_route': '/atlas/<path:app_path>', 'to_route': 'atlas'},]
+website_route_rules = [
+    {"from_route": "/atlas/<path:app_path>", "to_route": "atlas"},
+]
 
 
 permission_query_conditions = {
-"Project": "infintrix_atlas.permissions.project_permission_query",
-"Task": "infintrix_atlas.permissions.task_permission_query",
+    "Project": "infintrix_atlas.permissions.project_permission_query",
+    "Task": "infintrix_atlas.permissions.task_permission_query",
 }
 
 
 override_doctype_class = {
-"Task": "infintrix_atlas.overrides.task.TaskOverride",
-"Project": "infintrix_atlas.overrides.project.ProjectOverride"
+    "Task": "infintrix_atlas.overrides.task.TaskOverride",
+    "Project": "infintrix_atlas.overrides.project.ProjectOverride",
 }

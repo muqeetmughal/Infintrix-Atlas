@@ -7,6 +7,7 @@ import { useTheme } from "./hooks/theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AntdThemeProvider } from "./context/AntdThemeProvider";
+import { useAuth } from "./hooks/query";
 const light_color_scheme = {
   colorPrimary: "#16b04f",
   colorSuccess: "#42bf04",
@@ -50,6 +51,11 @@ function App() {
 
     return map;
   }
+
+  // if (!auth.currentUser) {
+  //   window.location.href = "/login";
+  //   return null; // or a loading spinner
+  // }
 
   return (
     <div className="App">
