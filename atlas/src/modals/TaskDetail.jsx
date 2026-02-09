@@ -23,7 +23,7 @@ import {
   useFrappeUpdateDoc,
 } from "frappe-react-sdk";
 import dayjs from "dayjs";
-import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
+import { AssigneeSelectWidget, ShowUserWidget } from "../components/widgets/AssigneeSelectWidget";
 import TextWidget from "../components/widgets/TextWidget";
 import RichTextWidget from "../components/widgets/RichTextWidget";
 import { TagsSelectWidget } from "../components/widgets/TagsSelectWidget";
@@ -389,12 +389,10 @@ const TaskDetail = () => {
                   Reporter
                 </div>
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
-                  <AssigneeSelectWidget
-                    task={selectedTask}
-                    disabled={true}
-                    single={true}
+                  {console.log("task.owner", task.owner)}
+                  <ShowUserWidget
+                    value={task.owner}
                     show_label={true}
-                    value={task.owner || []}
                   />
                 </div>
               </>

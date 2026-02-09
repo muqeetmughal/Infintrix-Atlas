@@ -288,6 +288,7 @@ fixtures = [
                     "Customer",
                     "Comment",
                     "Version",
+                    "User",
                 ],
             ]
         ],

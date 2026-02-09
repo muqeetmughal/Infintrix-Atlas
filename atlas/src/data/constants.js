@@ -47,3 +47,14 @@ export const INITIAL_TASKS = [
   { id: 5, name: 'TASK-005', subject: 'SSL Configuration', project: 'PROJ-003', status: 'Completed', priority: 'Low', exp_start_date: '2023-12-01', exp_end_date: '2023-12-05', assignee: 'Sarah Chen' },
   { id: 6, name: 'TASK-006', subject: 'User Interview Sessions', project: 'PROJ-001', status: 'Pending Review', priority: 'High', exp_start_date: '2024-05-10', exp_end_date: '2024-05-18', assignee: 'Mike Ross' },
 ];
+
+export const SOUNDS = {
+  SUBMIT :"/assets/frappe/sounds/submit.mp3",
+  ALERT : "/assets/frappe/sounds/alert.mp3",
+  ERROR : "/assets/frappe/sounds/error.mp3",
+  DELETE : "/assets/frappe/sounds/delete.mp3",
+  CLICK : "/assets/frappe/sounds/click.mp3",
+  CHIME : "/assets/frappe/sounds/chime.mp3",
+  CANCEL : "/assets/frappe/sounds/cancel.mp3",
+  EMAIL : "/assets/frappe/sounds/email.mp3",
+}

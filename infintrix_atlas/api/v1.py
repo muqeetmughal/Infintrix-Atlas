@@ -103,47 +103,66 @@ def get_doctype_meta(doctype_name):
 
 @frappe.whitelist()  # Adjust permissions as needed
 def switch_assignee_of_task(task_name, new_assignee):
-	# task_name = frappe.request.args.get("task")
-	# new_assignee = frappe.request.args.get("assignee")
-	if not task_name:
-		frappe.throw("Task is required")
+    # task_name = frappe.request.args.get("task")
+    # new_assignee = frappe.request.args.get("assignee")
+    if not task_name:
+        frappe.throw("Task is required")
 
-	if new_assignee == "unassigned":
-		new_assignee = None
-	elif new_assignee == "auto":
-		new_assignee = frappe.session.user
+    task_doc = frappe.get_doc("Task", task_name)
 
-	# Close existing assignee
-	existing_todo = frappe.db.get_value(
-		"ToDo",
-		{
-			"reference_type": "Task",
-			"reference_name": task_name,
-			"status": ["!=", "Cancelled"],
-		},
-		"name",
-	)
+    if new_assignee == "unassigned":
+        new_assignee = None
+    elif new_assignee == "auto":
+        new_assignee = frappe.session.user
 
-	if existing_todo:
-		frappe.db.set_value("ToDo", existing_todo, "status", "Closed")
+    # Get existing assignee
+    existing_todo = frappe.db.get_value(
+        "ToDo",
+        {
+            "reference_type": "Task",
+            "reference_name": task_name,
+            "status": ["!=", "Cancelled"],
+        },
+        "name",
+    )
 
-	# Create new todo for new assignee only if not unassigned
-	if new_assignee:
-		frappe.get_doc(
-			{
-				"doctype": "ToDo",
-				"reference_type": "Task",
-				"reference_name": task_name,
-				"allocated_to": new_assignee,
-				"description": f"Task assigned to {new_assignee}",
-				"status": "Open",
-				"due_date": None,
-				"assigned_by": frappe.session.user,
-			}
-		).insert()
+    existing_assignee = None
+    if existing_todo:
+        existing_assignee = frappe.db.get_value("ToDo", existing_todo, "allocated_to")
 
-	frappe.db.commit()
-	return {"success": True, "message": "Assignee updated"}
+    # Return early if assignee hasn't changed
+    if existing_assignee == new_assignee:
+        return {"success": True, "message": "No changes made"}
+
+    # Close existing assignee
+    if existing_todo:
+        frappe.db.set_value("ToDo", existing_todo, "status", "Closed")
+
+    # Create new todo for new assignee only if not unassigned
+    if new_assignee:
+        frappe.get_doc(
+            {
+                "doctype": "ToDo",
+                "reference_type": "Task",
+                "reference_name": task_name,
+                "allocated_to": new_assignee,
+                "description": f"Task assigned to {new_assignee}",
+                "status": "Open",
+                "due_date": None,
+                "assigned_by": frappe.session.user,
+            }
+        ).insert()
+        create_custom_notification(
+            user=new_assignee,
+            subject=f"Task Assigned: {task_doc.subject}",
+            content=f"You have been assigned to task '<b>{task_doc.subject}</b>'.",
+            document_type="Task",
+            document_name=task_name,
+            icons='<i class="fa fa-tasks"></i>',
+        )
+
+    frappe.db.commit()
+    return {"success": True, "message": "Assignee updated"}
 
 
 @frappe.whitelist()
@@ -522,7 +541,11 @@ def get_project_user_stats(user=None):
     # -----------------------------
     # AVG PROGRESS
     # -----------------------------
-    avg_progress = round(sum(p.percent_complete for p in projects) / total_projects) if total_projects > 0 else 0
+    avg_progress = (
+        round(sum(p.percent_complete for p in projects) / total_projects)
+        if total_projects > 0
+        else 0
+    )
 
     # -----------------------------
     # TEAM MEMBERS
@@ -542,6 +565,7 @@ def get_project_user_stats(user=None):
         "avg_progress": avg_progress,
         "team_members": team_members,
     }
+
 
 @frappe.whitelist()
 def users_on_project(project):
@@ -630,7 +654,10 @@ def update_users_on_project(project, users):
         )
 
     return {"success": True, "message": "Project users updated"}
+
+
 import frappe
+
 
 @frappe.whitelist()
 def global_search(query: str, limit: int = 10):
@@ -665,12 +692,14 @@ def global_search(query: str, limit: int = 10):
 
     for task in tasks:
         if frappe.has_permission("Task", "read", task.name):
-            results.append({
-                "type": "Task",
-                "name": task.name,
-                "title": task.subject,
-                "route": f"/app/task/{task.name}"
-            })
+            results.append(
+                {
+                    "type": "Task",
+                    "name": task.name,
+                    "title": task.subject,
+                    "route": f"/app/task/{task.name}",
+                }
+            )
 
     # ---- PROJECTS ----
     projects = frappe.db.sql(
@@ -694,11 +723,13 @@ def global_search(query: str, limit: int = 10):
 
     for project in projects:
         if frappe.has_permission("Project", "read", project.name):
-            results.append({
-                "type": "Project",
-                "name": project.name,
-                "title": project.project_name,
-                "route": f"/app/project/{project.name}"
-            })
+            results.append(
+                {
+                    "type": "Project",
+                    "name": project.name,
+                    "title": project.project_name,
+                    "route": f"/app/project/{project.name}",
+                }
+            )
 
     return results

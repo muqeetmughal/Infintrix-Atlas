@@ -22,7 +22,7 @@ def create_custom_notification(user, subject, content, document_type=None, docum
             "document_type": document_type,
             "document_name": document_name,
             "read": 0,  # Set as unread
-            "icons": icons,
+            # "icons": icons,
             # Additional fields can be set as needed
         })
         
@@ -34,7 +34,8 @@ def create_custom_notification(user, subject, content, document_type=None, docum
         frappe.publish_realtime(
             event='update_system_notifications',
             user=user,
-            after_commit=True
+            after_commit=True,
+            message={"subject": subject, "content": content}
         )
         
         frappe.db.commit() # Commit the transaction

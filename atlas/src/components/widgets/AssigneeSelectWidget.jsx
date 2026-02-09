@@ -36,8 +36,13 @@ export const AssigneeSelectWidget = (props) => {
       ["enabled", "=", 1],
       ["name", "!=", "Guest"],
     ],
-    limit_page_length: 50,
-    order_by: "full_name asc",
+    limit_start: 0,
+    limit: 9999,
+    orderBy: {
+      field: "creation",
+      order: "asc",
+    },
+  
   });
   const { token } = theme.useToken();
 
@@ -50,34 +55,6 @@ export const AssigneeSelectWidget = (props) => {
   const menuStyle = {
     boxShadow: "none",
   };
-
-  // const tagRender = (tag_props) => {
-  //   const { value, closable, onClose } = tag_props;
-  //   if (!value) return null;
-  //   return (
-  //     <div
-  //       style={{ marginRight: 8, marginBottom: 4 }}
-  //       className="flex items-center gap-2 px-2 py-1"
-  //     >
-  //       <AvatarGen name={value} enable_tooltip={true} />
-
-  //       {(props.show_label || true) && <span className="text-sm">{value}</span>}
-  //     </div>
-  //     // <Tag
-  //     //   closable={closable}
-  //     //   onClose={onClose}
-  //     //   style={{ marginRight: 8, marginBottom: 4 }}
-  //     //   className="flex items-center gap-2 px-2 py-1"
-  //     // >
-  //     //   <AvatarGen name={value} enable_tooltip={true} />
-
-  //     //   {
-  //     //     props.show_label && <span className="text-sm">{value}</span>
-  //     //   }
-
-  //     // </Tag>
-  //   );
-  // };
 
   if (collegues_list_query.isLoading) return <Spin />;
 
@@ -179,10 +156,36 @@ export const AssigneeSelectWidget = (props) => {
           </div>
         ) : (
           <>
-          <Avatar size={24} icon={<UserOutlined />} /> {props.show_label && "Unassigned"}
+            <Avatar size={24} icon={<UserOutlined />} />{" "}
+            {props.show_label && "Unassigned"}
           </>
         )}
       </Button>
     </Dropdown>
+  );
+};
+
+export const ShowUserWidget = (props) => {
+  const user = props.value;
+  return (
+    <div>
+      {user ? (
+        <div className="flex items-center -space-x-2">
+            <div className="inline-block">
+              <AvatarGen name={user} enable_tooltip={false} />
+            </div>
+          {props.show_label && (
+            <span className="ml-3 text-sm">
+              {user}
+            </span>
+          )}
+        </div>
+      ) : (
+        <>
+          <Avatar size={24} icon={<UserOutlined />} />{" "}
+          {props.show_label && "Unassigned"}
+        </>
+      )}
+    </div>
   );
 };

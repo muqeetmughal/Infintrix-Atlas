@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import HeatMap from "@uiw/react-heat-map";
 import { Tooltip } from "antd";
+import { useTheme } from "../context/ThemeContext";
 
 const getRandomYearValues = (year = 2016, maxCount = 32) => {
   const start = new Date(year, 0, 1);
@@ -55,6 +56,8 @@ const HeatmapWidget = ({
 }) => {
   const [selected, setSelected] = useState(null);
 
+  const theme = useTheme();
+
   const currentYear = new Date().getFullYear();
   const years = useMemo(
     () => Array.from({ length: 5 }, (_, i) => currentYear - i),
@@ -69,6 +72,11 @@ const HeatmapWidget = ({
 
   const computedStartDate = startDate ?? `${selectedYear}/01/01`;
   const computedEndDate = endDate ?? `${selectedYear + 1}/01/01`;
+
+  const labelColor = theme.isDark ? "#e0e0e0" : "#000";
+  const heatmapStyle = {
+    color: labelColor,
+  };
 
   return (
     <div>
@@ -96,7 +104,7 @@ const HeatmapWidget = ({
         panelColors={panelColors}
         monthLabels={showMonthLabels ? monthLabels : []}
         weekLabels={showWeekLabels ? weekLabels : []}
-        // style={{ color: "#4b0082", "--rhm-rect-active": "#6a0dad" }}
+        style={heatmapStyle}
         rectRender={(props, data) => {
           if (selected !== "") {
             props.opacity = data.date === selected ? 1 : 0.45;

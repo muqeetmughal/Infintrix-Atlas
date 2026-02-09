@@ -22,8 +22,6 @@ const CommentSection = ({ task_id }) => {
 
   const comments = comments_query?.data || [];
 
-  console.log("comments_query", comments_query.data);
-
   if (comments_query.isLoading) {
     return <div>Loading comments...</div>;
   }
