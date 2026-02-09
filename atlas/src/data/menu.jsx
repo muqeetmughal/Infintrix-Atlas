@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Briefcase,
-  CheckSquare,
   User,
 } from 'lucide-react';
 
