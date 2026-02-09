@@ -25,7 +25,7 @@ jobs:
 
             APP_DIR=~/infintrix-erp/apps/infintrix_atlas
             BENCH_DIR=~/infintrix-erp
-            SITE_NAME=${{ secrets.FRAPPE_SITE_NAME }}  # replace with your site
+            SITE_NAME="${{ secrets.FRAPPE_SITE_NAME }}"
 
             echo "==> Pulling latest code..."
             cd $APP_DIR
