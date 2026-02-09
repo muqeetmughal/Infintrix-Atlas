@@ -482,8 +482,7 @@ def get_project_user_stats(user=None):
 
     projects = frappe.db.sql(
         f"""
-        SELECT name, IFNULL(percent_complete, 0) AS percent_complete
-        FROM `tabProject`
+        SELECT * FROM `tabProject`
         {project_where}
     """,
         as_dict=True,
