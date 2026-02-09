@@ -20,4 +20,4 @@ jobs:
 
       - name: Run deploy script
         run: |
-            ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' < .github/workflows/deploy_frappe.sh ${{ secrets.FRAPPE_SITE_NAME }}
+            ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' < .github/workflows/deploy.sh ${{ secrets.FRAPPE_SITE_NAME }}
