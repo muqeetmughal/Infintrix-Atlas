@@ -3,7 +3,7 @@ name: Deploy Frappe App to VPS
 on:
   push:
     branches:
-      - main  # change to your default branch
+      - main
 
 jobs:
   deploy:
@@ -18,40 +18,6 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
-      - name: Deploy to VPS
+      - name: Run deploy script
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            set -e  # Stop on first error
-
-            APP_DIR=~/infintrix-erp/apps/infintrix_atlas
-            BENCH_DIR=~/infintrix-erp
-            SITE_NAME="${{ secrets.FRAPPE_SITE_NAME }}"
-
-            echo "==> Pulling latest code..."
-            cd $APP_DIR
-            git reset --hard
-            git clean -fd
-            git pull origin main
-
-            echo "==> Installing Python dependencies..."
-            cd $BENCH_DIR
-            source env/bin/activate  # adjust if your virtualenv path differs
-            bench setup requirements --app infintrix_atlas
-
-            echo "==> Building assets..."
-            nvm use 20  # ensure correct Node version, adjust if needed
-            bench build --apps infintrix_atlas --skip-redis  # optional: skip if unnecessary
-            # if using yarn/npm:
-            # cd $APP_DIR && yarn install && yarn build
-
-            echo "==> Running migrations..."
-            bench --site $SITE_NAME migrate
-
-            echo "==> Clearing cache..."
-            bench --site $SITE_NAME clear-cache
-
-            echo "==> Restarting services..."
-            sudo supervisorctl restart all
-
-            echo "==> Deployment complete!"
-          EOF
+          ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/deploy_frappe.sh ${{ secrets.FRAPPE_SITE_NAME }}"
