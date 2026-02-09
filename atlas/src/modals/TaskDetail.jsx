@@ -34,6 +34,7 @@ import CommentSection from "../components/CommentSection";
 import HistorySection from "../components/HistorySection";
 import SubTasks from "../components/SubTasks";
 import { useAssigneeOfTask } from "../hooks/query";
+import SubjectWidget from "../components/widgets/SubjectWidget";
 
 const TaskDetail = () => {
   const [isResizing, setIsResizing] = useState(false);
@@ -47,7 +48,7 @@ const TaskDetail = () => {
 
   const task_details_query = useFrappeGetDoc("Task", selectedTask || "");
 
-  const assignee_of_task_query = useAssigneeOfTask(selectedTask)
+  const assignee_of_task_query = useAssigneeOfTask(selectedTask);
   const assignee_mutation = useFrappePostCall(
     "infintrix_atlas.api.v1.switch_assignee_of_task",
   );
@@ -185,20 +186,23 @@ const TaskDetail = () => {
         {/* Main Content (Left) */}
         <main className="flex-1 p-6 sm:p-10 overflow-y-auto custom-scrollbar border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
           <h1 className="text-3xl font-semibold mb-6 leading-tight text-slate-900 dark:text-slate-100">
-            <TextWidget
-              style={{
+            <SubjectWidget
+              disableClick={true}
+              task={task}
+              inputStyle={{
                 fontSize: "2rem",
               }}
-              value={task.subject}
-              onSubmit={(newValue) => {
-                updateMutation
-                  .updateDoc("Task", task.name, {
-                    subject: newValue,
-                  })
-                  .then(() => {
-                    task_details_query.mutate();
-                  });
-              }}
+              style={{ fontSize: "2rem", fontWeight: "600", marginBottom: "1.5rem" }}
+              // value={task.subject}
+              // onSubmit={(newValue) => {
+              //   updateMutation
+              //     .updateDoc("Task", task.name, {
+              //       subject: newValue,
+              //     })
+              //     .then(() => {
+              //       task_details_query.mutate();
+              //     });
+              // }}
             />
           </h1>
 

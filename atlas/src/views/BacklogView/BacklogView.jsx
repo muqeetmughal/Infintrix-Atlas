@@ -56,6 +56,7 @@ import FormRender from "../../components/form/FormRender";
 import { useQueryParams } from "../../hooks/useQueryParams";
 import { useProjectDetailsQuery, useTasksQuery } from "../../hooks/query";
 import WorkItemTypeWidget from "../../components/widgets/WorkItemTypeWidget";
+import StatusWidget from "../../components/widgets/StatusWidget";
 // --- Constants ---
 
 const TASK_STATUS_COLORS = {
@@ -119,23 +120,12 @@ const TaskCard = ({ task, isOverlay = false }) => {
                     type: newType,
                   })
                   .then(() => {
-                    swr.mutate(['Task'])
+                    swr.mutate(["Task"]);
                     // task_details_query.mutate();
                   });
               }}
             />
-            {/* <Badge
-              className={
-                task.type === "Bug"
-                  ? "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800"
-                  : "bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-600"
-              }
-            >
-              {task.type}
-            </Badge> */}
-            {/* <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 font-mono uppercase">
-              {task.id}
-            </span> */}
+         
             <h4
               onClick={(e) => {
                 e.stopPropagation();
@@ -149,9 +139,7 @@ const TaskCard = ({ task, isOverlay = false }) => {
               {task.subject}
             </h4>
           </div>
-          <Badge className={TASK_STATUS_COLORS[task.status]}>
-            {task.status}
-          </Badge>
+          <StatusWidget value={task.status} />
         </div>
       </div>
     </div>

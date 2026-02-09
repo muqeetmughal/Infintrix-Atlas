@@ -511,16 +511,18 @@ def get_project_user_stats(user=None):
         SELECT COUNT(*)
         FROM `tabTask`
         WHERE status NOT IN ('Completed', 'Cancelled')
+        AND project IN %(projects)s
         {task_where}
     """.format(
             task_where=task_where
-        )
+        ),
+        {"projects": tuple(project_names)},
     )[0][0]
 
     # -----------------------------
     # AVG PROGRESS
     # -----------------------------
-    avg_progress = round(sum(p.percent_complete for p in projects) / total_projects)
+    avg_progress = round(sum(p.percent_complete for p in projects) / total_projects) if total_projects > 0 else 0
 
     # -----------------------------
     # TEAM MEMBERS
@@ -540,7 +542,6 @@ def get_project_user_stats(user=None):
         "avg_progress": avg_progress,
         "team_members": team_members,
     }
-
 
 @frappe.whitelist()
 def users_on_project(project):
