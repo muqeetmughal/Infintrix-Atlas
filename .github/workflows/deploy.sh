@@ -10,7 +10,7 @@ echo "==> Pulling latest code..."
 cd $APP_DIR
 git reset --hard
 git clean -fd
-git pull origin main
+git pull
 
 echo "==> Installing Python dependencies..."
 cd $BENCH_DIR
