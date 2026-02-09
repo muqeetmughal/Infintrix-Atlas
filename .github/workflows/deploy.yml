@@ -1,0 +1,35 @@
+name: Deploy Frappe App to VPS
+
+on:
+  push:
+    branches:
+      - main  # change to your default branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Deploy to VPS
+        run: |
+          ssh -o StrictHostKeyChecking=no frappe-user@erp.infintrixtech.com << 'EOF'
+            echo "Pulling latest changes..."
+            cd ~/infintrix-erp/apps/infintrix_atlas
+            git reset --hard
+            git clean -fd
+            git pull origin main
+            echo "Updating Frappe app..."
+            cd ~/infintrix-erp
+            bench --site erp.infintrixtech.com migrate
+            bench --site erp.infintrixtech.com clear-cache
+            echo "Restarting Frappe services..."
+            sudo supervisorctl restart all
+          EOF
