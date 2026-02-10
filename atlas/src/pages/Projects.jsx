@@ -1,4 +1,10 @@
-import { ArchiveIcon, ArchiveRestore, Calendar, MoreVertical, Plus } from "lucide-react";
+import {
+  ArchiveIcon,
+  ArchiveRestore,
+  Calendar,
+  MoreVertical,
+  Plus,
+} from "lucide-react";
 import React, { useState } from "react";
 import Card from "../components/ui/Card";
 import Badge from "../components/ui/Badge";
@@ -18,16 +24,18 @@ import { Button, Checkbox, Progress } from "antd";
 const ProjectCard = ({ project: p }) => {
   const updateMutation = useFrappeUpdateDoc();
   const swr = useSWRConfig();
-  const is_archived = p.custom_is_archived
+  const is_archived = p.custom_is_archived;
   return (
     <Card className="hover:shadow-lg hover:shadow-indigo-100 dark:hover:shadow-indigo-900/30 hover:-translate-y-1 transition-all duration-300 cursor-pointer group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden ">
       {/* Compact Header */}
       <div className="flex justify-between items-start mb-3">
         <div className="flex-1 min-w-0">
           <Link key={p.name} to={`/tasks/kanban?project=${p.name}`}>
-
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 line-clamp-1 mb-1">
-              {p.project_name}  { is_archived? <small className="bg-red-500 p-2">Archived</small> :null }
+              {p.project_name}{" "}
+              {is_archived ? (
+                <small className="bg-red-500 p-2">Archived</small>
+              ) : null}
             </h3>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
               {p.name}
@@ -42,30 +50,41 @@ const ProjectCard = ({ project: p }) => {
         <Button
           onClick={() => {
             if (is_archived) {
-              updateMutation.updateDoc("Project", p.name, { custom_is_archived: 0 }).then((resp) => {
-                console.log("Restored", resp);
-                swr.mutate(
-                  (key) => Array.isArray(key) && key.some((k) => k === "Project"),
-                  undefined,
-                  { revalidate: true },
-                );
-              });
+              updateMutation
+                .updateDoc("Project", p.name, { custom_is_archived: 0 })
+                .then((resp) => {
+                  console.log("Restored", resp);
+                  swr.mutate(
+                    (key) =>
+                      Array.isArray(key) && key.some((k) => k === "Project"),
+                    undefined,
+                    { revalidate: true },
+                  );
+                });
               return;
-            }else{
-              updateMutation.updateDoc("Project", p.name, { custom_is_archived: 1 }).then((resp) => {
-                console.log("Archived", resp);
-                swr.mutate(
-                  (key) => Array.isArray(key) && key.some((k) => k === "Project"),
-                  undefined,
-                  { revalidate: true },
-                );
-              });
-
+            } else {
+              updateMutation
+                .updateDoc("Project", p.name, { custom_is_archived: 1 })
+                .then((resp) => {
+                  console.log("Archived", resp);
+                  swr.mutate(
+                    (key) =>
+                      Array.isArray(key) && key.some((k) => k === "Project"),
+                    undefined,
+                    { revalidate: true },
+                  );
+                });
             }
           }}
           danger={is_archived ? false : true}
           size="small"
-          icon={is_archived ? <ArchiveRestore size={16} /> : <ArchiveIcon size={16} />}
+          icon={
+            is_archived ? (
+              <ArchiveRestore size={16} />
+            ) : (
+              <ArchiveIcon size={16} />
+            )
+          }
         />
       </div>
 
@@ -146,12 +165,14 @@ const Projects = () => {
   // const [projects] = useState(INITIAL_PROJECTS);
   const [isOpen, setIsOpen] = React.useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const show_archived = searchParams.get("show_archived") === "true";
 
   const selectedProject = searchParams.get("project") || null;
   const navigate = useNavigate();
 
   const status_param = searchParams.get("status") || "Open";
   // const query = useDoctypeSchema("Project")
+  const common_filters = [["custom_is_archived", "=", 0]];
   const projects_query = useFrappeGetDocList(
     "Project",
     {
@@ -161,9 +182,25 @@ const Projects = () => {
         field: "modified",
         order: "desc",
       },
-      filters: status_param ? [["status", "=", status_param]] : [],
+      filters: status_param
+        ? [...common_filters, ["status", "=", status_param]]
+        : common_filters,
     },
     ["Project", status_param],
+  );
+
+  const archived_projects_query = useFrappeGetDocList(
+    "Project",
+    {
+      fields: ["*"],
+      limit_page_length: 5,
+      orderBy: {
+        field: "modified",
+        order: "desc",
+      },
+      filters: [["custom_is_archived", "=", 1]],
+    },
+    ["Project", "archived"],
   );
 
   const project_status_options = useGetDoctypeField(
@@ -174,6 +211,7 @@ const Projects = () => {
   const project_statuses = project_status_options?.data?.options || [];
 
   const projects = projects_query.data || [];
+  const archived_projects = archived_projects_query.data || [];
 
   const isLoading = projects_query.isLoading;
 
@@ -190,6 +228,16 @@ const Projects = () => {
               Manage and track all your projects
             </p>
           </div>
+         <div className="flex justify-center items-center">
+           <Checkbox
+            checked={show_archived}
+            onChange={(e) => {
+              searchParams.set("show_archived", e.target.checked);
+              setSearchParams(searchParams);
+            }}
+          >
+            Show Archived
+          </Checkbox>
           <button
             onClick={() => {
               searchParams.set("doctype", "Project");
@@ -204,6 +252,7 @@ const Projects = () => {
             />
             <span>New Project</span>
           </button>
+         </div>
         </div>
 
         {/* Status Tabs */}
@@ -230,11 +279,10 @@ const Projects = () => {
                       : "bg-slate-200 dark:bg-slate-600"
                   }`}
                 >
-                  {projects.filter((p) => p.status === status).length}
+                  {(show_archived ? archived_projects : projects).filter((p) => p.status === status).length}
                 </span>
               </button>
             ))}
-        
           </div>
         </div>
 
@@ -267,9 +315,9 @@ const Projects = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {projects.map((p) => (
-              <ProjectCard key={p.name} project={p} />
-            ))}
+            {show_archived
+              ? archived_projects.map((p) => <ProjectCard key={p.name} project={p} />)
+              :  projects.map((p) => <ProjectCard key={p.name} project={p} />) }
           </div>
         )}
       </div>
