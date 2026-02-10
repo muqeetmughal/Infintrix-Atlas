@@ -95,7 +95,8 @@ def create_from_ai(project, tasks):
                 "priority": t["priority"],
                 "status": "Open",
                 "custom_weight": t["weight"],
-                "custom_created_by": "AI"
+                "custom_created_by": "AI",
+                "description": t.get("description", "")
             })
             doc.insert(ignore_permissions=True)
 
@@ -111,4 +112,4 @@ def create_from_ai(project, tasks):
                 "error": str(e)
             })
 
-    return {"results": results}
+    return results

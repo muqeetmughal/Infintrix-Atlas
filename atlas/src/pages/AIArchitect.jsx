@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Sparkles,
-  Wand2,
   ShieldCheck,
-  ShieldAlert,
   Shield,
   Check,
   X,
@@ -11,35 +9,34 @@ import {
   Loader2,
   AlertCircle,
   Link as LinkIcon,
-  Layers,
   CheckSquare,
   Save,
   UserPlus,
-  RotateCcw,
-  Target,
-  Clock,
   Briefcase,
   ExternalLink,
-  Ban,
-  RefreshCcw,
+  ChevronLeft,
+  Activity,
+  Zap,
+  Cpu,
+  ArrowRight,
+  Hash,
+  Search,
+  BrainCircuit,
 } from "lucide-react";
-import { useFrappeGetDocList, useFrappePostCall } from "frappe-react-sdk";
-import { useSearchParams } from "react-router-dom";
+import { useFrappePostCall } from "frappe-react-sdk";
 import { useQueryParams } from "../hooks/useQueryParams";
-import { Select } from "antd";
 
 // --- Finite State Machine Definitions ---
 const UI_STATES = {
   IDLE: "IDLE",
   DECOMPOSING: "DECOMPOSING",
   GUARDING: "GUARDING",
-  BLOCKED: "BLOCKED",
+  INTENTS_READY: "INTENTS_READY",
   DRAFTING: "DRAFTING",
   VALIDATING: "VALIDATING",
   REVIEWING: "REVIEWING",
   CREATING: "CREATING",
   SUCCESS: "SUCCESS",
-  PARTIAL_SUCCESS: "PARTIAL_SUCCESS",
   ERROR: "ERROR",
 };
 
@@ -47,68 +44,34 @@ const PIPELINE_VISUALS = {
   [UI_STATES.IDLE]: { active: null, finished: [] },
   [UI_STATES.DECOMPOSING]: { active: 1, finished: [] },
   [UI_STATES.GUARDING]: { active: 2, finished: [1] },
-  [UI_STATES.BLOCKED]: { active: 2, finished: [1], isBlocked: true },
+  [UI_STATES.INTENTS_READY]: { active: null, finished: [1, 2] },
   [UI_STATES.DRAFTING]: { active: 3, finished: [1, 2] },
   [UI_STATES.VALIDATING]: { active: 4, finished: [1, 2, 3] },
   [UI_STATES.REVIEWING]: { active: 5, finished: [1, 2, 3, 4] },
   [UI_STATES.CREATING]: { active: 6, finished: [1, 2, 3, 4, 5] },
   [UI_STATES.SUCCESS]: { active: null, finished: [1, 2, 3, 4, 5, 6] },
-  [UI_STATES.PARTIAL_SUCCESS]: {
-    active: 5,
-    finished: [1, 2, 3, 4],
-    hasFailures: true,
-  },
   [UI_STATES.ERROR]: { active: null, finished: [], isError: true },
 };
 
 const PIPELINE_STEPS = [
-  {
-    id: 1,
-    name: "Intent Decomposition",
-    desc: "AI Extracting atomic requirements",
-  },
-  {
-    id: 2,
-    name: "Feasibility Guard",
-    desc: "System verifying scope & capacity",
-  },
-  { id: 3, name: "Task Drafting", desc: "AI generating backlog items" },
-  { id: 4, name: "Structural Validation", desc: "System checking integrity" },
-  { id: 5, name: "Human Review", desc: "Awaiting user validation" },
-  { id: 6, name: "Task Creation", desc: "Deploying records to ERPNext" },
-];
-
-const AVAILABLE_PROJECTS = [
-  {
-    id: "PROJ-0001",
-    name: "Website Redesign",
-    mode: "Scrum",
-    cycles: ["Sprint 12", "Sprint 13"],
-    scope: "Frontend and Auth modules",
-  },
-  {
-    id: "PROJ-002",
-    name: "Cloud Migration",
-    mode: "Kanban",
-    cycles: [],
-    scope: "AWS Infrastructure",
-  },
-  {
-    id: "PROJ-003",
-    name: "Mobile App",
-    mode: "Scrum",
-    cycles: ["Q1-Release"],
-    scope: "iOS/Android parity",
-  },
+  { id: 1, name: "Requirement Extraction", icon: Cpu },
+  { id: 2, name: "System Guardrail Check", icon: Shield },
+  { id: 3, name: "Task Logic Synthesis", icon: Zap },
+  { id: 4, name: "Integrity Validation", icon: ShieldCheck },
+  { id: 5, name: "User Review Layer", icon: UserPlus },
+  { id: 6, name: "ERPNext Deployment", icon: LinkIcon },
 ];
 
 const TASK_PRIORITY_COLORS = {
-  Urgent: "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800",
-  High: "bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-800",
-  Medium: "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800",
-  Low: "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-700",
+  Urgent: "bg-rose-500 text-white border-rose-600",
+  High: "bg-orange-500 text-white border-orange-600",
+  Medium: "bg-indigo-500 text-white border-indigo-600",
+  Low: "bg-slate-500 text-white border-slate-600",
 };
 
+/**
+ * Task Review Card Component
+ */
 const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localData, setLocalData] = useState({ ...task });
@@ -125,189 +88,185 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
 
   return (
     <div
-      className={`bg-white dark:bg-slate-800 border-2 rounded-[32px] p-6 transition-all ${
+      className={`group relative bg-white dark:bg-slate-800 border rounded-3xl p-5 transition-all duration-300 ${
         isCreated
-          ? "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-900/20"
+          ? "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-900/10"
           : isApproved
-          ? "border-indigo-500 bg-indigo-50/10 dark:bg-indigo-900/20 shadow-lg shadow-indigo-100/20 dark:shadow-indigo-900/20"
-          : !isValid
-          ? "border-rose-200 dark:border-rose-800"
-          : "border-slate-100 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800"
-      } ${isLocked ? "opacity-80" : ""}`}
+            ? "border-indigo-500 ring-1 ring-indigo-500/20 shadow-xl shadow-indigo-100/20"
+            : !isValid
+              ? "border-rose-200 dark:border-rose-900 bg-rose-50/5"
+              : "border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700"
+      } ${isLocked ? "opacity-90" : ""}`}
     >
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div
-              className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                isCreated
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : isApproved
-                  ? "bg-indigo-600 text-white border-indigo-600"
-                  : task.creationStatus === "FAILED"
-                  ? "bg-rose-500 text-white border-rose-500"
-                  : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600"
-              }`}
-            >
-              {isCreated
-                ? "Record Created"
-                : isApproved
-                ? "Approved"
-                : task.creationStatus === "FAILED"
-                ? "Failed"
-                : "Drafted"}
-            </div>
-            <div className="text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">
-              Confidence: {(task.confidence * 100).toFixed(0)}%
-            </div>
+              className={`w-2 h-2 rounded-full ${isCreated ? "bg-emerald-500" : isApproved ? "bg-indigo-500" : !isValid ? "bg-rose-500" : "bg-slate-300 animate-pulse"}`}
+            />
+            <span className="text-[10px] font-black uppercase tracking-tighter text-slate-400 dark:text-slate-500 flex items-center gap-1">
+              <Hash size={10} /> {task.name || "UNASSIGNED"}
+            </span>
           </div>
           {!isLocked && !isApproved && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={() => setIsEditing(!isEditing)}
-                className="p-2 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
+                className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
               >
-                <Edit3 size={16} />
+                <Edit3 size={14} />
               </button>
               <button
                 onClick={() => onReject(task.id)}
-                className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-all"
+                className="p-1.5 text-slate-400 hover:text-rose-600"
               >
-                <X size={16} />
+                <X size={14} />
               </button>
             </div>
           )}
         </div>
 
         {isEditing ? (
-          <div className="space-y-4">
-            <input
-              className="w-full bg-slate-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
-              value={localData.subject}
-              onChange={(e) =>
-                setLocalData({ ...localData, subject: e.target.value })
-              }
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <select
-                className="bg-slate-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-slate-100"
-                value={localData.priority}
-                onChange={(e) =>
-                  setLocalData({ ...localData, priority: e.target.value })
-                }
-              >
-                {Object.keys(TASK_PRIORITY_COLORS).map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
+          <div className="space-y-3 animate-in fade-in zoom-in-95">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                Subject
+              </label>
               <input
-                type="number"
-                className="bg-slate-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-slate-100"
-                value={localData.weight}
+                className="w-full bg-slate-50 dark:bg-slate-700 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition-all"
+                value={localData.subject}
                 onChange={(e) =>
-                  setLocalData({
-                    ...localData,
-                    weight: parseInt(e.target.value) || 0,
-                  })
+                  setLocalData({ ...localData, subject: e.target.value })
                 }
               />
             </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                Description
+              </label>
+              <textarea
+                className="w-full bg-slate-50 dark:bg-slate-700 border-none rounded-xl px-4 py-2 text-xs font-medium focus:ring-2 focus:ring-indigo-500 transition-all resize-none h-20"
+                value={localData.description}
+                onChange={(e) =>
+                  setLocalData({ ...localData, description: e.target.value })
+                }
+                placeholder="Enter task details..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                  Priority
+                </label>
+                <select
+                  className="w-full bg-slate-50 dark:bg-slate-700 border-none rounded-xl px-3 py-2 text-xs font-bold"
+                  value={localData.priority}
+                  onChange={(e) =>
+                    setLocalData({ ...localData, priority: e.target.value })
+                  }
+                >
+                  {Object.keys(TASK_PRIORITY_COLORS).map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                  Weight
+                </label>
+                <input
+                  type="number"
+                  className="w-full bg-slate-50 dark:bg-slate-700 border-none rounded-xl px-3 py-2 text-xs font-bold"
+                  value={localData.weight}
+                  onChange={(e) =>
+                    setLocalData({
+                      ...localData,
+                      weight: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+            </div>
             <button
               onClick={handleSave}
-              className="w-full py-3 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200/50"
             >
-              <Save size={14} /> Commit Changes
+              <Save size={12} /> Save Changes
             </button>
           </div>
         ) : (
-          <div>
-            <h4
-              className={`text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight mb-2 ${
-                !isValid && !isApproved && !isCreated
-                  ? "line-through opacity-40"
-                  : ""
-              }`}
-            >
-              {task.subject}
-            </h4>
-            <div className="flex items-center gap-3">
-              <span
-                className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg border ${
-                  TASK_PRIORITY_COLORS[task.priority]
-                }`}
+          <div className="space-y-3">
+            <div>
+              <h4
+                className={`text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-snug ${!isValid && !isApproved ? "line-through text-slate-400" : ""}`}
               >
-                {task.priority}
-              </span>
-              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                {task.weight} Points
-              </span>
+                {task.subject}
+              </h4>
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                {task.description}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-y-2 gap-x-4 pt-2 border-t border-slate-50 dark:border-slate-700/50">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${TASK_PRIORITY_COLORS[task.priority] || TASK_PRIORITY_COLORS.Low}`}
+                >
+                  {task.priority}
+                </span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                  {task.weight} Story Pts
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 ml-auto">
+                <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase">
+                  <Briefcase size={10} /> {task.project}
+                </div>
+                <div className="text-[9px] font-black text-indigo-500/50 uppercase">
+                  Conf: {(task.confidence * 100).toFixed(0)}%
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {!isValid && !isApproved && !isCreated && (
-          <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-2xl flex items-start gap-3">
-            <AlertCircle size={16} className="text-rose-500 dark:text-rose-400 mt-0.5 shrink-0" />
-            <div className="space-y-1">
-              <div className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase">
-                Structural Violation
-              </div>
-              <ul className="text-[10px] font-bold text-rose-400 dark:text-rose-500 list-disc ml-3 leading-tight">
-                {task.validation?.errors?.map((err, i) => (
-                  <li key={i}>{err}</li>
-                ))}
-              </ul>
+          <div className="p-3 bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800 rounded-xl flex items-center gap-2">
+            <AlertCircle size={14} className="text-rose-500 shrink-0" />
+            <div className="text-[9px] font-bold text-rose-500 uppercase leading-tight truncate">
+              {task.validation?.errors?.join(", ")}
             </div>
-          </div>
-        )}
-
-        {task.creationStatus === "LOADING" && (
-          <div className="flex items-center gap-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl">
-            <Loader2 size={16} className="text-indigo-600 dark:text-indigo-400 animate-spin" />
-            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase">
-              Creating ERPNext Record...
-            </span>
-          </div>
-        )}
-
-        {task.creationStatus === "FAILED" && (
-          <div className="p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-xl flex items-center gap-2 text-rose-600 dark:text-rose-400">
-            <AlertCircle size={14} />
-            <span className="text-[10px] font-black uppercase tracking-tight">
-              Deployment Failed: Record Validation Error
-            </span>
           </div>
         )}
 
         {isCreated && (
-          <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl">
-            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-              <CheckSquare size={16} />
-              <span className="text-[10px] font-black uppercase tracking-widest">
-                Doc: T-2026-001 Verified
-              </span>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between p-2.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl">
+              <div className="flex items-center gap-2">
+                <CheckSquare size={14} className="text-emerald-500" />
+                <span className="text-[9px] font-black text-emerald-600 uppercase">
+                  Synced • {task.erpStatus}
+                </span>
+              </div>
+              <ExternalLink
+                size={12}
+                className="text-emerald-400 cursor-pointer"
+              />
             </div>
-            <ExternalLink
-              size={14}
-              className="text-emerald-400 dark:text-emerald-500 cursor-pointer"
-            />
           </div>
         )}
 
         {!isLocked && !isEditing && !isApproved && !isCreated && (
-          <div className="pt-4 border-t border-slate-50 dark:border-slate-700 flex justify-end">
+          <div className="pt-2">
             <button
               disabled={!isValid}
               onClick={() => onApprove(task.id)}
-              className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
-                !isValid
-                  ? "bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-600"
-                  : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100 dark:shadow-indigo-900/20"
-              }`}
+              className={`w-full py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${!isValid ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98]"}`}
             >
-              <Check size={16} /> Approve Suggested Task
+              <Check size={14} /> Approve Intent
             </button>
           </div>
         )}
@@ -316,584 +275,774 @@ const TaskReviewCard = ({ task, onUpdate, onReject, onApprove, disabled }) => {
   );
 };
 
-export default function AIArchitect() {
-  const qp = useQueryParams();
+// --- Mock API Responses ---
+// const MOCK_INTENTS = [
+//   { id: "INT-1", text: "Design responsive To-Do application interface" },
+//   { id: "INT-2", text: "Implement user authentication system" },
+//   { id: "INT-3", text: "Enable task creation functionality" },
+//   { id: "INT-4", text: "Allow task editing and deletion" },
+//   { id: "INT-5", text: "Track task status effectively" },
+//   { id: "INT-6", text: "Set task priorities and due dates" },
+//   { id: "INT-7", text: "Develop task filtering and search options" },
+//   { id: "INT-8", text: "Ensure persistent data storage solution" },
+//   { id: "INT-9", text: "Integrate basic notification system" },
+//   { id: "INT-10", text: "Create scalable maintainable architecture" },
+// ];
 
-  const project = qp.get("project") || null;
+// const MOCK_DRAFTS = [
+//   {
+//     id: "0mi9ublb8p",
+//     name: "TASK-2026-00041",
+//     intentId: "INT-1",
+//     erpStatus: "Open",
+//     type: "Task",
+//     cycle: null,
+//     modified: "2026-02-10 16:47:45.459",
+//     project: "PROJ-0002",
+//     subject: "Design responsive To-Do application interface",
+//     description:
+//       "Create a modern, responsive mobile-first UI using Tailwind CSS and React components.",
+//     priority: "High",
+//     weight: 5,
+//     confidence: 0.9,
+//     validation: { valid: true, errors: [] },
+//   },
+//   {
+//     id: "0misvjg3en",
+//     name: "TASK-2026-00044",
+//     intentId: "INT-2",
+//     erpStatus: "Open",
+//     type: "Task",
+//     cycle: null,
+//     modified: "2026-02-10 16:47:45.459",
+//     project: "PROJ-0002",
+//     subject: "Implement user authentication system",
+//     description:
+//       "Develop secure login, registration, and session management using JWT and encrypted storage.",
+//     priority: "High",
+//     weight: 5,
+//     confidence: 0.85,
+//     validation: { valid: true, errors: [] },
+//   },
+//   {
+//     id: "0mivi6pbss",
+//     name: "TASK-2026-00045",
+//     intentId: "INT-3",
+//     erpStatus: "Open",
+//     type: "Task",
+//     cycle: null,
+//     modified: "2026-02-10 16:47:45.459",
+//     project: "PROJ-0002",
+//     subject: "Enable task creation functionality",
+//     description:
+//       "Build the logic and UI forms to allow users to input and save new tasks to the database.",
+//     priority: "High",
+//     weight: 0,
+//     confidence: 0.9,
+//     validation: { valid: false, errors: ["Invalid weight"] },
+//   },
+//   {
+//     id: "0mibktmpef",
+//     name: "TASK-2026-00046",
+//     intentId: "INT-4",
+//     erpStatus: "Open",
+//     type: "Task",
+//     cycle: null,
+//     modified: "2026-02-10 16:47:45.459",
+//     project: "PROJ-0002",
+//     subject: "Allow task editing and deletion",
+//     description:
+//       "Implement CRUD operations for existing tasks with optimistic UI updates.",
+//     priority: "Medium",
+//     weight: 0,
+//     confidence: 0.8,
+//     validation: { valid: false, errors: ["Invalid weight"] },
+//   },
+//   {
+//     id: "0miju9dnaq",
+//     name: "TASK-2026-00047",
+//     intentId: "INT-5",
+//     erpStatus: "Open",
+//     type: "Task",
+//     cycle: null,
+//     modified: "2026-02-10 16:47:45.459",
+//     project: "PROJ-0002",
+//     subject: "Track task status effectively",
+//     description:
+//       "Create status transitions (Todo, Doing, Done) and progress visualization bars.",
+//     priority: "Medium",
+//     weight: 3,
+//     confidence: 0.75,
+//     validation: { valid: true, errors: [] },
+//   },
+//   {
+//     id: "0mi1veumun",
+//     name: "TASK-2026-00048",
+//     intentId: "INT-6",
+//     erpStatus: "Open",
+//     type: "Task",
+//     cycle: null,
+//     modified: "2026-02-10 16:47:45.459",
+//     project: "PROJ-0002",
+//     subject: "Set task priorities and due dates",
+//     description:
+//       "Add date pickers and priority labels to task metadata for better scheduling.",
+//     priority: "Medium",
+//     weight: 3,
+//     confidence: 0.8,
+//     validation: { valid: true, errors: [] },
+//   },
+//   {
+//     id: "0mi5a4e14j",
+//     name: "TASK-2026-00049",
+//     intentId: "INT-7",
+//     erpStatus: "Open",
+//     type: "Task",
+//     cycle: null,
+//     modified: "2026-02-10 16:47:45.459",
+//     project: "PROJ-0002",
+//     subject: "Develop task filtering and search options",
+//     description:
+//       "Build a robust filtering system for tags, priorities, and keyword search.",
+//     priority: "Medium",
+//     weight: 3,
+//     confidence: 0.7,
+//     validation: { valid: true, errors: [] },
+//   },
+//   {
+//     id: "0mi282pqun",
+//     name: "TASK-2026-00050",
+//     intentId: "INT-8",
+//     erpStatus: "Open",
+//     type: "Task",
+//     cycle: null,
+//     modified: "2026-02-10 16:47:45.459",
+//     project: "PROJ-0002",
+//     subject: "Ensure persistent data storage solution",
+//     description:
+//       "Integrate Firestore or local indexedDB for data persistence across sessions.",
+//     priority: "High",
+//     weight: 5,
+//     confidence: 0.95,
+//     validation: { valid: true, errors: [] },
+//   },
+//   {
+//     id: "0mii66a22o",
+//     name: "TASK-2026-00051",
+//     intentId: "INT-9",
+//     erpStatus: "Open",
+//     type: "Task",
+//     cycle: null,
+//     modified: "2026-02-10 16:47:45.459",
+//     project: "PROJ-0002",
+//     subject: "Integrate basic notification system",
+//     description:
+//       "Setup push notifications or browser alerts for task deadlines.",
+//     priority: "Low",
+//     weight: 2,
+//     confidence: 0.6,
+//     validation: { valid: true, errors: [] },
+//   },
+//   {
+//     id: "0mimdintv0",
+//     name: "TASK-2026-00052",
+//     intentId: "INT-10",
+//     erpStatus: "Open",
+//     type: "Task",
+//     cycle: null,
+//     modified: "2026-02-10 16:47:45.459",
+//     project: "PROJ-0002",
+//     subject: "Create scalable maintainable architecture",
+//     description:
+//       "Ensure modular code structure with clear separation of concerns using MVC or Clean Architecture.",
+//     priority: "High",
+//     weight: 5,
+//     confidence: 0.9,
+//     validation: { valid: true, errors: [] },
+//   },
+// ];
+
+export default function App() {
+  const request_intent_query = useFrappePostCall(
+    "infintrix_atlas.api.ai_pipeline.request_intent_decomposition",
+  );
+
+  const request_task_drafting_query = useFrappePostCall(
+    "infintrix_atlas.api.ai_pipeline.request_task_drafting",
+  );
+
+  const create_tasks = useFrappePostCall(
+    "infintrix_atlas.api.ai.create_from_ai",
+  );
   const [uiState, setUiState] = useState(UI_STATES.IDLE);
-  const [prompt, setPrompt] = useState("Scope of Work: Design and develop a responsive To-Do application with user authentication, task creation/editing/deletion, task status tracking, priorities, due dates, filtering and search, persistent data storage, basic notifications, and a scalable, maintainable architecture, excluding collaboration, third-party integrations, and advanced analytics.");
+  const [prompt, setPrompt] = useState(
+    "Design and develop a responsive To-Do application with user authentication, task management, and persistent storage.",
+  );
   const [intents, setIntents] = useState([]);
   const [drafts, setDrafts] = useState([]);
-  const [selectedCycle, setSelectedCycle] = useState("");
+  const [session, setSession] = useState("null-session");
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
-
-  const cycles_options_query = useFrappeGetDocList("Cycle", {
-    filters: { project: project },
-    fields: ["name as value", "name as label"],
-    limit_page_length: 100,
-  }, ["cycles-options", project]);
-
-  const { call: openPipeline } = useFrappePostCall(
-    "infintrix_atlas.api.ai_pipeline.open_ai_pipeline"
-  );
-  const { call: createTasks } = useFrappePostCall(
-    "infintrix_atlas.api.ai.create_from_ai"
-  );
-
-  const selectedProject = project
-
-  const validateTask = useCallback((task) => {
-    const errors = [];
-    if (!task.subject || task.subject.length < 5)
-      errors.push("Subject must be at least 5 characters");
-    if (!task.priority) errors.push("Priority is required");
-    if (!task.weight || task.weight <= 0)
-      errors.push("Weight must be greater than 0");
-    return { valid: errors.length === 0, errors };
-  }, []);
-
-  useEffect(() => {
-    let timeout;
-
-    const handleTransition = async () => {
-      try {
-        switch (uiState) {
-          case UI_STATES.DECOMPOSING:
-            timeout = setTimeout(() => {
-              setIntents([
-                { id: "I1", text: `Optimize ${selectedProject.scope}` },
-                { id: "I2", text: "Define security baseline" },
-              ]);
-              setUiState(UI_STATES.GUARDING);
-            }, 1200);
-            break;
-
-          case UI_STATES.GUARDING:
-            timeout = setTimeout(() => {
-              if (prompt.trim().split(/\s+/).length < 3) {
-                setUiState(UI_STATES.BLOCKED);
-              } else {
-                setUiState(UI_STATES.DRAFTING);
-              }
-            }, 1000);
-            break;
-
-          case UI_STATES.DRAFTING:
-            timeout = setTimeout(() => {
-              const raw = [
-                {
-                  id: "T1",
-                  subject: "Establish S3 bucket lifecycle policy",
-                  priority: "Medium",
-                  weight: 3,
-                  confidence: 0.94,
-                  status: "DRAFT",
-                  creationStatus: "IDLE",
-                },
-                {
-                  id: "T2",
-                  subject: "Log",
-                  priority: "High",
-                  weight: 0,
-                  confidence: 0.42,
-                  status: "DRAFT",
-                  creationStatus: "IDLE",
-                },
-              ];
-              setDrafts(raw);
-              setUiState(UI_STATES.VALIDATING);
-            }, 1500);
-            break;
-
-          case UI_STATES.VALIDATING:
-            timeout = setTimeout(() => {
-              setDrafts((prev) =>
-                prev.map((d) => ({ ...d, validation: validateTask(d) }))
-              );
-              setUiState(UI_STATES.REVIEWING);
-            }, 1000);
-            break;
-
-          default:
-            break;
-        }
-      } catch (e) {
-        setUiState(UI_STATES.ERROR);
-      }
-    };
-
-    handleTransition();
-    return () => clearTimeout(timeout);
-  }, [uiState, selectedProject, prompt, validateTask]);
-
-  const handleStartPipeline = async () => {
-    if (!prompt.trim() || uiState !== UI_STATES.IDLE) return;
-
+  const qp = useQueryParams();
+  const project = qp.get("project") || null;
+  // const request_intent_query =
+  const handleExtractIntents = async () => {
     setUiState(UI_STATES.DECOMPOSING);
 
-    try {
-      const res = await openPipeline({
-        project: selectedProject,
-        prompt,
-        cycle: selectedCycle || null,
-      });
+    const res = await request_intent_query.call({ prompt, project });
+    const data = res.message || [];
 
-      if (res.status === "BLOCKED") {
-        setUiState(UI_STATES.BLOCKED);
-        return;
-      }
+    if (!data.length) throw new Error("No intents extracted");
 
-      setIntents(res?.message?.intents || []);
-      setDrafts(res?.message?.drafts || []);
-      setUiState(UI_STATES.REVIEWING);
-    } catch (e) {
-      console.error(e);
-      setUiState(UI_STATES.ERROR);
-    }
+    setIntents(data);
+    setUiState(UI_STATES.INTENTS_READY);
   };
 
-  const handleUpdateTask = (id, newData) => {
-    setDrafts((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...newData, status: "DRAFT" } : t))
-    );
-  };
+  // const handleExtractIntents = useCallback(async () => {
+  //   setUiState(UI_STATES.DECOMPOSING);
+  //   request_intent_query
+  //     .call({ prompt })
+  //     .then((res) => {
+  //       const data = res.message || [];
+  //       console.log("API Response:", res.message);
+  //       setUiState(UI_STATES.GUARDING);
+  //       setIntents(data);
+  //       setSession("sess_" + Math.random().toString(36).slice(2, 8));
+  //       setUiState(UI_STATES.INTENTS_READY);
+  //     })
+  //     .catch((err) => {
+  //       console.error("API Error:", err);
+  //       setUiState(UI_STATES.ERROR);
+  //     });
+  // }, []);
 
-  const handleApproveTask = (id) => {
-    setDrafts((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: "APPROVED" } : t))
-    );
-  };
-
-  const handleDeploy = async () => {
-    if (
-      uiState !== UI_STATES.REVIEWING &&
-      uiState !== UI_STATES.PARTIAL_SUCCESS
-    ) {
+  const handleDraftTasks = useCallback(async () => {
+    if (!intents.length) {
+      console.error("Draft requested with empty intents");
       return;
     }
 
-    const approved = drafts.filter((d) => d.status === "APPROVED");
+    setUiState(UI_STATES.DRAFTING);
 
-    if (approved.length === 0) return;
+    const res = await request_task_drafting_query.call({
+      intents,
+      project,
+    });
 
+    setUiState(UI_STATES.VALIDATING);
+    setDrafts(res?.message || []);
+    setUiState(UI_STATES.REVIEWING);
+  }, [intents, project]);
+
+  const handleUpdateTask = (id, newData) => {
+    setDrafts((prev) =>
+      prev.map((t) => {
+        if (t.id === id) {
+          const updatedTask = { ...t, ...newData };
+          const isValid =
+            updatedTask.weight > 0 && updatedTask.subject?.trim().length > 0;
+          return {
+            ...updatedTask,
+            validation: {
+              valid: isValid,
+              errors: isValid ? [] : ["Invalid weight or subject"],
+            },
+          };
+        }
+        return t;
+      }),
+    );
+  };
+
+  const handleApproveTask = (id) =>
+    setDrafts((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, status: "APPROVED" } : t)),
+    );
+  const handleBulkApprove = () =>
+    setDrafts((prev) =>
+      prev.map((t) => (t.validation.valid ? { ...t, status: "APPROVED" } : t)),
+    );
+
+  const handleDeploy = () => {
     setUiState(UI_STATES.CREATING);
+    create_tasks
+      .call({
+        tasks: drafts
+          .filter((d) => d.status === "APPROVED")
+          .map((d) => ({
+            subject: d.subject,
+            description: d.description,
+            priority: d.priority,
+            weight: d.weight,
+            project,
+          })),
+        project,
+      })
+      .then((res) => {
+        console.log("Create Tasks Response:", res);
 
-    try {
-      const res = await createTasks({
-        project: selectedProject,
-        tasks: approved.map((t) => ({
-          subject: t.subject,
-          priority: t.priority,
-          weight: t.weight,
-        })),
+        setDrafts((prev) =>
+          prev.map((d) =>
+            d.status === "APPROVED"
+              ? {
+                  ...d,
+                  creationStatus: "SUCCESS",
+                  modified: new Date()
+                    .toISOString()
+                    .replace("T", " ")
+                    .split(".")[0],
+                  erpStatus: "Open",
+                }
+              : d,
+          ),
+        );
+        setUiState(UI_STATES.SUCCESS);
       });
 
-      const results = res.results || [];
-
-      setDrafts((prev) =>
-        prev.map((d) => {
-          const r = results.find((x) => x.subject === d.subject);
-          if (!r) return d;
-
-          return {
-            ...d,
-            creationStatus: r.status === "SUCCESS" ? "SUCCESS" : "FAILED",
-            status: r.status === "SUCCESS" ? "APPROVED" : "DRAFT",
-          };
-        })
-      );
-
-      const hasFailures = results.some((r) => r.status === "FAILED");
-      setUiState(hasFailures ? UI_STATES.PARTIAL_SUCCESS : UI_STATES.SUCCESS);
-    } catch (e) {
-      console.error(e);
-      setUiState(UI_STATES.ERROR);
-    }
   };
 
   const handleReset = () => {
-    if (uiState === UI_STATES.CREATING) return;
-
     setUiState(UI_STATES.IDLE);
-    setPrompt("");
     setIntents([]);
     setDrafts([]);
   };
 
+  const filteredTasks = useMemo(() => {
+    return drafts.filter((t) => {
+      const matchesSearch =
+        t.subject.toLowerCase().includes(search.toLowerCase()) ||
+        t.description.toLowerCase().includes(search.toLowerCase());
+      if (filter === "errors") return matchesSearch && !t.validation.valid;
+      if (filter === "approved")
+        return matchesSearch && t.status === "APPROVED";
+      if (filter === "pending")
+        return matchesSearch && t.status === "DRAFT" && t.validation.valid;
+      return matchesSearch;
+    });
+  }, [drafts, filter, search]);
+
+  // const stats = useMemo(
+  //   () => ({
+  //     total: drafts.length,
+  //     approved: drafts.filter(
+  //       (d) => d.status === "APPROVED" || d.creationStatus === "SUCCESS",
+  //     ).length,
+  //     invalid: drafts.filter((d) => !d.validation.valid).length,
+  //     effort: drafts.reduce((acc, curr) => acc + curr.weight, 0),
+  //     avgConfidence: (
+  //       (drafts.reduce((acc, curr) => acc + curr.confidence, 0) /
+  //         (drafts.length || 1)) *
+  //       100
+  //     ).toFixed(0),
+  //   }),
+  //   [drafts],
+  // );
+  const stats = {};
+  const currentPhase = useMemo(() => {
+    if (
+      [
+        UI_STATES.IDLE,
+        UI_STATES.DECOMPOSING,
+        UI_STATES.GUARDING,
+        UI_STATES.INTENTS_READY,
+      ].includes(uiState)
+    )
+      return 1;
+    return 2;
+  }, [uiState]);
+
   const visuals =
     PIPELINE_VISUALS[uiState] || PIPELINE_VISUALS[UI_STATES.ERROR];
+  const isIntentPhase = [UI_STATES.DECOMPOSING, UI_STATES.GUARDING].includes(
+    uiState,
+  );
+  const isTaskPhase = [UI_STATES.DRAFTING, UI_STATES.VALIDATING].includes(
+    uiState,
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 p-8">
-      <div className="mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <aside className="lg:col-span-4 space-y-6">
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-4xl p-8 shadow-sm">
-            <h2 className="text-2xl font-black tracking-tight mb-2 flex items-center gap-2">
-              <Sparkles className="text-indigo-600 dark:text-indigo-400" size={24} />
-              Task Architect
-            </h2>
-            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-8">
-              Structural Logic Engine
-            </p>
-
-            <div className="space-y-6">
-              <div className="space-y-4 pb-6 border-b border-slate-100 dark:border-slate-700">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                    <Briefcase size={12} /> Target Context
-                  </label>
-                  <div className="text-sm font-bold text-slate-900 dark:text-slate-100">{project}</div>
-                </div>
-
-                {selectedProject.mode === "Scrum" && (
-                  <div className="space-y-1.5 animate-in slide-in-from-top-2">
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                      <Clock size={12} /> Cycle Boundary
-                    </label>
-
-                    <Select
-                      disabled={uiState !== UI_STATES.IDLE}
-                      className="w-full"
-                      value={selectedCycle}
-                      onChange={(v) => setSelectedCycle(v)}
-                      options={cycles_options_query?.data ?? []}
-                    />
-                  </div>
-                )}
-
-                <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800">
-                  <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">
-                    Scope Policy
-                  </div>
-                  <div className="text-xs font-bold text-indigo-700 dark:text-indigo-300 leading-tight">
-                    {selectedProject.scope}
-                  </div>
-                </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 p-4 lg:p-12">
+      <div className="max-w-7xl mx-auto">
+        {/* IDLE STATE */}
+        {uiState === UI_STATES.IDLE && (
+          <div className="mt-12 lg:mt-24 max-w-2xl mx-auto space-y-12 animate-in fade-in slide-in-from-top-4 duration-700">
+            <div className="text-center space-y-4">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-full">
+                <Activity size={12} className="text-indigo-600" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                  Architect Engine v4.6 Stage-Stepped
+                </span>
               </div>
+              <h1 className="text-5xl font-black tracking-tighter leading-none">
+                Turn Ideas into <span className="text-indigo-600">Logic.</span>
+              </h1>
+            </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
+            <div className="bg-white dark:bg-slate-800 rounded-[40px] p-10 shadow-2xl border border-slate-100 dark:border-slate-800">
+              <div className="space-y-3 mb-10">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
                   Requirement Prompt
                 </label>
                 <textarea
-                  readOnly={uiState !== UI_STATES.IDLE}
-                  className="w-full h-32 bg-slate-50 dark:bg-slate-700 border-none rounded-2xl p-5 text-sm font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 transition-all resize-none disabled:opacity-50"
-                  placeholder="Enter architectural requirements..."
+                  className="w-full h-44 bg-slate-50 dark:bg-slate-700/50 border-2 border-slate-100 dark:border-slate-700 rounded-[24px] p-6 text-base font-medium focus:ring-4 focus:ring-indigo-500 transition-all resize-none"
+                  placeholder="Describe your technical vision..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                 />
               </div>
 
-              {uiState === UI_STATES.IDLE ? (
-                <button
-                  onClick={handleStartPipeline}
-                  disabled={
-                    !prompt ||
-                    (selectedProject.mode === "Scrum" && !selectedCycle)
-                  }
-                  className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-indigo-700 shadow-xl shadow-indigo-100 dark:shadow-indigo-900/20 transition-all disabled:opacity-50"
-                >
-                  <Wand2 size={18} /> Initiate Pipeline
-                </button>
-              ) : (
-                <button
-                  onClick={handleReset}
-                  disabled={uiState === UI_STATES.CREATING}
-                  className="w-full py-4 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all disabled:opacity-30"
-                >
-                  {uiState === UI_STATES.CREATING ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <RotateCcw size={18} />
-                  )}
-                  {uiState === UI_STATES.CREATING
-                    ? "Processing Records..."
-                    : "Abort & Reset"}
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-4xl p-8 shadow-sm">
-            <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-8">
-              Pipeline State
-            </h3>
-            <div className="space-y-6">
-              {PIPELINE_STEPS.map((step) => {
-                const isActive = visuals.active === step.id;
-                const isFinished = visuals.finished.includes(step.id);
-
-                return (
-                  <div
-                    key={step.name}
-                    className={`flex gap-4 transition-all ${
-                      isActive || isFinished ? "opacity-100" : "opacity-20"
-                    }`}
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center shrink-0 transition-all ${
-                        isFinished
-                          ? "bg-emerald-500 border-emerald-500 text-white"
-                          : isActive
-                          ? "border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 animate-pulse"
-                          : "border-slate-100 dark:border-slate-700 text-slate-200 dark:text-slate-700"
-                      }`}
-                    >
-                      {isFinished ? (
-                        <Check size={16} />
-                      ) : (
-                        <div className="w-1.5 h-1.5 bg-current rounded-full" />
-                      )}
-                    </div>
-                    <div className="pt-1">
-                      <div className="text-xs font-black text-slate-900 dark:text-slate-100 leading-none mb-1">
-                        {step.name}
-                      </div>
-                      <div className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase leading-tight">
-                        {step.desc}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </aside>
-
-        <main className="lg:col-span-8">
-          {uiState === UI_STATES.IDLE && (
-            <div className="h-full flex flex-col items-center justify-center text-center p-20 border-4 border-dashed border-slate-100 dark:border-slate-700 rounded-[48px]">
-              <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-3xl shadow-xl flex items-center justify-center text-slate-200 dark:text-slate-700 mb-6">
-                <Target size={40} />
-              </div>
-              <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                Workbench Idle
-              </h3>
-              <p className="text-sm font-bold text-slate-400 dark:text-slate-500 max-w-xs mx-auto mt-2 italic leading-relaxed">
-                Awaiting intent deconstruction sequence. Select context and
-                define prompt to begin.
-              </p>
-            </div>
-          )}
-
-          {uiState === UI_STATES.ERROR && (
-            <div className="h-full flex flex-col items-center justify-center text-center p-20 bg-rose-50 dark:bg-rose-900/20 border-4 border-dashed border-rose-200 dark:border-rose-800 rounded-[48px] animate-in fade-in zoom-in-95 duration-300">
-              <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-3xl shadow-xl flex items-center justify-center text-rose-500 dark:text-rose-400 mb-6 border border-rose-100 dark:border-rose-800">
-                <ShieldAlert size={40} />
-              </div>
-              <h3 className="text-xl font-black text-rose-900 dark:text-rose-100 tracking-tight">
-                Technical Error Encountered
-              </h3>
-              <p className="text-sm font-bold text-rose-700 dark:text-rose-300 max-w-sm mx-auto mt-2 leading-relaxed uppercase">
-                Runtime Exception during structural validation. Data integrity
-                maintained.
-              </p>
-              <div className="flex items-center gap-4 mt-8">
-                <button
-                  onClick={() => setUiState(UI_STATES.VALIDATING)}
-                  className="px-8 py-3 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-rose-200 dark:shadow-rose-900/20 flex items-center gap-2"
-                >
-                  <RefreshCcw size={16} /> Retry Last Step
-                </button>
-                <button
-                  onClick={handleReset}
-                  className="px-8 py-3 bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-2xl font-black text-[10px] uppercase tracking-widest"
-                >
-                  Reset Architect
-                </button>
-              </div>
-            </div>
-          )}
-
-          {uiState === UI_STATES.BLOCKED && (
-            <div className="h-full flex flex-col items-center justify-center text-center p-20 bg-rose-50 dark:bg-rose-900/20 border-4 border-dashed border-rose-200 dark:border-rose-800 rounded-[48px] animate-in fade-in zoom-in-95 duration-300">
-              <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-3xl shadow-xl flex items-center justify-center text-rose-500 dark:text-rose-400 mb-6 border border-rose-100 dark:border-rose-800">
-                <Ban size={40} />
-              </div>
-              <h3 className="text-xl font-black text-rose-900 dark:text-rose-100 tracking-tight">
-                Insufficient Signal
-              </h3>
-              <p className="text-sm font-bold text-rose-700 dark:text-rose-300 max-w-sm mx-auto mt-2 leading-relaxed uppercase">
-                Prompt lacks actionable intent for architectural deconstruction.
-                Please provide detailed requirements.
-              </p>
               <button
-                onClick={handleReset}
-                className="mt-8 px-8 py-3 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-rose-200 dark:shadow-rose-900/20"
+                onClick={handleExtractIntents}
+                className="group w-full py-6 bg-slate-900 dark:bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest flex items-center justify-center gap-4 hover:scale-[1.01] transition-all shadow-2xl"
               >
-                Modify Intent
+                <BrainCircuit
+                  size={20}
+                  className="group-hover:rotate-12 transition-transform"
+                />
+                Start Synthesis (Step 1)
               </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {uiState !== UI_STATES.IDLE &&
-            uiState !== UI_STATES.BLOCKED &&
-            uiState !== UI_STATES.ERROR && (
-              <div className="space-y-10 animate-in fade-in duration-700">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-4xl p-8 shadow-sm">
-                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                      <Layers size={14} /> Step 1: Intents Extracted
-                    </h4>
-                    <div className="space-y-2">
-                      {intents.length > 0 ? (
-                        intents.map((i) => (
-                          <div
-                            key={i.id}
-                            className="bg-slate-50 dark:bg-slate-700 p-4 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-600 animate-in slide-in-from-left-2"
-                          >
-                            {i.text ?? i}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-4 text-slate-300 dark:text-slate-600 italic text-xs flex items-center gap-2">
-                          <Loader2 size={14} className="animate-spin" />{" "}
-                          Parsing...
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
+        {/* PROCESSING STATES */}
+        {(isIntentPhase || isTaskPhase) && (
+          <div className="mt-32 max-w-md mx-auto text-center space-y-16 animate-in fade-in duration-500">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 bg-indigo-500/10 blur-[60px] animate-pulse rounded-full" />
+              <div className="w-32 h-32 bg-white dark:bg-slate-800 rounded-[40px] shadow-2xl flex items-center justify-center relative z-10 border border-slate-100 dark:border-slate-700">
+                <Loader2
+                  size={56}
+                  className="text-indigo-600 animate-spin"
+                  strokeWidth={3}
+                />
+              </div>
+            </div>
+            <div className="space-y-8 relative z-10">
+              <h3 className="text-3xl font-black tracking-tight">
+                {isIntentPhase
+                  ? "Step 1: Extracting Intents..."
+                  : "Step 2: Synthesizing Logic..."}
+              </h3>
+              <div className="flex justify-center gap-2">
+                {PIPELINE_STEPS.map((step) => (
                   <div
-                    className={`rounded-4xl p-8 border transition-all ${
-                      visuals.finished.includes(2)
-                        ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800 shadow-sm"
-                        : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                    }`}
+                    key={step.id}
+                    className={`h-2 rounded-full transition-all duration-700 ${visuals.finished.includes(step.id) ? "w-10 bg-emerald-500" : visuals.active === step.id ? "w-16 bg-indigo-600" : "w-4 bg-slate-200 dark:bg-slate-700"}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* DASHBOARD VIEW */}
+        {(uiState === UI_STATES.INTENTS_READY ||
+          uiState === UI_STATES.REVIEWING ||
+          uiState === UI_STATES.SUCCESS ||
+          uiState === UI_STATES.CREATING) && (
+          <div className="space-y-8 animate-in fade-in duration-700">
+            {/* Step Indicator */}
+            <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-8 ml-4">
+                <div
+                  className={`flex items-center gap-3 transition-opacity ${currentPhase === 1 ? "opacity-100" : "opacity-40"}`}
+                >
+                  <div
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm border-2 transition-colors ${currentPhase === 1 ? "bg-indigo-600 border-indigo-600 text-white" : "bg-emerald-500 border-emerald-500 text-white"}`}
                   >
-                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                      <Shield size={14} /> Step 2: Policy Guard
-                    </h4>
-                    {visuals.finished.includes(2) ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
-                          <ShieldCheck size={32} />
-                          <span className="text-lg font-black tracking-tight">
-                            Verified
-                          </span>
-                        </div>
-                        <div className="text-[10px] font-black text-emerald-700/60 dark:text-emerald-400/60 uppercase">
-                          • Policy: Capacity within bounds for{" "}
-                          {selectedProject.name}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-4 text-slate-300 dark:text-slate-600 italic text-xs flex items-center gap-2">
-                        <Loader2 size={14} className="animate-spin" />{" "}
-                        Validating...
-                      </div>
-                    )}
+                    {currentPhase > 1 ? <Check size={20} /> : "1"}
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black uppercase text-slate-400">
+                      Phase One
+                    </div>
+                    <div className="text-xs font-black">
+                      Intent Deconstruction
+                    </div>
                   </div>
                 </div>
 
-                {(drafts.length > 0 || uiState === UI_STATES.DRAFTING) && (
-                  <div className="space-y-6 animate-in slide-in-from-bottom-8 duration-500">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                        <UserPlus size={16} className="text-indigo-600 dark:text-indigo-400" />
-                        Task Review Phase
-                      </h3>
-                      {uiState === UI_STATES.PARTIAL_SUCCESS && (
-                        <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-2xl border border-amber-100 dark:border-amber-800 flex items-center gap-2 animate-pulse shadow-sm">
-                          <AlertCircle size={14} />
-                          <span className="text-[10px] font-black uppercase tracking-tight">
-                            Critical: Correct Failed Records
+                <ArrowRight size={20} className="text-slate-200" />
+
+                <div
+                  className={`flex items-center gap-3 transition-opacity ${currentPhase === 2 ? "opacity-100" : "opacity-40"}`}
+                >
+                  <div
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm border-2 transition-colors ${currentPhase === 2 ? "bg-indigo-600 border-indigo-600 text-white" : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-300"}`}
+                  >
+                    2
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black uppercase text-slate-400">
+                      Phase Two
+                    </div>
+                    <div className="text-xs font-black">Logic Synthesis</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mr-4 px-4 py-2 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-black uppercase text-slate-400 mr-2">
+                  Status:
+                </span>
+                <span className="text-[10px] font-black uppercase text-indigo-600">
+                  {uiState.replace("_", " ")}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+              {/* Sidebar */}
+              <aside className="lg:col-span-3 space-y-6">
+                <div className="bg-white dark:bg-slate-800 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-xl">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white">
+                      <Sparkles size={24} />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-black leading-none">
+                        Architect
+                      </h2>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">
+                        ID: {session.slice(0, 8)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    {uiState === UI_STATES.INTENTS_READY ? (
+                      <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-2xl">
+                        <div className="text-[10px] font-black text-indigo-600 uppercase mb-2">
+                          Step 1 Ready
+                        </div>
+                        <div className="text-xs font-bold leading-tight text-slate-600 dark:text-indigo-200">
+                          Verify extracted intents before initiating step 2
+                          deconstruction.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-2xl border border-slate-100">
+                          <div className="text-[9px] font-black text-slate-400 uppercase mb-1">
+                            Items
+                          </div>
+                          <div className="text-xl font-black">
+                            {stats.total}
+                          </div>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-2xl border border-slate-100">
+                          <div className="text-[9px] font-black text-slate-400 uppercase mb-1">
+                            Conf.
+                          </div>
+                          <div className="text-xl font-black text-indigo-600">
+                            {stats.avgConfidence}%
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleReset}
+                      className="w-full flex items-center justify-center gap-2 py-4 border border-slate-200 dark:border-slate-700 rounded-2xl text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition-all"
+                    >
+                      <ChevronLeft size={16} /> New Deconstruction
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800 rounded-[32px] p-7 border border-slate-100 dark:border-slate-800 shadow-sm">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">
+                    Execution Log
+                  </h3>
+                  <div className="space-y-4">
+                    {PIPELINE_STEPS.map((step) => {
+                      const StepIcon = step.icon;
+                      const isDone = visuals.finished.includes(step.id);
+                      return (
+                        <div key={step.id} className="flex items-center gap-4">
+                          <div
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all ${isDone ? "bg-emerald-500 border-emerald-500 text-white" : "bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-300"}`}
+                          >
+                            <StepIcon size={14} />
+                          </div>
+                          <span
+                            className={`text-[11px] font-bold ${isDone ? "text-slate-900 dark:text-slate-100" : "text-slate-300"}`}
+                          >
+                            {step.name}
                           </span>
                         </div>
-                      )}
-                    </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </aside>
 
-                    <div className="grid grid-cols-1 gap-6">
-                      {drafts.length > 0 ? (
-                        drafts.map((task) => (
-                          <TaskReviewCard
-                            key={task.id}
-                            task={task}
-                            disabled={[
-                              UI_STATES.CREATING,
-                              UI_STATES.SUCCESS,
-                            ].includes(uiState)}
-                            onUpdate={handleUpdateTask}
-                            onReject={(id) =>
-                              setDrafts((prev) =>
-                                prev.filter((t) => t.id !== id)
-                              )
+              {/* Main Content Area */}
+              <main className="lg:col-span-9 space-y-8">
+                {/* Intent View (Step 1) */}
+
+                {currentPhase === 1 && (
+                  <div
+                    className={`grid grid-cols-1 gap-8 ${uiState === UI_STATES.INTENTS_READY ? "md:grid-cols-1" : ""}`}
+                  >
+                    <div className="bg-white dark:bg-slate-800 rounded-[40px] p-8 border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+                      <div className="flex items-center justify-between mb-6">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                          <Zap size={14} className="text-indigo-600" /> Step 1:
+                          Extraction Results
+                        </h4>
+                        {uiState === UI_STATES.INTENTS_READY && (
+                          <button
+                            onClick={handleDraftTasks}
+                            disabled={
+                              !intents.length ||
+                              uiState !== UI_STATES.INTENTS_READY
                             }
-                            onApprove={handleApproveTask}
-                          />
-                        ))
-                      ) : (
-                        <div className="p-20 text-center border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-[40px] text-slate-300 dark:text-slate-600 space-y-3">
-                          <Loader2
-                            size={32}
-                            className="animate-spin mx-auto mb-2 text-indigo-200 dark:text-indigo-800"
-                          />
-                          <p className="text-[10px] font-black uppercase tracking-widest">
-                            Generating drafts...
-                          </p>
-                        </div>
-                      )}
+                            className="px-8 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase flex items-center gap-3 hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all hover:scale-[1.02]"
+                          >
+                            Synthesize Step 2 <ArrowRight size={16} />
+                          </button>
+                        )}
+                      </div>
+                      <div
+                        className={`grid gap-2.5 ${uiState === UI_STATES.INTENTS_READY ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}
+                      >
+                        {intents.map((i, idx) => (
+                          <div
+                            key={idx}
+                            className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-100 hover:border-indigo-300 transition-colors"
+                          >
+                            <div className="flex gap-3">
+                              <span className="text-indigo-400 font-black">
+                                {i.id}
+                              </span>
+                              {i.text}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
-                    {[
-                      UI_STATES.REVIEWING,
-                      UI_STATES.CREATING,
-                      UI_STATES.SUCCESS,
-                      UI_STATES.PARTIAL_SUCCESS,
-                    ].includes(uiState) && (
-                      <div className="mt-12 p-10 bg-slate-900 dark:bg-slate-950 rounded-[48px] text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl relative overflow-hidden">
-                        <div className="absolute right-0 top-0 w-64 h-64 bg-indigo-600/20 blur-[100px] pointer-events-none" />
-                        <div className="relative z-10 space-y-2 text-center md:text-left">
-                          <h3 className="text-2xl font-black tracking-tight">
-                            Deploy to ERPNext
-                          </h3>
-                          <p className="text-slate-400 dark:text-slate-500 text-sm font-bold max-w-sm uppercase tracking-tight">
-                            High-integrity records will be created in{" "}
-                            <span className="text-indigo-400">
-                              {selectedProject.name}
-                            </span>
-                            .
-                          </p>
-                        </div>
-                        <div className="relative z-10">
-                          {uiState === UI_STATES.SUCCESS ? (
-                            <div className="flex items-center gap-4 bg-emerald-500 px-8 py-4 rounded-3xl shadow-xl shadow-emerald-500/20">
-                              <CheckSquare size={24} className="text-white" />
-                              <span className="text-xs font-black uppercase tracking-widest">
-                                Deployment Successful
+                    {/* Dashboard Stats (Step 2 Only) */}
+                    {uiState !== UI_STATES.INTENTS_READY && (
+                      <div className="space-y-6">
+                        <div className="bg-emerald-600 rounded-[40px] p-10 text-white relative overflow-hidden shadow-2xl">
+                          <div className="absolute bottom-0 right-0 -mb-10 -mr-10 opacity-10">
+                            <ShieldCheck size={200} />
+                          </div>
+                          <div className="relative z-10 space-y-4">
+                            <h3 className="text-3xl font-black leading-tight">
+                              Step 2 Verified
+                            </h3>
+                            <p className="text-white/70 text-xs font-medium leading-relaxed">
+                              Synthesis of architectural logic complete for{" "}
+                              <span className="text-white font-bold">
+                                PROJ-0002
                               </span>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={handleDeploy}
-                              disabled={
-                                uiState === UI_STATES.CREATING ||
-                                drafts.filter(
-                                  (t) =>
-                                    t.status === "APPROVED" &&
-                                    t.creationStatus !== "SUCCESS"
-                                ).length === 0
-                              }
-                              className="px-12 py-5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-white/10 disabled:text-white/20 rounded-[28px] font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-500/30 transition-all flex items-center gap-3"
-                            >
-                              {uiState === UI_STATES.CREATING ? (
-                                <Loader2 size={20} className="animate-spin" />
-                              ) : (
-                                <LinkIcon size={20} />
-                              )}
-                              {uiState === UI_STATES.CREATING
-                                ? "Deploying..."
-                                : "Approve & Create Records"}
-                            </button>
-                          )}
+                              .
+                            </p>
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
                 )}
-              </div>
-            )}
-        </main>
+
+                {/* Task Backlog (Step 2 Only) */}
+                {(uiState === UI_STATES.REVIEWING ||
+                  uiState === UI_STATES.SUCCESS ||
+                  uiState === UI_STATES.CREATING) && (
+                  <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center gap-2 w-full md:w-auto">
+                        <div className="relative w-full md:w-64">
+                          <Search
+                            size={14}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Search subjects..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl pl-10 pr-4 py-2 text-xs font-bold"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleBulkApprove}
+                        className="w-full md:w-auto px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 hover:text-white transition-all border border-indigo-100"
+                      >
+                        <CheckSquare size={14} /> Bulk Approve Valid
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {filteredTasks.map((task) => (
+                        <TaskReviewCard
+                          key={task.id}
+                          task={task}
+                          disabled={
+                            uiState === UI_STATES.CREATING ||
+                            uiState === UI_STATES.SUCCESS
+                          }
+                          onUpdate={handleUpdateTask}
+                          onReject={(id) =>
+                            setDrafts((prev) => prev.filter((t) => t.id !== id))
+                          }
+                          onApprove={handleApproveTask}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Sync Bar */}
+                    <div className="mt-16 relative bg-slate-900 dark:bg-slate-800 p-10 rounded-[40px] text-white flex flex-col md:flex-row items-center justify-between gap-8 border border-white/5 shadow-2xl overflow-hidden">
+                      <div className="relative z-10 space-y-2 text-center md:text-left">
+                        <h3 className="text-2xl font-black tracking-tight">
+                          Step 2: Sync to ERP
+                        </h3>
+                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+                          {stats.approved} items approved • Push to Backlog
+                        </p>
+                      </div>
+
+                      <div className="relative z-10 w-full md:w-auto">
+                        {uiState === UI_STATES.SUCCESS ? (
+                          <div className="bg-emerald-500 px-10 py-5 rounded-[24px] flex items-center gap-4 shadow-xl">
+                            <CheckSquare size={24} />
+                            <span className="text-xs font-black uppercase tracking-[0.2em]">
+                              Sync Success
+                            </span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={handleDeploy}
+                            disabled={
+                              uiState === UI_STATES.CREATING ||
+                              stats.approved === 0
+                            }
+                            className="w-full md:w-auto px-12 py-5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-[24px] font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-4 shadow-2xl active:scale-95"
+                          >
+                            {uiState === UI_STATES.CREATING ? (
+                              <Loader2 size={20} className="animate-spin" />
+                            ) : (
+                              <ArrowRight size={20} />
+                            )}
+                            {uiState === UI_STATES.CREATING
+                              ? "Syncing..."
+                              : "Push to ERPNext"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </main>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

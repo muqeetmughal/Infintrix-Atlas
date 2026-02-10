@@ -1,252 +1,220 @@
 import frappe
 import json
+import time
+from typing import List, Optional, Literal
+from pydantic import BaseModel, Field
+from openai import OpenAI
 from frappe.utils import now
-import requests
+import uuid
+# ============================================================
+# SCHEMAS FOR STRUCTURED OUTPUTS
+# ============================================================
 
-GEMINI_KEY = ""
+
+class Intent(BaseModel):
+    text: str
 
 
-def make_ai_request(prompt="",system_prompt=""):
-    
-    # The URL for the Gemini 1.5 Flash model
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={GEMINI_KEY}"
+class IntentResponse(BaseModel):
+    intents: List[Intent]
 
-    # Define the headers
-    headers = {"Content-Type": "application/json"}
 
-    # Define the payload (body) of the request
-    data = {
-        "system_instruction": {
-            "parts": [{
-                "text": system_prompt
-            }]
-        },
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": f"Task: {prompt}. Return the output strictly as a JSON list of objects where each object has a key 'text'."
-                    }
-                ]
-            }
-        ],
-        "generationConfig": {"response_mime_type": "application/json"},
-    }
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
+class ValidationResult(BaseModel):
+    valid: bool = True
+    errors: List[str] = Field(default_factory=list)
 
-        # Extract the string content from the API response
-        raw_content = response.json()["candidates"][0]["content"]["parts"][0]["text"]
 
-        # Convert the string into a Python list/dictionary
-        return json.loads(raw_content)
+class TaskDraft(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    subject: str
+    priority: str = "Medium"
+    weight: int
+    confidence: float
+    reasoning: str
+    description: str
+    status: str = "Draft"
+    type: Literal["Task", "Feature", "Epic"] = "Task"
+    cycle: Optional[str] = None
+    validation: ValidationResult = Field(default_factory=ValidationResult)
 
-    except Exception as e:
-        return f"Error: {e}"
+class TaskResponse(BaseModel):
+    tasks: List[TaskDraft]
 
-def make_ai_request(prompt="", system_prompt="", response_schema=None):
+
+# ============================================================
+# OPEN-PROVIDER AI REQUEST (OPENAI SDK + STRUCTURED OUTPUTS)
+# ============================================================
+
+
+def make_ai_request(
+    prompt: str,
+    system_prompt: str = "",
+    response_format: type[BaseModel] = None,
+    max_retries: int = 5,
+):
     """
-    Centralized AI Request Handler for Gemini 2.5 Flash.
+    Makes a request to the LLM using the OpenAI SDK with Structured Outputs (Pydantic).
+    Includes exponential backoff for rate limits.
     """
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={GEMINI_KEY}"
-    headers = {"Content-Type": "application/json"}
+    settings = frappe.get_single("Atlas Settings")
 
-    payload = {
-        "system_instruction": {
-            "parts": [{"text": system_prompt}]
-        },
-        "contents": [
-            {
-                "parts": [{"text": prompt}]
-            }
-        ],
-        "generationConfig": {
-            "response_mime_type": "application/json",
-        }
-    }
+    if settings.llm_provider != "OpenAI":
+        raise RuntimeError("OpenAI provider not enabled")
 
-    if response_schema:
-        payload["generationConfig"]["response_schema"] = response_schema
+    api_key = settings.get_password(fieldname="openai_api_key", raise_exception=True)
 
-    try:
-        # Implementing basic retry logic for reliability
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        
-        result = response.json()
-        raw_content = result["candidates"][0]["content"]["parts"][0]["text"]
-        return json.loads(raw_content)
-    except Exception as e:
-        frappe.log_error(f"AI Pipeline Error: {str(e)}", "AI Task Architect")
-        return None
+    model = settings.openai_model or "gpt-4o-2024-08-06"
+
+    # Initialize the OpenAI client
+    client = OpenAI(api_key=api_key)
+
+    messages = [
+        {"role": "system", "content": system_prompt.strip()},
+        {"role": "user", "content": prompt},
+    ]
+
+    last_error = None
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            # Using beta.chat.completions.parse for Structured Outputs
+            completion = client.beta.chat.completions.parse(
+                model=model,
+                messages=messages,
+                response_format=response_format,
+                timeout=120,
+            )
+
+            # Return the parsed Pydantic object
+            return completion.choices[0].message.parsed
+
+        except Exception as e:
+            last_error = str(e)
+
+            # Handle Rate Limiting (429) via string check or error code
+            if "429" in last_error or "rate_limit_exceeded" in last_error:
+                wait_time = 2**attempt
+                time.sleep(wait_time)
+                continue
+
+            # Log other failures
+            frappe.log_error(
+                f"Attempt {attempt} failed\n{last_error}",
+                "Open AI SDK Failure",
+            )
+
+            # Small delay for generic errors before retry
+            time.sleep(1)
+
+    raise RuntimeError(
+        f"LLM failed after {max_retries} attempts. Last error: {last_error}"
+    )
+
+
+# ============================================================
+# STEP 1: INTENT DECOMPOSITION
+# ============================================================
+
 
 def _decompose(prompt):
-    """
-    STEP 1: Intent Decomposition (AI)
-    """
     system_prompt = """
-    You are the ERPNext Intent Decomposer. 
-    Deconstruct messy requirements into a list of Atomic Intents.
-    Rules: Maximum 12 words per intent, start with imperative verbs, no 'and' separators.
-    Output Schema: {"intents": [{"text": "intent string"}]}
-    """
-    output = make_ai_request(prompt, system_prompt)
-    return output.get("intents", []) if output else []
+You are the ERPNext Intent Decomposer.
+Goal: Extract clear, atomic, epic-level intents from a user prompt for ERP/CRM work.
+
+Rules:
+- Produce as many intents as needed to fully cover the request
+- Each intent must be a single, standalone action (no compound actions)
+- Each intent is epic-level (end-to-end outcome, not a subtask)
+- Max 12 words per intent
+- Start with an imperative verb (e.g., "Create", "Configure", "Implement")
+- No "and", no commas, no slashes, no conjunctions
+- Avoid vague verbs like "Handle" or "Do"
+- Prefer business/ERP terms (e.g., "Define", "Configure", "Integrate", "Automate")
+- Use explicit objects and scope (modules, documents, workflows)
+- Do not include assumptions, solutions, or technical steps
+"""
+    try:
+        # Request parsed IntentResponse object
+        output = make_ai_request(prompt, system_prompt, response_format=IntentResponse)
+        if output and hasattr(output, "intents"):
+            # Convert Pydantic models to dicts for existing pipeline compatibility
+            return [i.model_dump() for i in output.intents]
+        return []
+    except Exception as e:
+        frappe.log_error(f"Decomposition failed: {str(e)}", "AI Pipeline Error")
+        return []
+
+
+# ============================================================
+# STEP 2: FEASIBILITY GUARD
+# ============================================================
+
 
 def _feasibility_guard(prompt, project_doc):
-    """
-    STEP 2: Feasibility & Scope Guard (System Rules)
-    """
-    # Rule 1: Signal Strength
     if len(prompt.split()) < 5:
         return {"status": "BLOCK", "reason": "Insufficient architectural signal"}
-    
-    # # Rule 2: Project Scope Check (Mock logic for scope boundary)
-    # if project_doc.custom_project_scope and "out of scope" in prompt.lower():
-    #     return {"status": "BLOCK", "reason": "Intent violates established project scope policy"}
-        
     return {"status": "PASS"}
 
+
+# ============================================================
+# STEP 3: TASK DRAFTING
+# ============================================================
+
+
 def _draft_tasks(intents, project_doc):
+    intent_text = "\n".join(f"- {i['text']}" for i in intents)
 
-    print(f"Drafting tasks for project '{project_doc}' with {len(intents)} intents",intents)
-    """
-    STEP 3: Task Drafting (AI)
-    """
+    system_prompt = """
+You are the Project Task Architect.
+Generate a comprehensive, actionable task list from the given intents.
+
+Rules:
+- Treat each intent as an epic
+- Create as many tasks as needed to fully realize each epic
+- Use distinct, non-overlapping tasks
+- Keep tasks concise but specific
+- Prefer smaller atomic tasks over large ones
+"""
+
     try:
-        intent_string = "\n".join([f"- {i['text']}" for i in intents])
-    except:
-        intent_string = "\n".join([f"- {i}" for i in intents])
-    
-    system_prompt = f"""
-    You are the Project Task Architect. 
-    Context: Project '{project_doc.project_name}' (Scope: 'General').
-    Convert the following intents into professional Tasks.
-    For each task, provide:
-    - subject: Professional summary
-    - priority: Low, Medium, High, or Urgent
-    - weight: Story points (1, 2, 3, 5, 8, 13)
-    - confidence: 0.0 to 1.0 based on intent clarity
-    - reasoning: Why this priority/weight?
-
-    Output Schema: {{ "tasks": [{{ "subject": "...", "priority": "...", "weight": 0, "confidence": 0.0, "reasoning": "..." }}] }}
-    """
-    output = make_ai_request(f"Intents:\n{intent_string}", system_prompt)
-    return output.get("tasks", []) if output else []
-
-def _validate_task(task):
-    """
-    STEP 4: Structural Validation (System Rules)
-    """
-    errors = []
-    if not task.get("subject") or len(task["subject"]) < 5:
-        errors.append("Subject must be at least 5 characters")
-    if not task.get("weight") or task["weight"] <= 0:
-        errors.append("Weight must be greater than 0")
-    if task.get("priority") not in ["Low", "Medium", "High", "Urgent"]:
-        errors.append("Invalid priority level")
-        
-    return {"valid": not errors, "errors": errors}
-# def _decompose(prompt):
-#     if len(prompt.split()) < 3:
-#         return []
-#     output = make_ai_request(prompt
-#         ,"""\
-# You are the Project Tasks Intent Decomposer. Your sole responsibility is to act as Step 1 in a project management pipeline. You take raw, messy human requirements and deconstruct them into a list of Atomic Intents.
-
-# Definitions
-
-# Atomic Intent: A single, granular business or technical objective. It describes what needs to happen, not how it will be implemented.
-
-# Deconstruction: The process of breaking a complex paragraph into its constituent parts without losing the original requirement's essence.
-
-# Constraints
-
-# Granularity: If an intent contains the word "and" (e.g., "Setup server and install DB"), it is NOT atomic. Split it.
-
-# No Implementation Details: Do not suggest specific technologies unless explicitly mentioned in the input.
-
-# Tone: Professional, concise, and executive-level.
-
-# No Fluff: Remove phrases like "We should," "It would be nice to," or "I think."
-
-# Structural Rules
-
-# Each intent must be a maximum of 12 words.
-
-# Each intent must start with an imperative verb (e.g., "Establish," "Configure," "Audit," "Draft").
-
-# Output Format
-
-# You must return a valid JSON object. Do not include markdown formatting, preambles, or postambles.
-
-# Schema
-
-# {
-#   "intents": [
-#     {
-#       "text": "The atomic intent string"
-#     }
-#   ]
-# }
+        # Request parsed TaskResponse object
+        output = make_ai_request(
+            f"Project: {project_doc.project_name}\n\nIntents:\n{intent_text}",
+            system_prompt,
+            response_format=TaskResponse,
+        )
+        if output and hasattr(output, "tasks"):
+            return [t.model_dump() for t in output.tasks]
+        return []
+    except Exception as e:
+        frappe.log_error(f"Task drafting failed: {str(e)}", "AI Pipeline Error")
+        return []
 
 
-# Strategy
-
-# Read the raw requirements carefully.
-
-# Identify every distinct action or deliverable requested.
-
-# Rewrite them as atomic, imperative statements.
-
-# Ensure they are specific enough for a project manager to understand but broad enough for a technical architect to draft tasks from.
-
-# Example
-
-# Input: "We need to move our website to a new server, make sure it's secure with SSL, and also update the team page with the new hires."
-# Output:
-
-# {
-#   "intents": [
-#     {"text": "Migrate web application to new server infrastructure" },
-#     { "text": "Configure SSL certificates for domain security" },
-#     { "text": "Update team directory with recent personnel additions" }
-#   ]
-# }
-# """
-#     )
-#     # print(output)
-#     return output.get("intents", [])
-
-
-# def _feasibility_guard(prompt, intents):
-#     if len(prompt.split()) < 5:
-#         return {"status": "BLOCK", "reason": "Insufficient architectural signal"}
-#     return {"status": "PASS"}
-
-
-# def _draft_tasks(intents):
-#     tasks = []
-#     for i, intent in enumerate(intents, 1):
-#         tasks.append(
-#             {
-#                 "subject": intent["text"],
-#                 "priority": "Medium",
-#                 "weight": 3,
-#                 "confidence": 0.8,
-#             }
-#         )
-#     return tasks
+# ============================================================
+# STEP 4: TASK VALIDATION
+# ============================================================
 
 
 def _validate_task(task):
     errors = []
-    if len(task["subject"]) < 5:
+    if len(task.get("subject", "")) < 5:
         errors.append("Subject too short")
-    if task["weight"] <= 0:
+    if task.get("priority") not in ["Low", "Medium", "High", "Urgent"]:
+        errors.append("Invalid priority")
+    if task.get("weight") not in [1, 2, 3, 5, 8, 13]:
         errors.append("Invalid weight")
+
+    confidence = task.get("confidence")
+    if not isinstance(confidence, (int, float)) or not (0 <= confidence <= 1):
+        errors.append("Invalid confidence")
+
     return {"valid": not errors, "errors": errors}
+
+
+# ============================================================
+# BLOCKED RESPONSE
+# ============================================================
 
 
 def _blocked_response(session):
@@ -255,6 +223,11 @@ def _blocked_response(session):
         "status": "BLOCKED",
         "reason": session.blocked_reason,
     }
+
+
+# ============================================================
+# MAIN PIPELINE
+# ============================================================
 
 
 @frappe.whitelist()
@@ -273,16 +246,15 @@ def open_ai_pipeline(project, prompt, cycle=None):
         }
     ).insert(ignore_permissions=True)
 
-    # ---------- STEP 1: DECOMPOSE ----------
+    # STEP 1: Decomposition
     intents = _decompose(prompt)
-
     if not intents:
         session.status = "Blocked"
-        session.blocked_reason = "No actionable intents"
+        session.blocked_reason = "No actionable intents found or AI service unavailable"
         session.save()
         return _blocked_response(session)
 
-    # ---------- STEP 2: GUARD ----------
+    # STEP 2: Guard
     guard = _feasibility_guard(prompt, project_doc)
     if guard["status"] == "BLOCK":
         session.status = "Blocked"
@@ -290,14 +262,19 @@ def open_ai_pipeline(project, prompt, cycle=None):
         session.save()
         return _blocked_response(session)
 
-    # ---------- STEP 3: DRAFT ----------
-    drafts = _draft_tasks(intents,project_doc)
+    # STEP 3: Drafting
+    drafts = _draft_tasks(intents, project_doc)
+    if not drafts:
+        session.status = "Blocked"
+        session.blocked_reason = "Failed to generate task drafts"
+        session.save()
+        return _blocked_response(session)
 
-    # ---------- STEP 4: VALIDATE ----------
+    # STEP 4: Validation
     validated = []
     for d in drafts:
         validation = _validate_task(d)
-        draft_doc = frappe.get_doc(
+        doc = frappe.get_doc(
             {
                 "doctype": "AI Task Draft",
                 "session": session.name,
@@ -306,18 +283,18 @@ def open_ai_pipeline(project, prompt, cycle=None):
                 "priority": d["priority"],
                 "weight": d["weight"],
                 "confidence": d["confidence"],
-                "status": "Draft" if validation["valid"] else "Draft",
+                "status": "Draft",
                 "validation_errors": ", ".join(validation["errors"]),
             }
         ).insert(ignore_permissions=True)
 
         validated.append(
             {
-                "id": draft_doc.name,
-                "subject": draft_doc.subject,
-                "priority": draft_doc.priority,
-                "weight": draft_doc.weight,
-                "confidence": draft_doc.confidence,
+                "id": doc.name,
+                "subject": doc.subject,
+                "priority": doc.priority,
+                "weight": doc.weight,
+                "confidence": doc.confidence,
                 "validation": validation,
             }
         )
@@ -325,4 +302,21 @@ def open_ai_pipeline(project, prompt, cycle=None):
     session.status = "Reviewing"
     session.save()
 
-    return {"session": session.name, "status": "REVIEWING", "drafts": validated,"intents":intents}
+    return {
+        "session": session.name,
+        "status": "REVIEWING",
+        "intents": intents,
+        "drafts": validated,
+    }
+
+
+@frappe.whitelist()
+def request_intent_decomposition(prompt, project):
+    project_doc = frappe.get_doc("Project", project)
+    return _decompose(prompt)
+
+
+@frappe.whitelist()
+def request_task_drafting(intents, project):
+    project_doc = frappe.get_doc("Project", project)
+    return _draft_tasks(intents, project_doc)

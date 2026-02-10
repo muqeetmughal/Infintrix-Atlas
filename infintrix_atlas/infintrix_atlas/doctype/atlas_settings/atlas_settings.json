@@ -1,0 +1,74 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-02-10 15:36:03.634978",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "llm_provider",
+  "gemini_api_key",
+  "openai_api_key",
+  "enable_ai_architect",
+  "openai_model"
+ ],
+ "fields": [
+  {
+   "default": "Gemini",
+   "fieldname": "llm_provider",
+   "fieldtype": "Select",
+   "label": "LLM Provider",
+   "options": "Gemini\nOpenAI"
+  },
+  {
+   "depends_on": "eval:doc.llm_provider===\"Gemini\"",
+   "fieldname": "gemini_api_key",
+   "fieldtype": "Password",
+   "label": "Gemini API Key"
+  },
+  {
+   "depends_on": "eval:doc.llm_provider===\"OpenAI\"",
+   "fieldname": "openai_api_key",
+   "fieldtype": "Password",
+   "label": "OpenAI API Key"
+  },
+  {
+   "default": "1",
+   "fieldname": "enable_ai_architect",
+   "fieldtype": "Check",
+   "label": "Enable AI Architect"
+  },
+  {
+   "default": "gpt-4o-mini",
+   "fieldname": "openai_model",
+   "fieldtype": "Select",
+   "label": "OpenAI Model",
+   "options": "gpt-4o-mini"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-02-10 16:27:56.399573",
+ "modified_by": "Administrator",
+ "module": "Infintrix Atlas",
+ "name": "Atlas Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
