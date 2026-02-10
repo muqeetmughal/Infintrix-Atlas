@@ -733,3 +733,24 @@ def global_search(query: str, limit: int = 10):
             )
 
     return results
+
+@frappe.whitelist()
+def online_users():
+	sessions = frappe.db.sql(
+		"""
+		SELECT user, MAX(lastupdate) as lastupdate
+		FROM `tabSessions`
+		WHERE status = 'Active'
+		GROUP BY user
+	""",
+		as_dict=True,
+	)
+
+	now = datetime.now()
+	online_threshold = now - timedelta(minutes=5)
+
+	online_users = [
+		s["user"] for s in sessions if s["lastupdate"] and s["lastupdate"] > online_threshold
+	]
+
+	return online_users
