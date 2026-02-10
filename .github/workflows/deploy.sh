@@ -36,7 +36,7 @@ if ! command -v yarn &> /dev/null; then
 fi
 
 echo "🏗️  ==> Building assets..."
-bench build --apps infintrix_atlas --skip-redis
+bench build --apps infintrix_atlas
 
 echo "🔄 ==> Running migrations..."
 bench --site $SITE_NAME migrate
