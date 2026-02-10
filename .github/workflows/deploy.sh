@@ -15,6 +15,7 @@ git pull
 echo "📦 ==> Installing Python dependencies..."
 cd $BENCH_DIR
 source env/bin/activate
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 nvm use 20
 bench setup requirements infintrix_atlas
 
