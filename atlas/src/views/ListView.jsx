@@ -1,7 +1,4 @@
-import React, {
-  useState,
-  useMemo,
-} from "react";
+import React, { useState, useMemo } from "react";
 import {
   DndContext,
   useDraggable,
@@ -28,12 +25,13 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { useFrappeGetDocList } from "frappe-react-sdk";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Select } from "antd";
 import { useDoctypeSchema } from "../hooks/doctype";
 import Card from "../components/ui/Card";
 import PreviewAssignees from "../components/PreviewAssignees";
+import { useTasksQuery } from "../hooks/query";
+import { useQueryParams } from "../hooks/useQueryParams";
 
 // --- Constants ---
 
@@ -275,36 +273,16 @@ const DroppableStatusSection = ({
 export default function ListView() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchQuery] = useState("");
   const [activeId, setActiveId] = useState(null);
   const schema_query = useDoctypeSchema("Task");
+  const qp = useQueryParams();
+
+  const statusFilter = qp.getArray("status");
+  const priorityFilter = qp.getArray("priority");
+  const searchQuery = (qp.get("search") || "").toLowerCase();
 
   const group_by = searchParams.get("group_by") || null;
-  const params = useParams();
-  const project = params.project || null;
-  const tasks_list_query = useFrappeGetDocList(
-    `Task`,
-    {
-      filters: { project: project },
-      fields: [
-        "name",
-        "name as id",
-        "subject as title",
-        "status",
-        "type",
-        "custom_cycle as cycle",
-        "priority",
-        "modified",
-        "project",
-      ],
-    },
-    "list_view",
-    {
-      revalidateOnFocus: false,
-      revalidateIfStale: false,
-      revalidateOnReconnect: false,
-    }
-  );
+  const tasks_list_query = useTasksQuery();
 
   const schema = schema_query.data || {};
   const fields = schema.fields || [];
@@ -330,16 +308,25 @@ export default function ListView() {
     return [];
   }, [selectedGroupByField]);
 
-  const items = tasks_list_query.data?.message || [];
+  const items = tasks_list_query.data || [];
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      const matchesSearch =
-        item.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.id?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
+      if (statusFilter.length && !statusFilter.includes(item.status)) {
+        return false;
+      }
+      if (priorityFilter.length && !priorityFilter.includes(item.priority)) {
+        return false;
+      }
+      if (searchQuery) {
+        const haystack = `${item.subject || ""} ${item.id || ""}`.toLowerCase();
+        if (!haystack.includes(searchQuery)) {
+          return false;
+        }
+      }
+      return true;
     });
-  }, [items, searchQuery]);
+  }, [items, statusFilter, priorityFilter, searchQuery]);
 
   const handleDragStart = (event) => setActiveId(event.active.id);
 

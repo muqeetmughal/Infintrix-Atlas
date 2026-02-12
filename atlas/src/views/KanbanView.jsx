@@ -305,6 +305,9 @@ export default function KanbanView() {
   // const { project } = useParams();
   const qp = useQueryParams();
   const project = qp.get("project") || null;
+  const statusFilter = qp.getArray("status");
+  const priorityFilter = qp.getArray("priority");
+  const searchText = (qp.get("search") || "").toLowerCase();
   const createMutation = useFrappeCreateDoc();
 
   const updateTaskMutation = useFrappeUpdateDoc();
@@ -324,7 +327,26 @@ export default function KanbanView() {
 
   const { options } = columns_query.data || [];
 
-  const tasks_list = tasks_list_query.data || [];
+  const raw_tasks = tasks_list_query.data || [];
+  const tasks_list = useMemo(
+    () =>
+      raw_tasks.filter((task) => {
+        if (statusFilter.length && !statusFilter.includes(task.status)) {
+          return false;
+        }
+        if (priorityFilter.length && !priorityFilter.includes(task.priority)) {
+          return false;
+        }
+        if (searchText) {
+          const haystack = `${task.subject || ""} ${task.name || ""}`.toLowerCase();
+          if (!haystack.includes(searchText)) {
+            return false;
+          }
+        }
+        return true;
+      }),
+    [raw_tasks, statusFilter, priorityFilter, searchText],
+  );
 
   const COLUMNS = useMemo(() => {
     if (!options) {
@@ -376,7 +398,7 @@ export default function KanbanView() {
             status: newStatus,
           });
 
-          return current.map((t) => {
+          return (current || []).map((t) => {
             if (t.name === task) {
               return { ...t, status: newStatus };
             }
@@ -385,7 +407,7 @@ export default function KanbanView() {
         },
         {
           optimisticData: (current) => {
-            return current.map((t) => {
+            return (current || []).map((t) => {
               if (t.name === task) {
                 return { ...t, status: newStatus };
               }
@@ -444,8 +466,6 @@ export default function KanbanView() {
   // }, [isAllTasksDone]);
 
   const handleDragEnd = async (event) => {
-    setActiveIssue(null);
-
     const { active, over } = event;
     if (!over) return;
 
@@ -458,15 +478,22 @@ export default function KanbanView() {
     console.log("Active task:", activeTask);
     if (!activeTask) return;
 
+    // If dropped back onto itself, do nothing
+    if (activeId === overId) {
+      setActiveIssue(null);
+      return;
+    }
+
     let newStatus = activeTask.status;
-    // console.log("Current status:", newStatus);
+    const oldStatus = activeTask.status;
+
+    let dropOnColumn = false;
 
     // Dropped on column
     if (COLUMNS.some((c) => c.id === overId)) {
       newStatus = overId;
+      dropOnColumn = true;
     }
-
-    // console.log("Updating status to:", newStatus);
 
     // Dropped on another task
     const overTask = tasks_list.find((i) => i.id === overId);
@@ -474,41 +501,66 @@ export default function KanbanView() {
       newStatus = overTask.status;
     }
 
-    // console.log("Final new status:", newStatus);
+    const reorderInMemory = (current) => {
+      const snapshot = (current || []).map((t) =>
+        t.id === activeId ? { ...t, status: newStatus } : t,
+      );
 
-    if (newStatus !== activeTask.status) {
-      try {
-        await mutateTaskStatus(activeId, newStatus);
-      } catch (e) {
-        // console.error("Failed to update task", e);
-        message.error(String(e.exception).split(":").slice(-1)[0]);
+      // Work only with tasks belonging to the target status
+      let columnTasks = snapshot.filter((t) => t.status === newStatus);
+
+      const fromIndex = columnTasks.findIndex((t) => t.id === activeId);
+      if (fromIndex === -1) return snapshot;
+
+      let toIndex = fromIndex;
+
+      if (dropOnColumn || !overTask) {
+        // Dropped on column header/area – move to end of that column
+        toIndex = columnTasks.length - 1;
+      } else {
+        // Dropped onto another task – position relative to that task
+        const overColIndex = columnTasks.findIndex((t) => t.id === overId);
+        if (overColIndex !== -1) {
+          toIndex = overColIndex;
+        }
       }
+
+      columnTasks = arrayMove(columnTasks, fromIndex, toIndex);
+
+      const others = snapshot.filter((t) => t.status !== newStatus);
+
+      // Keep other statuses' relative order, and place this column's tasks grouped
+      return [...others, ...columnTasks];
+    };
+
+    try {
+      await tasks_list_query.mutate(
+        async (current) => {
+          const next = reorderInMemory(current);
+
+          if (newStatus !== oldStatus) {
+            await updateTaskMutation.updateDoc("Task", activeTask.name, {
+              status: newStatus,
+            });
+            mutate(["Project", project]);
+          }
+
+          return next;
+        },
+        {
+          optimisticData: (current) => reorderInMemory(current),
+          rollbackOnError: true,
+          revalidate: false,
+          populateCache: true,
+        },
+      );
+    } catch (e) {
+      if (newStatus !== oldStatus) {
+        message.error(String(e.exception || e.message || e).split(":").slice(-1)[0]);
+      }
+    } finally {
+      setActiveIssue(null);
     }
-    // setActiveIssue(null);
-    // const { active, over } = event;
-    // if (!over) return;
-
-    // const activeId = active.id;
-    // const overId = over.id;
-
-    // if (activeId !== overId) {
-    //   console.log("activeId!=overId", activeId, overId);
-    //   // setIssues((prev) => {
-    //     // console.log("Prev issues:", prev);
-    //     const activeIndex = prev.findIndex((i) => i.id === activeId);
-    //     const overIndex = prev.findIndex((i) => i.id === overId);
-
-    //     console.log("Active index:", activeIndex, "Over index:", overIndex);
-    //     // return arrayMove(prev, activeIndex, overIndex);
-    //   // });
-    // }
-
-    // const columnName = tasks_list.find((i) => i.id === activeId)?.status || overId;
-
-    // console.log("Mutating status", activeId, columnName);
-
-    // mutate(activeId, columnName);
-    //  tasks_list_query.mutate()
   };
 
   const dropAnimation = {

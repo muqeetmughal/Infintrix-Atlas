@@ -53,9 +53,13 @@ const Tasks = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
   const qp = useQueryParams();
+  const [showFilters, setShowFilters] = React.useState(false);
+  const filtersRef = React.useRef(null);
 
   const view = params.view || "table";
   const project = qp.get("project") || null;
+  const statusFilter = qp.getArray("status");
+  const priorityFilter = qp.getArray("priority");
   const { mutate } = useSWRConfig();
 
   // const selectedTask = searchParams.get("selected_task") || null;
@@ -103,6 +107,26 @@ const Tasks = () => {
 
   const project_data = project_query?.data || {};
   const assignees = (project_data?.users || []).map((u) => u.user);
+
+  const hasActiveFilters =
+    (statusFilter && statusFilter.length > 0) ||
+    (priorityFilter && priorityFilter.length > 0) ||
+    !!qp.get("search");
+
+  useEffect(() => {
+    if (!showFilters) return;
+
+    const handleClickOutside = (event) => {
+      if (filtersRef.current && !filtersRef.current.contains(event.target)) {
+        setShowFilters(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showFilters]);
   return (
     <>
       <div className="space-y-2 md:space-y-1">
@@ -226,8 +250,14 @@ const Tasks = () => {
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            <Button className="p-2 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
+            <Button
+              className="relative p-2 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
+              onClick={() => setShowFilters((prev) => !prev)}
+            >
               <Filter size={18} className="md:w-5 md:h-5" />
+              {hasActiveFilters && (
+                <span className="absolute -top-0.5 -right-0.5 inline-block w-2 h-2 rounded-full bg-green-500 ring-2 ring-white dark:ring-slate-800" />
+              )}
             </Button>
             {project_data.custom_execution_mode === "Scrum" && (
               <>
@@ -304,19 +334,10 @@ const Tasks = () => {
           </div>
         </div>
 
-        {/* Search and Filters Section */}
+        {/* Search and Filters Section (without direct search bar) */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          {/* Search Bar */}
-          <div className="relative flex max-w-full space-x-2">
-            <Input
-              placeholder="Search"
-              style={{ width: 200 }}
-              onChange={(e) => {
-                searchParams.set("search", e.target.value);
-                setSearchParams(searchParams);
-              }}
-            />
-          </div>
+          {/* Spacer to keep 'Only my issues' section in the same place */}
+          <div className="hidden md:block" style={{ width: 200 }} />
 
           {/* User Avatars and Filter Options */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
@@ -334,6 +355,58 @@ const Tasks = () => {
             </div>
           </div>
         </div>
+
+        {/* Advanced Filters Panel */}
+        {showFilters && (
+          <div
+            ref={filtersRef}
+            className="flex flex-wrap items-center gap-3 md:gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3"
+          >
+            <Input
+              placeholder="Search by task name"
+              style={{ minWidth: 220, maxWidth: 260 }}
+              value={qp.get("search") || ""}
+              onChange={(e) => qp.set("search", e.target.value)}
+            />
+            <Select
+              mode="multiple"
+              allowClear
+              placeholder="Filter by status"
+              style={{ minWidth: 220 }}
+              value={statusFilter}
+              options={Object.keys(TASK_STATUS_COLORS)
+                .filter((status) => status !== "Backlog")
+                .map((status) => ({
+                  label: status,
+                  value: status,
+                }))}
+              onChange={(values) => qp.setArray("status", values)}
+            />
+            <Select
+              mode="multiple"
+              allowClear
+              placeholder="Filter by priority"
+              style={{ minWidth: 220 }}
+              value={priorityFilter}
+              options={Object.keys(TASK_PRIORITY_COLORS).map((priority) => ({
+                label: priority,
+                value: priority,
+              }))}
+              onChange={(values) => qp.setArray("priority", values)}
+            />
+            <Button
+              type="link"
+              onClick={() => {
+                qp.clear("status");
+                qp.clear("priority");
+                qp.clear("search");
+              }}
+              className="px-0 text-xs md:text-sm"
+            >
+              Clear filters
+            </Button>
+          </div>
+        )}
 
         {/* View Content */}
         <div className="overflow-x-auto">

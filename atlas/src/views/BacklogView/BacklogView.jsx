@@ -235,6 +235,9 @@ const BacklogView = () => {
   const [showBacklogCreator, setShowBacklogCreator] = useState(false);
   const { mutate } = useSWRConfig();
   const project_id = qp.get("project") || null;
+  const statusFilter = qp.getArray("status");
+  const priorityFilter = qp.getArray("priority");
+  const searchText = (qp.get("search") || "").toLowerCase();
   const updateMutation = useFrappeUpdateDoc();
   const createMutation = useFrappeCreateDoc();
   const deleteMutation = useFrappeDeleteDoc();
@@ -271,7 +274,21 @@ const BacklogView = () => {
   );
   const isScrum = project.custom_execution_mode === "Scrum";
 
-  const tasks = tasks_query.data || [];
+  const tasks = (tasks_query.data || []).filter((task) => {
+    if (statusFilter.length && !statusFilter.includes(task.status)) {
+      return false;
+    }
+    if (priorityFilter.length && !priorityFilter.includes(task.priority)) {
+      return false;
+    }
+    if (searchText) {
+      const haystack = `${task.subject || ""} ${task.name || ""}`.toLowerCase();
+      if (!haystack.includes(searchText)) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

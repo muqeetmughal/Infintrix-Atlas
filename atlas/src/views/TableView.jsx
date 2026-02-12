@@ -16,8 +16,25 @@ const TableView = () => {
   const navigate = useNavigate();
   const updateMutation = useFrappeUpdateDoc();
 
-  const tasks = tasks_list_query.data || [];
-  const project = qp.get("project") || null;
+  const statusFilter = qp.getArray("status");
+  const priorityFilter = qp.getArray("priority");
+  const searchText = (qp.get("search") || "").toLowerCase();
+
+  const tasks = (tasks_list_query.data || []).filter((task) => {
+    if (statusFilter.length && !statusFilter.includes(task.status)) {
+      return false;
+    }
+    if (priorityFilter.length && !priorityFilter.includes(task.priority)) {
+      return false;
+    }
+    if (searchText) {
+      const haystack = `${task.subject || ""} ${task.name || ""}`.toLowerCase();
+      if (!haystack.includes(searchText)) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   if (tasks_list_query.isLoading) {
     return <div className="dark:text-slate-200">Loading...</div>;
