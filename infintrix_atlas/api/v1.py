@@ -490,7 +490,8 @@ def query_tasks(payload=None):
 
 
 @frappe.whitelist()
-def get_project_user_stats(user=None):
+def get_project_user_stats(user=None, activity_limit=5):
+
     user = user or frappe.session.user
 
     # -----------------------------
@@ -503,12 +504,11 @@ def get_project_user_stats(user=None):
         f"""
         SELECT * FROM `tabProject`
         {project_where}
-    """,
+        """,
         as_dict=True,
     )
 
     project_names = [p.name for p in projects]
-
     total_projects = len(projects)
 
     if not project_names:
@@ -517,6 +517,7 @@ def get_project_user_stats(user=None):
             "active_tasks": 0,
             "avg_progress": 0,
             "team_members": 0,
+            "recent_activities": [{"text": "No recent activities found", "time_display": ""}]
         }
 
     # -----------------------------
@@ -532,9 +533,7 @@ def get_project_user_stats(user=None):
         WHERE status NOT IN ('Completed', 'Cancelled')
         AND project IN %(projects)s
         {task_where}
-    """.format(
-            task_where=task_where
-        ),
+        """.format(task_where=task_where),
         {"projects": tuple(project_names)},
     )[0][0]
 
@@ -555,16 +554,113 @@ def get_project_user_stats(user=None):
         SELECT COUNT(DISTINCT pu.user)
         FROM `tabProject User` pu
         WHERE pu.parent IN %(projects)s
-    """,
+        """,
         {"projects": tuple(project_names)},
     )[0][0]
+
+    # -----------------------------
+    # PROJECTS LIST (visible to the user)
+    # -----------------------------
+    projects_list = []
+    for p in projects:
+        try:
+            pct = int(p.get("percent_complete") or 0)
+        except Exception:
+            try:
+                pct = round(float(p.get("percent_complete") or 0))
+            except Exception:
+                pct = 0
+
+        projects_list.append({
+            "name": p.get("name"),
+            "project_name": p.get("project_name") or p.get("name"),
+            "project_type": p.get("project_type") or "",
+            "status": p.get("status") or "",
+            "percent_complete": pct,
+        })
+
+    try:
+        activity_limit = int(activity_limit)
+    except (ValueError, TypeError):
+        activity_limit = 5
+
+    # ---- Task Activities ----
+    task_activities = frappe.get_all(
+        "Task",
+        filters={
+            "docstatus": ["<", 2],
+            "project": ["in", project_names],
+        },
+        fields=[
+            "'Task' as type",
+            "name as doc_name",
+            "subject as title",
+            "status as detail",
+            "owner as user",
+            "modified as timestamp",
+        ],
+    )
+
+    # ---- Project Activities ----
+    project_activities_raw = frappe.get_all(
+        "Project",
+        filters={
+            "docstatus": ["<", 2],
+            "name": ["in", project_names],
+        },
+        fields=[
+            "'Project' as type",
+            "name as doc_name",
+            "project_name as title",
+            "status",
+            "owner as user",
+            "modified as timestamp",
+        ],
+    )
+
+    project_activities = []
+    for p in project_activities_raw:
+        project_activities.append({
+            "type": p.type,
+            "doc_name": p.doc_name,
+            "title": p.title,
+            "detail": f"Status: {p.status}",
+            "user": p.user,
+            "timestamp": p.timestamp,
+        })
+
+    activities = task_activities + project_activities
+    activities.sort(key=lambda x: x["timestamp"], reverse=True)
+    activity_data = activities[:activity_limit]
+
+    from frappe.utils import pretty_date
+
+    recent_activities = []
+    for d in activity_data:
+        user_full_name = frappe.db.get_value("User", d["user"], "full_name") or d["user"]
+        text = f"{user_full_name} updated {d['type']}: {d['title']} ({d['detail']})"
+
+        recent_activities.append({
+            "text": text,
+            "time_display": pretty_date(d["timestamp"]),
+            "timestamp": str(d["timestamp"]),
+            "type": d["type"],
+            "doc_name": d["doc_name"]
+        })
+
+    if not recent_activities:
+        recent_activities = [{"text": "No recent activities found", "time_display": ""}]
 
     return {
         "total_projects": total_projects,
         "active_tasks": active_tasks,
         "avg_progress": avg_progress,
         "team_members": team_members,
+        "projects": projects_list,
+        "recent_activities": recent_activities,
     }
+
+
 
 
 @frappe.whitelist()
@@ -733,3 +829,25 @@ def global_search(query: str, limit: int = 10):
             )
 
     return results
+
+
+@frappe.whitelist()
+def online_users():
+	sessions = frappe.db.sql(
+		"""
+		SELECT user, MAX(lastupdate) as lastupdate
+		FROM `tabSessions`
+		WHERE status = 'Active'
+		GROUP BY user
+	""",
+		as_dict=True,
+	)
+
+	now = datetime.now()
+	online_threshold = now - timedelta(minutes=5)
+
+	online_users = [
+		s["user"] for s in sessions if s["lastupdate"] and s["lastupdate"] > online_threshold
+	]
+
+	return online_users

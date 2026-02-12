@@ -8,9 +8,9 @@ export const useDoctypeSchema = (doctype) => {
 		{
 			doctype_name: doctype,
 		},
-		doctype ? ["Schema", doctype] : [],
+		doctype ? ["Schema", doctype] : null,
 		{
-            refreshInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+            refreshInterval: 60 * 60 * 1000, // Refresh every 5 minutes
             revalidateOnFocus  : false,
             revalidateIfStale  : false,
             revalidateOnReconnect: false,

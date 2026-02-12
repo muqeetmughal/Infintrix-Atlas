@@ -110,7 +110,7 @@ const Tasks = () => {
         {project_data.project_name && (
           <div className="flex items-center justify-between space-x-3">
             <div>
-              <Select
+              {/* <Select
                 variant="borderless"
                 placeholder="Filter by Project"
                 style={{
@@ -125,25 +125,41 @@ const Tasks = () => {
                   qp.set("project", value);
                 }}
                 options={projects_options_query?.data || []}
-              />
-              <Dropdown
-                trigger={"click"}
-                menu={{
-                  onClick: ({ key }) => {
-                    if (key === "manage_people") {
-                      qp.set("manage_project_people", "1");
-                    }
-                  },
-                  items: [
-                    {
-                      key: "manage_people",
-                      label: "Manage People",
-                    },
-                  ],
-                }}
-              >
-                <Button icon={<Menu size={16} />}></Button>
-              </Dropdown>
+              /> */}
+              <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-1">
+
+
+                <div className="flex space-x-1 overflow-x-auto">
+                  {(projects_options_query?.data || []).map((project) => (
+                    <button
+                      onClick={() => {
+                        if (project.value === qp.get("project")) {
+                          qp.set("project", "");
+                        } else {
+                          qp.set("project", project.value);
+                        }
+                      }}
+                      className={`shrink-0 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${qp.get("project") === project.value
+                          ? "bg-indigo-600 dark:bg-indigo-500 text-white shadow-md"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        }`}
+                      key={project.value}
+                    >
+                      {project.label}
+                      {/* <span
+                        className={`ml-2 text-xs font-bold px-1.5 py-0.5 rounded ${qp.get("project") === project.value
+                            ? "bg-white/20"
+                            : "bg-slate-200 dark:bg-slate-600"
+                          }`}
+                      >
+                        {( projects_options_query?.data || []).filter((p) => p.name === project.value).length}
+                      </span> */}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+             
             </div>
             <Select
               variant="borderless"
@@ -194,11 +210,10 @@ const Tasks = () => {
                     navigate(`/tasks/${tab.id}`);
                     setSearchParams(oldSearchParams);
                   }}
-                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${
-                    view === tab.id
+                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${view === tab.id
                       ? "text-blue-600 dark:text-blue-400"
                       : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                  }`}
+                    }`}
                 >
                   {tab.label}
                   {view === tab.id && (
@@ -255,6 +270,25 @@ const Tasks = () => {
                 )}
               </>
             )}
+
+             <Dropdown
+                trigger={"click"}
+                menu={{
+                  onClick: ({ key }) => {
+                    if (key === "manage_people") {
+                      qp.set("manage_project_people", "1");
+                    }
+                  },
+                  items: [
+                    {
+                      key: "manage_people",
+                      label: "Manage People",
+                    },
+                  ],
+                }}
+              >
+                <Button icon={<Menu size={16} />}></Button>
+              </Dropdown>
 
             <Button
               type="primary"

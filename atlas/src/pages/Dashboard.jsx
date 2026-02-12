@@ -1,5 +1,5 @@
 import { INITIAL_PROJECTS, INITIAL_TASKS, PROJECT_STATUS_COLORS, TEAM_MEMBERS } from '../data/constants'
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
     Briefcase,
     CheckSquare,
@@ -12,57 +12,60 @@ import { useFrappeGetCall } from 'frappe-react-sdk';
 import { Spin } from 'antd';
 
 const Dashboard = () => {
-    const [projects] = useState(INITIAL_PROJECTS);
     const [tasks] = useState(INITIAL_TASKS);
 
-    const project_user_stats_query = useFrappeGetCall(
+    const dashboard_stats_query = useFrappeGetCall(
         "infintrix_atlas.api.v1.get_project_user_stats",
+        { activity_limit: 5 }
     );
 
-    const stats = project_user_stats_query.data?.message || {
-        "total_projects": <Spin />,
-        "active_tasks": <Spin />,
-        "avg_progress": <Spin />,
-        "team_members": <Spin />
-    };
-    console.log('project_user_stats_query', stats);
-    // Stats configuration
-    // const stats = [
-    //     {
-    //         label: 'Total Projects',
-    //         val: projects.length,
-    //         icon: Briefcase,
-    //         color: 'text-indigo-600 dark:text-indigo-400',
-    //         bg: 'bg-indigo-50 dark:bg-indigo-950'
-    //     },
-    //     {
-    //         label: 'Active Tasks',
-    //         val: tasks.length,
-    //         icon: CheckSquare,
-    //         color: 'text-amber-600 dark:text-amber-400',
-    //         bg: 'bg-amber-50 dark:bg-amber-950'
-    //     },
-    //     {
-    //         label: 'Avg Progress',
-    //         val: `${Math.round(projects.reduce((acc, p) => acc + p.percent_complete, 0) / projects.length)}%`,
-    //         icon: TrendingUp,
-    //         color: 'text-emerald-600 dark:text-emerald-400',
-    //         bg: 'bg-emerald-50 dark:bg-emerald-950'
-    //     },
-    //     {
-    //         label: 'Team Members',
-    //         val: TEAM_MEMBERS.length,
-    //         icon: Users,
-    //         color: 'text-blue-600 dark:text-blue-400',
-    //         bg: 'bg-blue-50 dark:bg-blue-950'
-    //     },
-    // ];
+    const { stats, recentActivities, projects } = useMemo(() => {
+        const data = dashboard_stats_query.data?.message ?? dashboard_stats_query.data;
 
-    const recentActivities = [
-        { text: "AI generated 4 new tasks for App Dev", time: "2m ago" },
-        { text: "Bulk assigned 12 tasks to Mike Ross", time: "1h ago" },
-        { text: "Project Migration marked Completed", time: "4h ago" },
-    ];
+        const loadingStats = {
+            total_projects: <Spin size="small" />,
+            active_tasks: <Spin size="small" />,
+            avg_progress: <Spin size="small" />,
+            team_members: <Spin size="small" />,
+        };
+
+        const loadingFlag = dashboard_stats_query.isLoading ?? dashboard_stats_query.loading ?? false;
+        const errorFlag = dashboard_stats_query.error ?? dashboard_stats_query.isError ?? false;
+
+        if (loadingFlag) {
+            return {
+                stats: loadingStats,
+                recentActivities: [{ text: "Loading activities...", time_display: "" }],
+            };
+        }
+
+        if (errorFlag || !data) {
+            return {
+                stats: loadingStats,
+                recentActivities: [{ text: "Error loading data", time_display: "" }],
+                projects: [],
+            };
+        }
+
+        const activities = Array.isArray(data.recent_activities)
+            ? data.recent_activities
+            : data.recent_activities
+            ? [data.recent_activities]
+            : [];
+
+        const projectsArr = Array.isArray(data.projects) ? data.projects : [];
+
+        return {
+            stats: {
+                total_projects: data.total_projects ?? 0,
+                active_tasks: data.active_tasks ?? 0,
+                avg_progress: data.avg_progress ?? 0,
+                team_members: data.team_members ?? 0,
+            },
+            recentActivities: activities,
+            projects: projectsArr,
+        };
+    }, [dashboard_stats_query.data, dashboard_stats_query.isLoading, dashboard_stats_query.loading, dashboard_stats_query.error, dashboard_stats_query.isError]);
 
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
@@ -114,7 +117,7 @@ const Dashboard = () => {
                 {/* Quick Overview */}
                 <Card title="Quick Overview" className="lg:col-span-2">
                     <div className="space-y-6">
-                        {projects.slice(0, 3).map(p => (
+                        {(projects || []).slice(0, 3).map(p => (
                             <div
                                 key={p.name}
                                 className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/30 -mx-2 px-2 py-2 rounded-2xl transition-colors"
@@ -131,11 +134,11 @@ const Dashboard = () => {
                                 <div className="flex items-center space-x-8">
                                     <Badge className={PROJECT_STATUS_COLORS[p.status]}>{p.status}</Badge>
                                     <div className="text-right">
-                                        <div className="text-xs font-black text-slate-800 dark:text-slate-200">{p.percent_complete}%</div>
+                                        <div className="text-xs font-black text-slate-800 dark:text-slate-200">{p.percent_complete ?? 0}%</div>
                                         <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full mt-1 overflow-hidden">
                                             <div
                                                 className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-300"
-                                                style={{ width: `${p.percent_complete}%` }}
+                                                style={{ width: `${p.percent_complete ?? 0}%` }}
                                             />
                                         </div>
                                     </div>
@@ -153,7 +156,7 @@ const Dashboard = () => {
                                 <div className="w-2 h-2 rounded-full bg-indigo-400 dark:bg-indigo-500 mt-1.5 flex-shrink-0" />
                                 <div>
                                     <div className="text-sm font-medium text-slate-700 dark:text-slate-100">{act.text}</div>
-                                    <div className="text-[10px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest">{act.time}</div>
+                                    <div className="text-[10px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest">{act.time_display}</div>
                                 </div>
                             </div>
                         ))}

@@ -1,7 +1,7 @@
 import { Badge } from "antd";
-import { useFrappeGetDocList } from "frappe-react-sdk";
+import { useFrappeGetCall, useFrappeGetDocList } from "frappe-react-sdk";
 import { Search, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import RelativeTime from "../components/RelativeTime";
 
@@ -14,12 +14,23 @@ const ROLES = {
 const TeamMemberCard = ({ member }) => {
   const displayName = member.full_name || member.first_name || member.email;
   const statusLabel = member.enabled ? "Active" : "Disabled";
-  const statusColor = member.enabled ? "success" : "warning";
+  const statusColor = member.enabled ? "green" : "orange";
   const locationLabel = member.time_zone || "—";
   const avatarFallback = displayName?.charAt(0) || "?";
 
-  const session_exists_query = useFrappeGetDocList("Sessions", {}, { user: member.name });
-    console.log(session_exists_query)
+  const online_query = useFrappeGetCall("infintrix_atlas.api.v1.online_users");
+
+  const online_users = online_query.data?.message || [];
+
+  const isOnline = useMemo(() => {
+    return online_users.some((u) => u === member.name);
+  }, [online_users, member.name]);
+  const badgeColor = isOnline ? "green" : statusColor;
+  // const badgeText = isOnline ? "Online" : statusLabel;
+
+  const OnlineBadge = () => (
+    <Badge color={badgeColor} text={"Online"} />
+  );
   return (
     <div
       key={member.name}
@@ -30,15 +41,18 @@ const TeamMemberCard = ({ member }) => {
           <img
             src={member.user_image}
             alt={displayName}
-            className="w-16 h-16 rounded-[24px] object-cover"
+            className="w-16 h-16 rounded-3xl object-cover"
           />
         ) : (
-          <div className="w-16 h-16 bg-slate-900 dark:bg-slate-700 rounded-[24px] flex items-center justify-center text-white font-black text-xl italic group-hover:bg-indigo-600 transition-colors">
+          <div className="w-16 h-16 bg-slate-900 dark:bg-slate-700 rounded-3xl flex items-center justify-center text-white font-black text-xl italic group-hover:bg-indigo-600 transition-colors">
             {avatarFallback}
           </div>
         )}
         <div className="flex flex-col items-end gap-2">
-          <Badge status={statusColor}>{statusLabel}</Badge>
+          {
+            isOnline &&  <OnlineBadge />
+          }
+
           <span className="text-[10px] font-black text-slate-300 dark:text-slate-500 uppercase">
             {locationLabel}
           </span>
