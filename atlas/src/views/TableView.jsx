@@ -28,6 +28,11 @@ const TableView = () => {
       dataSource={tasks}
       rowKey="name"
       className="dark:bg-slate-800"
+      onRow={(record) => ({
+        onClick: () => {
+          qp.set("selected_task", record.name);
+        },
+      })}
       columns={[
         {
           title: "Subject",

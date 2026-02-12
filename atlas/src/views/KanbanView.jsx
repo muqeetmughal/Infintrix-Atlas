@@ -66,8 +66,15 @@ const IssueCard = React.forwardRef(
       }
       `}
         {...attributes}
-        {...listeners}
-        {...props}
+          {...listeners}
+          {...props}
+          onClick={(e) => {
+            const el = e.target.closest?.("button, a, input, textarea, select");
+            if (el) return;
+            if (issue.id === "new_item") return;
+            searchParams.set("selected_task", issue.id);
+            setSearchParams(searchParams);
+          }}
       >
         <div className="flex items-start justify-between mb-2">
           <SubjectWidget task={issue} />
@@ -203,7 +210,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
   return (
     <div
       ref={setNodeRef}
-      className="flex flex-col w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 max-h-full border border-slate-200/50 dark:border-slate-700"
+      className="flex flex-col w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 max-h-[60vh] border border-slate-200/50 dark:border-slate-700"
     >
       <div className="flex items-center justify-between mb-4 px-1">
         <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
@@ -556,8 +563,8 @@ export default function KanbanView() {
     );
   }
   return (
-    <div className="text-slate-900">
-      <div className="mx-auto flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-180px)] items-start">
+    <div className="text-slate-900 h-[calc(100vh-180px)] overflow-hidden">
+      <div className="mx-auto flex gap-6 overflow-x-auto pb-8 h-full items-start">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}

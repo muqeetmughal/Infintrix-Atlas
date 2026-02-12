@@ -558,6 +558,27 @@ def get_project_user_stats(user=None, activity_limit=5):
         {"projects": tuple(project_names)},
     )[0][0]
 
+    # -----------------------------
+    # PROJECTS LIST (visible to the user)
+    # -----------------------------
+    projects_list = []
+    for p in projects:
+        try:
+            pct = int(p.get("percent_complete") or 0)
+        except Exception:
+            try:
+                pct = round(float(p.get("percent_complete") or 0))
+            except Exception:
+                pct = 0
+
+        projects_list.append({
+            "name": p.get("name"),
+            "project_name": p.get("project_name") or p.get("name"),
+            "project_type": p.get("project_type") or "",
+            "status": p.get("status") or "",
+            "percent_complete": pct,
+        })
+
     try:
         activity_limit = int(activity_limit)
     except (ValueError, TypeError):
@@ -635,7 +656,8 @@ def get_project_user_stats(user=None, activity_limit=5):
         "active_tasks": active_tasks,
         "avg_progress": avg_progress,
         "team_members": team_members,
-        "recent_activities": recent_activities
+        "projects": projects_list,
+        "recent_activities": recent_activities,
     }
 
 

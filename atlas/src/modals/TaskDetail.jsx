@@ -14,6 +14,8 @@ import {
   GripVertical,
   Maximize,
   Minimize,
+  Trash,
+  Menu,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -21,7 +23,10 @@ import {
   useFrappeGetDocList,
   useFrappePostCall,
   useFrappeUpdateDoc,
+  useFrappeDeleteDoc,
 } from "frappe-react-sdk";
+import { useQueryClient } from "@tanstack/react-query";
+import { Modal as AntdModal } from "antd";
 import dayjs from "dayjs";
 import { AssigneeSelectWidget, ShowUserWidget } from "../components/widgets/AssigneeSelectWidget";
 import TextWidget from "../components/widgets/TextWidget";
@@ -35,6 +40,7 @@ import HistorySection from "../components/HistorySection";
 import SubTasks from "../components/SubTasks";
 import { useAssigneeOfTask } from "../hooks/query";
 import SubjectWidget from "../components/widgets/SubjectWidget";
+import FileAttachment from "./FileAttachment";
 
 const TaskDetail = () => {
   const [isResizing, setIsResizing] = useState(false);
@@ -44,6 +50,8 @@ const TaskDetail = () => {
   const [activeTab, setActiveTab] = useState("comments");
   const [searchParams, setSearchParams] = useSearchParams();
   const updateMutation = useFrappeUpdateDoc();
+  const { deleteDoc } = useFrappeDeleteDoc();
+  const queryClient = useQueryClient();
   const selectedTask = searchParams.get("selected_task") || null;
 
   const task_details_query = useFrappeGetDoc("Task", selectedTask || "");
@@ -162,9 +170,42 @@ const TaskDetail = () => {
           <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
             <Share2 size={18} />
           </button>
-          <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
-            <MoreHorizontal size={18} />
-          </button>
+          <Dropdown
+            trigger={"click"}
+            menu={{
+              onClick: ({ key }) => {
+                if (key === "delete_task") {
+                  AntdModal.confirm({
+                    title: "Delete task",
+                    content: "Are you sure you want to delete this task? This action cannot be undone.",
+                    okText: "Delete",
+                    okType: "danger",
+                    cancelText: "Cancel",
+                    onOk: async () => {
+                      try {
+                        if (!task.name) return;
+                        await deleteDoc("Task", task.name);
+                        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                        onClose();
+                      } catch (err) {
+                        console.error("Failed to delete task", err);
+                      }
+                    },
+                  });
+                }
+              },
+              items: [
+                {
+                  key: "delete_task",
+                  label: "Delete Task",
+                  danger: true,
+                  icon: <Trash size={14} />,
+                },
+              ],
+            }}
+          >
+            <Button icon={<Menu size={16} />}></Button>
+          </Dropdown>
           <Button
             icon={fullScreen ? <Maximize size={18} /> : <Minimize size={18} />}
             onClick={() => setFullScreen(!fullScreen)}
@@ -194,15 +235,15 @@ const TaskDetail = () => {
               }}
               style={{ fontSize: "2rem", fontWeight: "600", marginBottom: "1.5rem" }}
               value={task.subject}
-              // onSubmit={(newValue) => {
-              //   updateMutation
-              //     .updateDoc("Task", task.name, {
-              //       subject: newValue,
-              //     })
-              //     .then(() => {
-              //       task_details_query.mutate();
-              //     });
-              // }}
+            // onSubmit={(newValue) => {
+            //   updateMutation
+            //     .updateDoc("Task", task.name, {
+            //       subject: newValue,
+            //     })
+            //     .then(() => {
+            //       task_details_query.mutate();
+            //     });
+            // }}
             />
           </h1>
 
@@ -256,11 +297,10 @@ const TaskDetail = () => {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative ${
-                        activeTab === tab.id
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                      }`}
+                      className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative ${activeTab === tab.id
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                        }`}
                     >
                       {tab.label}
                       {activeTab === tab.id && (
@@ -399,6 +439,13 @@ const TaskDetail = () => {
             </div>
           </div>
 
+          <FileAttachment
+
+            doctype="Task"
+            docname={task.name}
+            // fieldname="attachments"
+          />
+
           {/* Footer timestamps */}
           <div className="mt-16 pt-6 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 space-y-2">
             <p className="flex justify-between">
@@ -423,11 +470,10 @@ const TaskDetail = () => {
     return (
       <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 flex items-center justify-center animate-in fade-in duration-200">
         <div
-          className={`bg-white dark:bg-slate-900 overflow-hidden transition-all duration-300 ease-in-out ${
-            fullScreen
-              ? "w-full h-screen max-w-none rounded-none shadow-none"
-              : "w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl"
-          }`}
+          className={`bg-white dark:bg-slate-900 overflow-hidden transition-all duration-300 ease-in-out ${fullScreen
+            ? "w-full h-screen max-w-none rounded-none shadow-none"
+            : "w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl"
+            }`}
         >
           {task_details_query.isLoading || assignee_of_task_query.isLoading
             ? "Loading..."
