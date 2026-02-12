@@ -25,22 +25,29 @@ const ProjectCard = ({ project: p }) => {
   const updateMutation = useFrappeUpdateDoc();
   const swr = useSWRConfig();
   const is_archived = p.custom_is_archived;
+  const navigate = useNavigate();
+
+  const handleOpenProject = () => {
+    navigate(`/tasks/kanban?project=${p.name}`);
+  };
+
   return (
-    <Card className="hover:shadow-lg hover:shadow-indigo-100 dark:hover:shadow-indigo-900/30 hover:-translate-y-1 transition-all duration-300 cursor-pointer group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden ">
+    <Card
+      className="hover:shadow-lg hover:shadow-indigo-100 dark:hover:shadow-indigo-900/30 hover:-translate-y-1 transition-all duration-300 cursor-pointer group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden "
+      onClick={handleOpenProject}
+    >
       {/* Compact Header */}
       <div className="flex justify-between items-start mb-3">
         <div className="flex-1 min-w-0">
-          <Link key={p.name} to={`/tasks/kanban?project=${p.name}`}>
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 line-clamp-1 mb-1">
-              {p.project_name}{" "}
-              {is_archived ? (
-                <small className="bg-red-500 p-2">Archived</small>
-              ) : null}
-            </h3>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
-              {p.name}
-            </p>
-          </Link>
+          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 line-clamp-1 mb-1">
+            {p.project_name}{" "}
+            {is_archived ? (
+              <small className="bg-red-500 p-2">Archived</small>
+            ) : null}
+          </h3>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
+            {p.name}
+          </p>
         </div>
         <Badge
           className={`${PROJECT_STATUS_COLORS[p.status]} text-[10px] px-2 py-0.5 ml-2 shrink-0`}
@@ -182,9 +189,8 @@ const Projects = () => {
         field: "modified",
         order: "desc",
       },
-      filters: status_param
-        ? [...common_filters, ["status", "=", status_param]]
-        : common_filters,
+      // Fetch all non-archived projects; we'll filter by status on the client
+      filters: common_filters,
     },
     ["Project", status_param],
   );
@@ -212,6 +218,11 @@ const Projects = () => {
 
   const projects = projects_query.data || [];
   const archived_projects = archived_projects_query.data || [];
+
+  // Projects to show for the currently selected tab (status + archived toggle)
+  const visible_projects = (show_archived ? archived_projects : projects).filter(
+    (p) => p.status === status_param,
+  );
 
   const isLoading = projects_query.isLoading;
 
@@ -279,7 +290,9 @@ const Projects = () => {
                       : "bg-slate-200 dark:bg-slate-600"
                   }`}
                 >
-                  {(show_archived ? archived_projects : projects).filter((p) => p.status === status).length}
+                  {(show_archived ? archived_projects : projects).filter(
+                    (p) => p.status === status,
+                  ).length}
                 </span>
               </button>
             ))}
@@ -296,7 +309,7 @@ const Projects = () => {
               </p>
             </div>
           </div>
-        ) : projects.length === 0 ? (
+        ) : visible_projects.length === 0 ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -315,9 +328,9 @@ const Projects = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {show_archived
-              ? archived_projects.map((p) => <ProjectCard key={p.name} project={p} />)
-              :  projects.map((p) => <ProjectCard key={p.name} project={p} />) }
+            {visible_projects.map((p) => (
+              <ProjectCard key={p.name} project={p} />
+            ))}
           </div>
         )}
       </div>
