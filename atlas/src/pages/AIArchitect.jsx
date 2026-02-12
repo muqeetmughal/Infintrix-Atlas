@@ -487,17 +487,23 @@ export default function App() {
   const qp = useQueryParams();
   const project = qp.get("project") || null;
   // const request_intent_query =
-  const handleExtractIntents = async () => {
-    setUiState(UI_STATES.DECOMPOSING);
-
+const handleExtractIntents = async () => {
+  setUiState(UI_STATES.DECOMPOSING);
+  try {
     const res = await request_intent_query.call({ prompt, project });
     const data = res.message || [];
 
-    if (!data.length) throw new Error("No intents extracted");
+    // if (!data.length) throw new Error("No intents extracted from API");
 
     setIntents(data);
     setUiState(UI_STATES.INTENTS_READY);
-  };
+  } catch (err) {
+    console.error("Intent Extraction Error:", err);
+    alert(err.message || "Failed to extract intents");
+    setUiState(UI_STATES.ERROR);
+  }
+};
+
 
   // const handleExtractIntents = useCallback(async () => {
   //   setUiState(UI_STATES.DECOMPOSING);
@@ -924,6 +930,14 @@ export default function App() {
                         ))}
                       </div>
                     </div>
+
+
+                    {intents.length === 0 && (
+                      <div className="bg-slate-50 dark:bg-slate-700/50 p-10 rounded-2xl border border-slate-100 dark:border-slate-800 text-center text-sm font-bold text-slate-400">
+                        No intents extracted. Please revise your prompt and try
+                        again.
+                      </div>
+                    )}
 
                     {/* Dashboard Stats (Step 2 Only) */}
                     {uiState !== UI_STATES.INTENTS_READY && (
