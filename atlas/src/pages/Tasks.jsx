@@ -16,10 +16,10 @@ import {
   useFrappeUpdateDoc,
   useSWRConfig,
 } from "frappe-react-sdk";
-import dayjs from "dayjs";
-import Assignee from "../components/widgets/Assignee";
-import Priority from "../components/widgets/PriorityWidget";
-import FormRender from "../components/form/FormRender";
+// import dayjs from "dayjs";
+// import Assignee from "../components/widgets/Assignee";
+// import Priority from "../components/widgets/PriorityWidget";
+// import FormRender from "../components/form/FormRender";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useDoctypeSchema } from "../hooks/doctype";
 import TaskDetail from "../modals/TaskDetail";
@@ -101,10 +101,6 @@ const Tasks = () => {
     { id: "kanban", label: "Kanban" },
   ];
 
-  if (active_cycle_query.isLoading || projects_options_query.isLoading) {
-    return <div>Loading...</div>;
-  }
-
   const project_data = project_query?.data || {};
   const assignees = (project_data?.users || []).map((u) => u.user);
 
@@ -127,6 +123,10 @@ const Tasks = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showFilters]);
+
+  if (active_cycle_query.isLoading || projects_options_query.isLoading) {
+    return <div>Loading...</div>;
+  }
   return (
     <>
       <div className="space-y-2 md:space-y-1">
@@ -395,9 +395,11 @@ const Tasks = () => {
             <Button
               type="link"
               onClick={() => {
-                qp.clear("status");
-                qp.clear("priority");
-                qp.clear("search");
+                const params = new URLSearchParams(searchParams);
+                params.delete("status");
+                params.delete("priority");
+                params.delete("search");
+                setSearchParams(params, { replace: true });
               }}
               className="px-0 text-xs md:text-sm"
             >
