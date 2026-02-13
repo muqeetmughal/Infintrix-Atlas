@@ -100,7 +100,6 @@ const TaskDetail = () => {
         const newWidth = e.clientX - containerRect.left;
 
         if (newWidth >= 300 && newWidth <= 900) {
-          // Removed setMainWidth as it's not used
         }
       }
     },

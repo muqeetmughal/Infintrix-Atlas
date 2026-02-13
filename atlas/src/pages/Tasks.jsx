@@ -334,15 +334,11 @@ const Tasks = () => {
           </div>
         </div>
 
-        {/* Search and Filters Section (without direct search bar) */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          {/* Spacer to keep 'Only my issues' section in the same place */}
           <div className="hidden md:block" style={{ width: 200 }} />
 
-          {/* User Avatars and Filter Options */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
             <div className="flex -space-x-2">
-              {/* <PreviewAssignees assignees={assignees} enable_tooltip={true} /> */}
             </div>
 
             <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium">
