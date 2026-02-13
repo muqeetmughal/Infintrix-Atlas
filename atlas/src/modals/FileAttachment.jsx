@@ -32,7 +32,6 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
     const [previewFile, setPreviewFile] = useState("");
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // Sync server files from backend
     useEffect(() => {
         if (!files_query.data) return;
 

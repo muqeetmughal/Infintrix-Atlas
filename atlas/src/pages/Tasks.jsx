@@ -16,10 +16,10 @@ import {
   useFrappeUpdateDoc,
   useSWRConfig,
 } from "frappe-react-sdk";
-import dayjs from "dayjs";
-import Assignee from "../components/widgets/Assignee";
-import Priority from "../components/widgets/PriorityWidget";
-import FormRender from "../components/form/FormRender";
+// import dayjs from "dayjs";
+// import Assignee from "../components/widgets/Assignee";
+// import Priority from "../components/widgets/PriorityWidget";
+// import FormRender from "../components/form/FormRender";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useDoctypeSchema } from "../hooks/doctype";
 import TaskDetail from "../modals/TaskDetail";
@@ -101,10 +101,6 @@ const Tasks = () => {
     { id: "kanban", label: "Kanban" },
   ];
 
-  if (active_cycle_query.isLoading || projects_options_query.isLoading) {
-    return <div>Loading...</div>;
-  }
-
   const project_data = project_query?.data || {};
   const assignees = (project_data?.users || []).map((u) => u.user);
 
@@ -127,6 +123,10 @@ const Tasks = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showFilters]);
+
+  if (active_cycle_query.isLoading || projects_options_query.isLoading) {
+    return <div>Loading...</div>;
+  }
   return (
     <>
       <div className="space-y-2 md:space-y-1">
@@ -334,15 +334,11 @@ const Tasks = () => {
           </div>
         </div>
 
-        {/* Search and Filters Section (without direct search bar) */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          {/* Spacer to keep 'Only my issues' section in the same place */}
           <div className="hidden md:block" style={{ width: 200 }} />
 
-          {/* User Avatars and Filter Options */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
             <div className="flex -space-x-2">
-              {/* <PreviewAssignees assignees={assignees} enable_tooltip={true} /> */}
             </div>
 
             <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium">
@@ -399,9 +395,11 @@ const Tasks = () => {
             <Button
               type="link"
               onClick={() => {
-                qp.clear("status");
-                qp.clear("priority");
-                qp.clear("search");
+                const params = new URLSearchParams(searchParams);
+                params.delete("status");
+                params.delete("priority");
+                params.delete("search");
+                setSearchParams(params, { replace: true });
               }}
               className="px-0 text-xs md:text-sm"
             >

@@ -236,7 +236,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-[60vh]">
+      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
         <SortableContext
           items={tasks_list.map((i) => i.id)}
           strategy={verticalListSortingStrategy}
