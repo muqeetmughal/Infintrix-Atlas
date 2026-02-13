@@ -380,6 +380,7 @@ const Tasks = () => {
                   label: status,
                   value: status,
                 }))}
+              getPopupContainer={() => filtersRef.current || document.body}
               onChange={(values) => qp.setArray("status", values)}
             />
             <Select
@@ -392,6 +393,7 @@ const Tasks = () => {
                 label: priority,
                 value: priority,
               }))}
+              getPopupContainer={() => filtersRef.current || document.body}
               onChange={(values) => qp.setArray("priority", values)}
             />
             <Button
