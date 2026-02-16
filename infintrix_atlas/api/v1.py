@@ -558,9 +558,7 @@ def get_project_user_stats(user=None, activity_limit=5):
         {"projects": tuple(project_names)},
     )[0][0]
 
-    # -----------------------------
-    # PROJECTS LIST (visible to the user)
-    # -----------------------------
+
     projects_list = []
     for p in projects:
         try:
