@@ -2,13 +2,20 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { menuItems } from "../data/menu";
 import logo from "../assets/logo.png";
+import { useFrappeGetCall } from "frappe-react-sdk";
+
 import Logo from "./Logo";
+import { Dropdown, Typography } from "antd";
+import { Info, LayoutDashboard, LogOut, Menu, Settings } from "lucide-react";
 const Sidebar = () => {
   const location = useLocation();
+
+  const installed_apps_query = useFrappeGetCall("frappe.apps.get_apps");
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     const saved = localStorage.getItem("sidebarOpen");
     return saved !== null ? JSON.parse(saved) : false;
   });
+  const installed_apps = installed_apps_query.data?.message || [];
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => {
@@ -27,10 +34,65 @@ const Sidebar = () => {
           isSidebarOpen ? "w-72" : "w-24"
         }`}
       >
-        <div className="p-8 mb-4 flex items-center justify-between">
+        <Dropdown
+          trigger={"click"}
+          menu={{
+            items: [
+              {
+                icon: <LayoutDashboard />,
+                key: "apps",
+                label: "Apps",
+                children: installed_apps.map((app) => ({
+                  key: app.name,
+                  label: (
+                    <div
+                      className="flex items-center space-x-2 cursor-pointer"
+                      onClick={() =>{
+                        window.location.href = app.route;
+                      }}
+                    >
+                      <img src={app.logo} alt={app.title} className="w- h-5" />
+                      <span>{app.title}</span>
+                    </div>
+                  ),
+                })),
+              },
+              {
+                icon: <Settings />,
+                key: "settings",
+                label: "Settings",
+              },
+              {
+                key: "about",
+                label: "About",
+                icon: <Info />,
+              },
+              {
+                key: "logout",
+                label: "Logout",
+                icon: <LogOut />,
+              },
+            ],
+          }}
+        >
+          <div className="flex justify-start items-center p-4 mb-4 hover:cursor-pointer">
+            <div>
+              <Logo fullLogo={false} />
+            </div>
 
-            <Logo fullLogo={isSidebarOpen} />
-        </div>
+            <div>
+              <div level={4} className="font-bold mb-0 ml-2">
+                Atlas
+              </div>
+              <div className="mb-0 ml-2 text-sm text-slate-500 dark:text-slate-400">
+                Muqeet Mughal
+              </div>
+            </div>
+          </div>
+        </Dropdown>
+        {/* <div className="p-8 mb-4 flex items-center justify-between">
+          <Logo fullLogo={isSidebarOpen} />
+        </div> */}
 
         <nav className="px-4 space-y-2">
           {menuItems.map((item) => (
