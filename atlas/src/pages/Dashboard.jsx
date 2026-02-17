@@ -12,7 +12,6 @@ import { useFrappeGetCall } from 'frappe-react-sdk';
 import { Spin } from 'antd';
 
 const Dashboard = () => {
-    const [projects] = useState(INITIAL_PROJECTS);
     const [tasks] = useState(INITIAL_TASKS);
 
     const dashboard_stats_query = useFrappeGetCall(
@@ -20,7 +19,7 @@ const Dashboard = () => {
         { activity_limit: 5 }
     );
 
-    const { stats, recentActivities } = useMemo(() => {
+    const { stats, recentActivities, projects } = useMemo(() => {
         const data = dashboard_stats_query.data?.message ?? dashboard_stats_query.data;
 
         const loadingStats = {
@@ -44,6 +43,7 @@ const Dashboard = () => {
             return {
                 stats: loadingStats,
                 recentActivities: [{ text: "Error loading data", time_display: "" }],
+                projects: [],
             };
         }
 
@@ -53,6 +53,8 @@ const Dashboard = () => {
             ? [data.recent_activities]
             : [];
 
+        const projectsArr = Array.isArray(data.projects) ? data.projects : [];
+
         return {
             stats: {
                 total_projects: data.total_projects ?? 0,
@@ -61,6 +63,7 @@ const Dashboard = () => {
                 team_members: data.team_members ?? 0,
             },
             recentActivities: activities,
+            projects: projectsArr,
         };
     }, [dashboard_stats_query.data, dashboard_stats_query.isLoading, dashboard_stats_query.loading, dashboard_stats_query.error, dashboard_stats_query.isError]);
 
@@ -114,7 +117,7 @@ const Dashboard = () => {
                 {/* Quick Overview */}
                 <Card title="Quick Overview" className="lg:col-span-2">
                     <div className="space-y-6">
-                        {projects.slice(0, 3).map(p => (
+                        {(projects || []).slice(0, 3).map(p => (
                             <div
                                 key={p.name}
                                 className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/30 -mx-2 px-2 py-2 rounded-2xl transition-colors"
@@ -131,11 +134,11 @@ const Dashboard = () => {
                                 <div className="flex items-center space-x-8">
                                     <Badge className={PROJECT_STATUS_COLORS[p.status]}>{p.status}</Badge>
                                     <div className="text-right">
-                                        <div className="text-xs font-black text-slate-800 dark:text-slate-200">{p.percent_complete}%</div>
+                                        <div className="text-xs font-black text-slate-800 dark:text-slate-200">{p.percent_complete ?? 0}%</div>
                                         <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full mt-1 overflow-hidden">
                                             <div
                                                 className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-300"
-                                                style={{ width: `${p.percent_complete}%` }}
+                                                style={{ width: `${p.percent_complete ?? 0}%` }}
                                             />
                                         </div>
                                     </div>

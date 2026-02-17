@@ -4,6 +4,7 @@ import { Search, UserPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import RelativeTime from "../components/RelativeTime";
+import InvitedUserModal from "../modals/InvitedUser";
 
 const ROLES = {
   PM: "Project Manager",
@@ -111,6 +112,9 @@ const Team = () => {
   const [filterDept, setFilterDept] = useState("All");
   const userRole = ROLES.PM;
 
+  // modal state
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+
   const team_query = useFrappeGetDocList("User", {
     fields: ["*"],
     filters: [
@@ -146,7 +150,10 @@ const Team = () => {
           </p>
         </div>
         {userRole === ROLES.PM && (
-          <button className="bg-slate-900 dark:bg-slate-700 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none">
+          <button
+            className="bg-slate-900 dark:bg-slate-700 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
+            onClick={() => setInviteModalVisible(true)}
+          >
             <UserPlus size={20} /> Invite Member
           </button>
         )}
@@ -188,6 +195,12 @@ const Team = () => {
           <TeamMemberCard key={member.name} member={member} />
         ))}
       </div>
+
+      {/* invite modal */}
+      <InvitedUserModal
+        visible={inviteModalVisible}
+        onClose={() => setInviteModalVisible(false)}
+      />
     </div>
   );
 };
