@@ -4,6 +4,7 @@ import {
   useFrappeGetDocList,
   useFrappePostCall,
 } from "frappe-react-sdk";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/query";
 import { Badge, notification } from "antd";
 import { BellOutlined } from "@ant-design/icons";
@@ -12,6 +13,7 @@ import { CheckSquare, Folder, RefreshCw } from "lucide-react";
 
 const Notifications = () => {
   const auth = useAuth();
+  const navigate = useNavigate();
   const [notification_api, contextHolder] = notification.useNotification();
   const [showNotifications, setShowNotifications] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState({});
@@ -54,7 +56,11 @@ const Notifications = () => {
   useFrappeEventListener("update_system_notifications", (data) => {
     console.log("Realtime notification received:", data);
     soundManager.play("ALERT");
+
+    const key = `notif-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
     notification_api.info({
+      key,
       message: data.subject || "New Notification",
       description: (
         <div
@@ -65,6 +71,12 @@ const Notifications = () => {
           }}
         />
       ),
+      // open the notification modal when clicking the toast
+      onClick: () => {
+        // close this toast and open the notifications panel
+        notification_api.destroy(key);
+        setShowNotifications(true);
+      },
       placement: "topRight",
     });
     notifications_logs_query.mutate();
@@ -117,19 +129,19 @@ const Notifications = () => {
             const json = await res.json();
             const project = json?.data?.project;
             if (project) {
-              window.location.href = `/atlas/tasks/kanban?project=${encodeURIComponent(
+              navigate(`/tasks/kanban?project=${encodeURIComponent(
                 project
-              )}&selected_task=${encodeURIComponent(docName)}`;
+              )}&selected_task=${encodeURIComponent(docName)}`);
               return;
             }
           }
         } catch {}
-        window.location.href = `/atlas/tasks/kanban?selected_task=${encodeURIComponent(docName)}`;
+        navigate(`/tasks/kanban?selected_task=${encodeURIComponent(docName)}`);
         return;
       }
 
       if (docType === "Project") {
-        window.location.href = `/atlas/tasks/kanban?project=${encodeURIComponent(docName)}`;
+        navigate(`/tasks/kanban?project=${encodeURIComponent(docName)}`);
         return;
       }
     } finally {
@@ -156,9 +168,33 @@ const Notifications = () => {
       {showNotifications && (
         <div className="absolute right-0 top-14 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 z-99999 overflow-hidden">
           <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-linear-to-r from-blue-50 to-blue-100/50 dark:from-slate-700 dark:to-slate-600">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-              Notifications ({notifications.filter((n) => n.read === 0).length})
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                Notifications ({notifications.filter((n) => n.read === 0).length})
+              </h3>
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  // clear all unread notifications
+                  const unread = notifications.filter((n) => n.read === 0);
+                  if (unread.length === 0) return;
+                  try {
+                    // mark each as read
+                    await Promise.all(
+                      unread.map((n) =>
+                        mark_as_read_mutation.call({ docname: n.name })
+                      )
+                    );
+                    notifications_logs_query.mutate();
+                  } catch (err) {
+                    console.error("Failed to clear notifications", err);
+                  }
+                }}
+                className="ml-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Clear all
+              </button>
+            </div>
           </div>
           <div className="max-h-96 overflow-y-auto">
             {notifications.length > 0 ? (

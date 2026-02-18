@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Upload, Modal, message, Button } from "antd";
 import { UploadOutlined, FullscreenOutlined, FullscreenExitOutlined } from "@ant-design/icons";
-import { useFrappeFileUpload, useFrappeGetDocList, useFrappeDeleteDoc } from "frappe-react-sdk";
+import { useFrappeFileUpload, useFrappeGetDocList, useFrappeDeleteDoc, useFrappePostCall } from "frappe-react-sdk";
 import { mapFrappeFilesToAntdUpload } from "../lib/utils";
 
 const ALLOWED_TYPES = [
@@ -18,6 +18,7 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
 
     const file_upload = useFrappeFileUpload();
     const { deleteDoc } = useFrappeDeleteDoc();
+    const notify_attachment = useFrappePostCall("infintrix_atlas.api.v1.notify_attachment_added");
 
     const files_query = useFrappeGetDocList("File", {
         filters: { attached_to_doctype: doctype, attached_to_name: docname },
@@ -58,6 +59,19 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
                         ...prev,
                         { uid: res.name, name: res.file_name, url: res.file_url, status: "done" }
                     ]);
+                    
+                    // Send notification to task assignee when file is uploaded
+                    if (doctype === "Task" && docname) {
+                        try {
+                            await notify_attachment.call({
+                                task_name: docname,
+                                file_name: res.file_name
+                            });
+                        } catch (notifyError) {
+                            console.error("Failed to send notification:", notifyError);
+                            // Don't fail the upload if notification fails
+                        }
+                    }
                 }
                 setLocalFiles([]);
                 message.success("Files uploaded successfully");

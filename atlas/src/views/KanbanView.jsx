@@ -24,6 +24,7 @@ import {
   useFrappeGetDoc,
   useFrappeGetDocList,
   useFrappeUpdateDoc,
+  useFrappePostCall,
   useSWRConfig,
 } from "frappe-react-sdk";
 import { useGetDoctypeField } from "../hooks/doctype";
@@ -69,7 +70,8 @@ const IssueCard = React.forwardRef(
           {...listeners}
           {...props}
           onClick={(e) => {
-            const el = e.target.closest?.("button, a, input, textarea, select");
+            // Don't open modal if clicking on interactive elements
+            const el = e.target.closest?.("button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker");
             if (el) return;
             if (issue.id === "new_item") return;
             searchParams.set("selected_task", issue.id);
@@ -236,7 +238,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-[60vh]">
+      <div className="flex-1 overflow-y-auto hide-scrollbar min-h-[60vh]">
         <SortableContext
           items={tasks_list.map((i) => i.id)}
           strategy={verticalListSortingStrategy}
@@ -311,6 +313,12 @@ export default function KanbanView() {
   const createMutation = useFrappeCreateDoc();
 
   const updateTaskMutation = useFrappeUpdateDoc();
+  const updateSortOrderMutation = useFrappePostCall(
+    "infintrix_atlas.api.v1.update_task_sort_order",
+  );
+  const notifyStatusChange = useFrappePostCall(
+    "infintrix_atlas.api.v1.notify_status_changed",
+  );
   const project_query = useFrappeGetDoc("Project", project);
   const columns_query = useGetDoctypeField("Task", "status", "options");
 
@@ -330,7 +338,8 @@ export default function KanbanView() {
   const raw_tasks = tasks_list_query.data || [];
   const tasks_list = useMemo(
     () =>
-      raw_tasks.filter((task) => {
+      raw_tasks
+        .filter((task) => {
         if (statusFilter.length && !statusFilter.includes(task.status)) {
           return false;
         }
@@ -344,7 +353,28 @@ export default function KanbanView() {
           }
         }
         return true;
-      }),
+      })
+        .slice()
+        .sort((a, b) => {
+          // Keep list stable across re-fetches: status ASC, custom_sort_order ASC
+          const statusCmp = String(a.status || "").localeCompare(
+            String(b.status || ""),
+          );
+          if (statusCmp !== 0) return statusCmp;
+
+          const aSort =
+            a.custom_sort_order === null || a.custom_sort_order === undefined
+              ? Number.POSITIVE_INFINITY
+              : Number(a.custom_sort_order);
+          const bSort =
+            b.custom_sort_order === null || b.custom_sort_order === undefined
+              ? Number.POSITIVE_INFINITY
+              : Number(b.custom_sort_order);
+          if (aSort !== bSort) return aSort - bSort;
+
+          // fallback
+          return String(b.modified || "").localeCompare(String(a.modified || ""));
+        }),
     [raw_tasks, statusFilter, priorityFilter, searchText],
   );
 
@@ -391,6 +421,10 @@ export default function KanbanView() {
   };
 
   const mutateTaskStatus = async (task, newStatus) => {
+    // Find the current task to get old status
+    const currentTask = tasks_list.find((t) => t.name === task);
+    const oldStatus = currentTask?.status;
+    
     await tasks_list_query
       .mutate(
         async (current) => {
@@ -421,6 +455,16 @@ export default function KanbanView() {
       )
       .then(() => {
         mutate(["Project", project]);
+        // Notify assigned users about status change
+        if (oldStatus && oldStatus !== newStatus) {
+          notifyStatusChange.call({
+            task_name: task,
+            old_status: oldStatus,
+            new_status: newStatus,
+          }).catch((err) => {
+            console.error("Failed to send status change notification:", err);
+          });
+        }
       });
   };
 
@@ -543,12 +587,79 @@ export default function KanbanView() {
               status: newStatus,
             });
             mutate(["Project", project]);
+            // Notify assigned users about status change
+            notifyStatusChange.call({
+              task_name: activeTask.name,
+              old_status: oldStatus,
+              new_status: newStatus,
+            }).catch((err) => {
+              console.error("Failed to send status change notification:", err);
+            });
           }
 
-          return next;
+          // Persist sort order only for affected columns (old + new)
+          const statusesToUpdate =
+            newStatus === oldStatus ? [newStatus] : [oldStatus, newStatus];
+
+          // Build old state maps for minimal updates
+          const prevById = new Map(
+            (current || []).map((t) => [t.id, t]),
+          );
+
+          const updates = [];
+          const orderMapByStatus = {};
+          statusesToUpdate.forEach((status) => {
+            const colTasks = (next || []).filter((t) => t.status === status);
+            orderMapByStatus[status] = {};
+            colTasks.forEach((t, idx) => {
+              orderMapByStatus[status][t.id] = idx;
+              const prev = prevById.get(t.id);
+              const prevSort = prev?.custom_sort_order;
+              const prevStatus = prev?.status;
+              if (prevStatus !== t.status || prevSort !== idx) {
+                updates.push({
+                  name: t.name || t.id,
+                  custom_sort_order: idx,
+                });
+              }
+            });
+          });
+
+          const nextWithSort = (next || []).map((t) => {
+            if (!statusesToUpdate.includes(t.status)) return t;
+            const idx = orderMapByStatus?.[t.status]?.[t.id];
+            if (idx === undefined) return t;
+            return { ...t, custom_sort_order: idx };
+          });
+
+          if (updates.length) {
+            await updateSortOrderMutation.call({
+              payload: JSON.stringify({ tasks: updates }),
+            });
+          }
+
+          return nextWithSort;
         },
         {
-          optimisticData: (current) => reorderInMemory(current),
+          optimisticData: (current) => {
+            const next = reorderInMemory(current);
+            const statusesToUpdate =
+              newStatus === oldStatus ? [newStatus] : [oldStatus, newStatus];
+            const orderMapByStatus = {};
+            statusesToUpdate.forEach((status) => {
+              const colTasks = (next || []).filter((t) => t.status === status);
+              orderMapByStatus[status] = {};
+              colTasks.forEach((t, idx) => {
+                orderMapByStatus[status][t.id] = idx;
+              });
+            });
+            return (next || []).map((t) => {
+              if (!statusesToUpdate.includes(t.status)) return t;
+              const idx = orderMapByStatus?.[t.status]?.[t.id];
+              if (idx === undefined) return t;
+              return { ...t, custom_sort_order: idx };
+            });
+          },
           rollbackOnError: true,
           revalidate: false,
           populateCache: true,
@@ -616,7 +727,7 @@ export default function KanbanView() {
   }
   return (
     <div className="text-slate-900 h-[calc(100vh-180px)] overflow-hidden">
-      <div className="mx-auto flex gap-6 overflow-x-auto pb-8 h-full items-start">
+      <div className="mx-auto flex gap-6 overflow-x-auto hide-scrollbar pb-8 h-full items-start">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -628,7 +739,25 @@ export default function KanbanView() {
               key={col.id}
               id={col.id}
               title={col.title}
-              tasks_list={tasks_list.filter((i) => i.status === col.id)}
+              tasks_list={tasks_list
+                .filter((i) => i.status === col.id)
+                .slice()
+                .sort((a, b) => {
+                  const aSort =
+                    a.custom_sort_order === null ||
+                    a.custom_sort_order === undefined
+                      ? Number.POSITIVE_INFINITY
+                      : Number(a.custom_sort_order);
+                  const bSort =
+                    b.custom_sort_order === null ||
+                    b.custom_sort_order === undefined
+                      ? Number.POSITIVE_INFINITY
+                      : Number(b.custom_sort_order);
+                  if (aSort !== bSort) return aSort - bSort;
+                  return String(b.modified || "").localeCompare(
+                    String(a.modified || ""),
+                  );
+                })}
               createTask={createNewTask}
             />
           ))}

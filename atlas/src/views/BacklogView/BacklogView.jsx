@@ -95,7 +95,7 @@ const TaskCard = ({ task, isOverlay = false }) => {
       ref={setNodeRef}
       style={style}
       onClick={(e) => {
-        const el = e.target.closest?.("button, a, input, textarea, select");
+        const el = e.target.closest?.("button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker");
         if (el) return;
         if (task.id === "new_item") return;
         searchParams.set("selected_task", task.id);

@@ -43,3 +43,14 @@
     background-color: rgb(148 163 184 / 0.8); /* slate-400 */
   }
 }
+
+/* utility class for hiding scrollbars while retaining scroll behavior */
+.hide-scrollbar {
+  /* Firefox */
+  scrollbar-width: none;
+  /* IE 10+ */
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

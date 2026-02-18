@@ -131,63 +131,18 @@ const Tasks = () => {
     <>
       <div className="space-y-2 md:space-y-1">
         {/* Header Section */}
-        {project_data.project_name && (
-          <div className="flex items-center justify-between space-x-3">
-            <div>
-              {/* <Select
-                variant="borderless"
-                placeholder="Filter by Project"
-                style={{
-                  // width: "100%",
-                  size: "large",
-                  fontSize: "24px",
-                  fontWeight: "600",
-                }}
-                defaultValue={qp.get("project") || []}
-                value={qp.get("project") || []}
-                onChange={(value) => {
-                  qp.set("project", value);
-                }}
-                options={projects_options_query?.data || []}
-              /> */}
-              <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-1">
-
-
-                <div className="flex space-x-1 overflow-x-auto">
-                  {(projects_options_query?.data || []).map((project) => (
-                    <button
-                      onClick={() => {
-                        if (project.value === qp.get("project")) {
-                          qp.set("project", "");
-                        } else {
-                          qp.set("project", project.value);
-                        }
-                      }}
-                      className={`shrink-0 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${qp.get("project") === project.value
-                          ? "bg-indigo-600 dark:bg-indigo-500 text-white shadow-md"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700"
-                        }`}
-                      key={project.value}
-                    >
-                      {project.label}
-                      {/* <span
-                        className={`ml-2 text-xs font-bold px-1.5 py-0.5 rounded ${qp.get("project") === project.value
-                            ? "bg-white/20"
-                            : "bg-slate-200 dark:bg-slate-600"
-                          }`}
-                      >
-                        {( projects_options_query?.data || []).filter((p) => p.name === project.value).length}
-                      </span> */}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-             
-            </div>
+        <div className="flex items-center justify-between space-x-3">
+          <div>
+            {project_data.project_name && (
+              <h1 className="text-xl font-bold">
+                {project_data.project_name}
+              </h1>
+            )}
+          </div>
+          {project_data.project_name && (
             <Select
               variant="borderless"
-              placeholder="Filter by Project"
+              placeholder="Execution Mode"
               style={{
                 // width: "100%",
                 size: "large",
@@ -217,8 +172,8 @@ const Tasks = () => {
                 },
               ]}
             />
-          </div>
-        )}
+          )}
+        </div>
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
           {/* Tabs */}
 
