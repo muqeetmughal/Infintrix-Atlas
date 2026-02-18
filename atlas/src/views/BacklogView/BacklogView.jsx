@@ -94,6 +94,13 @@ const TaskCard = ({ task, isOverlay = false }) => {
     <div
       ref={setNodeRef}
       style={style}
+      onClick={(e) => {
+        const el = e.target.closest?.("button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker");
+        if (el) return;
+        if (task.id === "new_item") return;
+        searchParams.set("selected_task", task.id);
+        setSearchParams(searchParams);
+      }}
       className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl shadow-sm hover:border-indigo-300 dark:hover:border-indigo-600 transition-all flex items-start gap-3 group
         ${isDragging && !isOverlay ? "opacity-30" : "opacity-100"}
         ${
@@ -228,6 +235,9 @@ const BacklogView = () => {
   const [showBacklogCreator, setShowBacklogCreator] = useState(false);
   const { mutate } = useSWRConfig();
   const project_id = qp.get("project") || null;
+  const statusFilter = qp.getArray("status");
+  const priorityFilter = qp.getArray("priority");
+  const searchText = (qp.get("search") || "").toLowerCase();
   const updateMutation = useFrappeUpdateDoc();
   const createMutation = useFrappeCreateDoc();
   const deleteMutation = useFrappeDeleteDoc();
@@ -264,7 +274,21 @@ const BacklogView = () => {
   );
   const isScrum = project.custom_execution_mode === "Scrum";
 
-  const tasks = tasks_query.data || [];
+  const tasks = (tasks_query.data || []).filter((task) => {
+    if (statusFilter.length && !statusFilter.includes(task.status)) {
+      return false;
+    }
+    if (priorityFilter.length && !priorityFilter.includes(task.priority)) {
+      return false;
+    }
+    if (searchText) {
+      const haystack = `${task.subject || ""} ${task.name || ""}`.toLowerCase();
+      if (!haystack.includes(searchText)) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

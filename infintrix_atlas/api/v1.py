@@ -26,9 +26,13 @@ def get_tasks():
                 Task.priority,
                 Task.status,
                 Task.project,
+                Task.custom_cycle.as_("cycle"),
+                Task.custom_sort_order.as_("sort_order"),
                 Task.modified,
             )
             .where(Task.project == project)
+            .orderby(Task.status, order=frappe.qb.asc)
+            .orderby(Task.custom_sort_order, order=frappe.qb.asc)
             .orderby(Task.modified, order=frappe.qb.desc)
             .run(as_dict=True)
         )
@@ -45,8 +49,11 @@ def get_tasks():
                 Task.project,
                 Task.modified,
                 Task.custom_cycle.as_("cycle"),
+                Task.custom_sort_order.as_("sort_order"),
             )
             .where(Task.project.isnull())
+            .orderby(Task.status, order=frappe.qb.asc)
+            .orderby(Task.custom_sort_order, order=frappe.qb.asc)
             .orderby(Task.modified, order=frappe.qb.desc)
             .run(as_dict=True)
         )
@@ -86,6 +93,81 @@ def get_tasks():
         )
 
     return tasks
+
+
+@frappe.whitelist()
+def update_task_sort_order(payload=None):
+
+    if isinstance(payload, str):
+        payload = json.loads(payload or "{}")
+
+    if not payload:
+        frappe.throw("Payload is required")
+
+    tasks = payload.get("tasks") or []
+    if not tasks:
+        return {"success": True, "updated": 0}
+
+    # Deduplicate by name (last write wins), validate minimal shape.
+    dedup = {}
+    for t in tasks:
+        name = (t or {}).get("name")
+        if not name:
+            continue
+        dedup[name] = {
+            "name": name,
+            "custom_sort_order": (t or {}).get("custom_sort_order"),
+            "status": (t or {}).get("status"),
+        }
+
+    updates = [v for v in dedup.values() if v.get("custom_sort_order") is not None]
+    if not updates:
+        return {"success": True, "updated": 0}
+
+    # Permission check (SQL update bypasses doc perms otherwise).
+    for u in updates:
+        if not frappe.has_permission("Task", "write", u["name"]):
+            frappe.throw(f"Not permitted to update Task {u['name']}")
+
+    # Build CASE expressions for efficient bulk update
+    params = {}
+    names = []
+    sort_cases = []
+    status_cases = []
+
+    for idx, u in enumerate(updates):
+        name = u["name"]
+        names.append(name)
+
+        params[f"name_{idx}"] = name
+        params[f"sort_{idx}"] = int(u["custom_sort_order"])
+        sort_cases.append(f"WHEN %(name_{idx})s THEN %(sort_{idx})s")
+
+        if u.get("status") is not None:
+            params[f"status_{idx}"] = u["status"]
+            status_cases.append(f"WHEN %(name_{idx})s THEN %(status_{idx})s")
+
+    params["names"] = tuple(names)
+
+    set_clauses = []
+    if status_cases:
+        set_clauses.append(
+            f"status = CASE name {' '.join(status_cases)} ELSE status END"
+        )
+    set_clauses.append(
+        f"custom_sort_order = CASE name {' '.join(sort_cases)} ELSE custom_sort_order END"
+    )
+
+    sql = f"""
+        UPDATE `tabTask`
+        SET {', '.join(set_clauses)}
+        WHERE name IN %(names)s
+    """
+
+    frappe.db.sql(sql, params)
+    frappe.db.commit()
+
+    return {"success": True, "updated": len(names)}
 
 
 @frappe.whitelist(allow_guest=True)  # Adjust permissions as needed
@@ -130,13 +212,21 @@ def switch_assignee_of_task(task_name, new_assignee):
     if existing_todo:
         existing_assignee = frappe.db.get_value("ToDo", existing_todo, "allocated_to")
 
-    # Return early if assignee hasn't changed
+    # Return early if assignee hasn't changed 
     if existing_assignee == new_assignee:
         return {"success": True, "message": "No changes made"}
 
-    # Close existing assignee
-    if existing_todo:
+    # Notify old assignee that task has been removed
+    if existing_assignee:
         frappe.db.set_value("ToDo", existing_todo, "status", "Closed")
+        create_custom_notification(
+            user=existing_assignee,
+            subject=f"Task Removed: {task_doc.subject}",
+            content=f"The task '<b>{task_doc.subject}</b>' has been removed from you.",
+            document_type="Task",
+            document_name=task_name,
+            icons='<i class="fa fa-trash"></i>',
+        )
 
     # Create new todo for new assignee only if not unassigned
     if new_assignee:
@@ -166,6 +256,97 @@ def switch_assignee_of_task(task_name, new_assignee):
 
 
 @frappe.whitelist()
+def notify_attachment_added(task_name, file_name):
+
+    if not task_name:
+        frappe.throw("Task is required")
+
+    try:
+        task_doc = frappe.get_doc("Task", task_name)
+        
+        assignee = frappe.db.get_value(
+            "ToDo",
+            {
+                "reference_type": "Task",
+                "reference_name": task_name,
+                "status": ["!=", "Cancelled"],
+            },
+            "allocated_to"
+        )
+
+        # If there's an assignee, send them a notification
+        if assignee:
+            create_custom_notification(
+                user=assignee,
+                subject=f"File attached to task: {task_doc.subject}",
+                content=f"A new file '<b>{file_name}</b>' has been attached to task '<b>{task_doc.subject}</b>'.",
+                document_type="Task",
+                document_name=task_name,
+                icons='<i class="fa fa-paperclip"></i>',
+            )
+            return {"success": True, "message": f"Notification sent to {assignee}"}
+        else:
+            return {"success": True, "message": "No assignee found, no notification sent"}
+    
+    except Exception as e:
+        frappe.log_error(f"Failed to send attachment notification: {e}", "Attachment Notification Error")
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def notify_status_changed(task_name, old_status, new_status):
+
+    if not task_name:
+        frappe.throw("Task is required")
+
+    try:
+        task_doc = frappe.get_doc("Task", task_name)
+        
+        # Get all assignees (there might be multiple)
+        assignees = frappe.db.get_all(
+            "ToDo",
+            filters={
+                "reference_type": "Task",
+                "reference_name": task_name,
+                "status": ["!=", "Cancelled"],
+            },
+            fields=["allocated_to"],
+            distinct=True
+        )
+
+        # If there are assignees, send them notifications
+        if assignees:
+            status_icons = {
+                "Open": '<i class="fa fa-circle-o"></i>',
+                "Working": '<i class="fa fa-cog"></i>',
+                "Pending Review": '<i class="fa fa-eye"></i>',
+                "Completed": '<i class="fa fa-check-circle"></i>',
+                "Cancelled": '<i class="fa fa-times-circle"></i>',
+            }
+            icon = status_icons.get(new_status, '<i class="fa fa-info-circle"></i>')
+            
+            for assignee_row in assignees:
+                assignee = assignee_row.allocated_to
+                # Don't notify if the assignee is the one who changed the status
+                if assignee != frappe.session.user:
+                    create_custom_notification(
+                        user=assignee,
+                        subject=f"Task status updated: {task_doc.subject}",
+                        content=f"Task '<b>{task_doc.subject}</b>' status changed from '<b>{old_status}</b>' to '<b>{new_status}</b>'.",
+                        document_type="Task",
+                        document_name=task_name,
+                        icons=icon,
+                    )
+            
+            return {"success": True, "message": f"Notifications sent to {len(assignees)} assignee(s)"}
+        else:
+            return {"success": True, "message": "No assignee found, no notification sent"}
+    
+    except Exception as e:
+        frappe.log_error(f"Failed to send status change notification: {e}", "Status Change Notification Error")
+        return {"success": False, "message": str(e)}
+
+
 def get_project_flow_metrics(project):
     """
     Returns execution efficiency (%) and backlog health label
@@ -362,7 +543,10 @@ def query_tasks(payload=None):
     tree = payload.get("tree", False)
     page = int(payload.get("page", 1))
     page_size = int(payload.get("page_size", 20))
-    order_by = payload.get("order_by", "t.modified desc")
+    order_by = payload.get(
+        "order_by",
+        "t.status asc, t.custom_sort_order asc, t.modified desc",
+    )
 
     offset = (page - 1) * page_size
 
@@ -558,6 +742,25 @@ def get_project_user_stats(user=None, activity_limit=5):
         {"projects": tuple(project_names)},
     )[0][0]
 
+
+    projects_list = []
+    for p in projects:
+        try:
+            pct = int(p.get("percent_complete") or 0)
+        except Exception:
+            try:
+                pct = round(float(p.get("percent_complete") or 0))
+            except Exception:
+                pct = 0
+
+        projects_list.append({
+            "name": p.get("name"),
+            "project_name": p.get("project_name") or p.get("name"),
+            "project_type": p.get("project_type") or "",
+            "status": p.get("status") or "",
+            "percent_complete": pct,
+        })
+
     try:
         activity_limit = int(activity_limit)
     except (ValueError, TypeError):
@@ -635,7 +838,8 @@ def get_project_user_stats(user=None, activity_limit=5):
         "active_tasks": active_tasks,
         "avg_progress": avg_progress,
         "team_members": team_members,
-        "recent_activities": recent_activities
+        "projects": projects_list,
+        "recent_activities": recent_activities,
     }
 
 

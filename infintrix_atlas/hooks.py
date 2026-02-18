@@ -149,13 +149,11 @@ add_to_apps_screen = [
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"File": {
+		"after_insert": "infintrix_atlas.events.file.on_file_insert",
+	},
+}
 
 # Scheduled Tasks
 # ---------------
@@ -263,6 +261,7 @@ doc_events = {
     "Task": {
         "validate": "infintrix_atlas.events.task.validate_task_hierarchy",
         "before_save": "infintrix_atlas.events.task.before_task_save",
+        "after_save": "infintrix_atlas.events.task.after_task_save",
         # "has_permission": "infintrix_atlas.permissions.task_has_permission"
     },
     #  "Project": {

@@ -1,29 +1,50 @@
-import { Button, Input, Skeleton } from "antd";
-import { useFrappeUpdateDoc } from "frappe-react-sdk";
+import { Button, Input, Skeleton, message } from "antd";
+import { useFrappeUpdateDoc, useSWRConfig } from "frappe-react-sdk";
 import { Edit, X, Check } from "lucide-react";
 import React from "react";
 import { useSearchParams } from "react-router-dom";
 
-const SubjectWidget = ({ task, disableClick, style, inputStyle }) => {
+const SubjectWidget = ({ task, disableClick, style, inputStyle, onUpdate }) => {
   const [editingSubject, setEditingSubject] = React.useState(false);
   const [subject, setSubject] = React.useState(task.subject);
   const [searchParams, setSearchParams] = useSearchParams();
   const updateMutation = useFrappeUpdateDoc();
+  const swr = useSWRConfig();
+
   const handleSave = () => {
-    // Add save logic here
-    updateMutation.mutate(
-      {
-        doctype: "Task",
-        name: task.id,
+    // Use correct SDK method: updateDoc
+    updateMutation
+      .updateDoc("Task", task.name, {
         subject: subject,
-      },
-      {
-        onSuccess: () => {
-          // Optionally show a success message or perform additional actions
-        },
-      },
-    );
-    setEditingSubject(false);
+      })
+      .then((updatedTask) => {
+        message.success("Task name updated successfully");
+        // Immediately update parent component's task state
+        if (onUpdate) {
+          onUpdate({ ...task, subject: subject });
+        }
+        // Invalidate ALL task-related caches to ensure immediate update everywhere
+        swr.mutate(
+          (key) => {
+            if (!Array.isArray(key)) return false;
+            return (
+              key.some((k) => k === "Task") ||
+              key.some((k) => k === task.name) ||
+              key.some((k) => k === "tasks") ||
+              key.some((k) => typeof k === "string" && k.toLowerCase().includes("task")) ||
+              key.some((k) => k === "Cycle") ||
+              key.some((k) => typeof k === "string" && k.toLowerCase().includes("cycle"))
+            );
+          },
+          undefined,
+          { revalidate: true }
+        );
+        setEditingSubject(false);
+      })
+      .catch((err) => {
+        message.error("Failed to update task name");
+        console.error("Update error:", err);
+      });
   };
 
   const handleCancel = () => {
@@ -82,7 +103,7 @@ const SubjectWidget = ({ task, disableClick, style, inputStyle }) => {
           <p
             style={style}
             onClick={handleTitleClick}
-            className="flex-1 min-w-0 text-sm font-medium text-slate-800 dark:text-slate-100 leading-snug cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 overflow-hidden text-ellipsis whitespace-nowrap"
+            className="flex-1 min-w-0 text-sm font-medium text-slate-800 dark:text-slate-100 leading-snug cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 whitespace-normal break-words"
           >
             {subject}
           </p>

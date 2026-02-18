@@ -1,9 +1,18 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useFrappeGetDocList } from "frappe-react-sdk";
+import { useQueryParams } from "../hooks/useQueryParams";
 import { menuItems } from "../data/menu";
 import logo from "../assets/logo.png";
 import Logo from "./Logo";
 const Sidebar = () => {
+  const qp = useQueryParams();
+  const currentProject = qp.get("project");
+
+  const projectsQuery = useFrappeGetDocList("Project", {
+    fields: ["name as value", "project_name as label"],
+    limit_page_length: 100,
+  });
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     const saved = localStorage.getItem("sidebarOpen");
@@ -70,6 +79,36 @@ const Sidebar = () => {
             </button>
           ))}
         </nav>
+
+        {/* project selector when viewing tasks */}
+        {location.pathname.includes("/tasks") && isSidebarOpen && (
+          <div className="px-4 mt-6">
+            <h4 className="text-xs font-semibold uppercase text-slate-400 mb-2">
+              Projects
+            </h4>
+            <div className="space-y-1">
+              {(projectsQuery.data || []).map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => {
+                    if (currentProject === p.value) {
+                      qp.set("project", "");
+                    } else {
+                      qp.set("project", p.value);
+                    }
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    currentProject === p.value
+                      ? "bg-indigo-600 text-white"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="px-4 mt-8">
           <button

@@ -24,6 +24,7 @@ import {
   useFrappeGetDoc,
   useFrappeGetDocList,
   useFrappeUpdateDoc,
+  useFrappePostCall,
   useSWRConfig,
 } from "frappe-react-sdk";
 import { useGetDoctypeField } from "../hooks/doctype";
@@ -66,8 +67,16 @@ const IssueCard = React.forwardRef(
       }
       `}
         {...attributes}
-        {...listeners}
-        {...props}
+          {...listeners}
+          {...props}
+          onClick={(e) => {
+            // Don't open modal if clicking on interactive elements
+            const el = e.target.closest?.("button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker");
+            if (el) return;
+            if (issue.id === "new_item") return;
+            searchParams.set("selected_task", issue.id);
+            setSearchParams(searchParams);
+          }}
       >
         <div className="flex items-start justify-between mb-2">
           <SubjectWidget task={issue} />
@@ -203,7 +212,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
   return (
     <div
       ref={setNodeRef}
-      className="flex flex-col w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 max-h-full border border-slate-200/50 dark:border-slate-700"
+      className="flex flex-col w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 max-h-[60vh] border border-slate-200/50 dark:border-slate-700"
     >
       <div className="flex items-center justify-between mb-4 px-1">
         <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
@@ -229,7 +238,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-[60vh]">
+      <div className="flex-1 overflow-y-auto hide-scrollbar min-h-[60vh]">
         <SortableContext
           items={tasks_list.map((i) => i.id)}
           strategy={verticalListSortingStrategy}
@@ -298,9 +307,18 @@ export default function KanbanView() {
   // const { project } = useParams();
   const qp = useQueryParams();
   const project = qp.get("project") || null;
+  const statusFilter = qp.getArray("status");
+  const priorityFilter = qp.getArray("priority");
+  const searchText = (qp.get("search") || "").toLowerCase();
   const createMutation = useFrappeCreateDoc();
 
   const updateTaskMutation = useFrappeUpdateDoc();
+  const updateSortOrderMutation = useFrappePostCall(
+    "infintrix_atlas.api.v1.update_task_sort_order",
+  );
+  const notifyStatusChange = useFrappePostCall(
+    "infintrix_atlas.api.v1.notify_status_changed",
+  );
   const project_query = useFrappeGetDoc("Project", project);
   const columns_query = useGetDoctypeField("Task", "status", "options");
 
@@ -317,7 +335,48 @@ export default function KanbanView() {
 
   const { options } = columns_query.data || [];
 
-  const tasks_list = tasks_list_query.data || [];
+  const raw_tasks = tasks_list_query.data || [];
+  const tasks_list = useMemo(
+    () =>
+      raw_tasks
+        .filter((task) => {
+        if (statusFilter.length && !statusFilter.includes(task.status)) {
+          return false;
+        }
+        if (priorityFilter.length && !priorityFilter.includes(task.priority)) {
+          return false;
+        }
+        if (searchText) {
+          const haystack = `${task.subject || ""} ${task.name || ""}`.toLowerCase();
+          if (!haystack.includes(searchText)) {
+            return false;
+          }
+        }
+        return true;
+      })
+        .slice()
+        .sort((a, b) => {
+          // Keep list stable across re-fetches: status ASC, custom_sort_order ASC
+          const statusCmp = String(a.status || "").localeCompare(
+            String(b.status || ""),
+          );
+          if (statusCmp !== 0) return statusCmp;
+
+          const aSort =
+            a.custom_sort_order === null || a.custom_sort_order === undefined
+              ? Number.POSITIVE_INFINITY
+              : Number(a.custom_sort_order);
+          const bSort =
+            b.custom_sort_order === null || b.custom_sort_order === undefined
+              ? Number.POSITIVE_INFINITY
+              : Number(b.custom_sort_order);
+          if (aSort !== bSort) return aSort - bSort;
+
+          // fallback
+          return String(b.modified || "").localeCompare(String(a.modified || ""));
+        }),
+    [raw_tasks, statusFilter, priorityFilter, searchText],
+  );
 
   const COLUMNS = useMemo(() => {
     if (!options) {
@@ -362,6 +421,10 @@ export default function KanbanView() {
   };
 
   const mutateTaskStatus = async (task, newStatus) => {
+    // Find the current task to get old status
+    const currentTask = tasks_list.find((t) => t.name === task);
+    const oldStatus = currentTask?.status;
+    
     await tasks_list_query
       .mutate(
         async (current) => {
@@ -369,7 +432,7 @@ export default function KanbanView() {
             status: newStatus,
           });
 
-          return current.map((t) => {
+          return (current || []).map((t) => {
             if (t.name === task) {
               return { ...t, status: newStatus };
             }
@@ -378,7 +441,7 @@ export default function KanbanView() {
         },
         {
           optimisticData: (current) => {
-            return current.map((t) => {
+            return (current || []).map((t) => {
               if (t.name === task) {
                 return { ...t, status: newStatus };
               }
@@ -392,6 +455,16 @@ export default function KanbanView() {
       )
       .then(() => {
         mutate(["Project", project]);
+        // Notify assigned users about status change
+        if (oldStatus && oldStatus !== newStatus) {
+          notifyStatusChange.call({
+            task_name: task,
+            old_status: oldStatus,
+            new_status: newStatus,
+          }).catch((err) => {
+            console.error("Failed to send status change notification:", err);
+          });
+        }
       });
   };
 
@@ -437,8 +510,6 @@ export default function KanbanView() {
   // }, [isAllTasksDone]);
 
   const handleDragEnd = async (event) => {
-    setActiveIssue(null);
-
     const { active, over } = event;
     if (!over) return;
 
@@ -451,15 +522,22 @@ export default function KanbanView() {
     console.log("Active task:", activeTask);
     if (!activeTask) return;
 
+    // If dropped back onto itself, do nothing
+    if (activeId === overId) {
+      setActiveIssue(null);
+      return;
+    }
+
     let newStatus = activeTask.status;
-    // console.log("Current status:", newStatus);
+    const oldStatus = activeTask.status;
+
+    let dropOnColumn = false;
 
     // Dropped on column
     if (COLUMNS.some((c) => c.id === overId)) {
       newStatus = overId;
+      dropOnColumn = true;
     }
-
-    // console.log("Updating status to:", newStatus);
 
     // Dropped on another task
     const overTask = tasks_list.find((i) => i.id === overId);
@@ -467,41 +545,133 @@ export default function KanbanView() {
       newStatus = overTask.status;
     }
 
-    // console.log("Final new status:", newStatus);
+    const reorderInMemory = (current) => {
+      const snapshot = (current || []).map((t) =>
+        t.id === activeId ? { ...t, status: newStatus } : t,
+      );
 
-    if (newStatus !== activeTask.status) {
-      try {
-        await mutateTaskStatus(activeId, newStatus);
-      } catch (e) {
-        // console.error("Failed to update task", e);
-        message.error(String(e.exception).split(":").slice(-1)[0]);
+      // Work only with tasks belonging to the target status
+      let columnTasks = snapshot.filter((t) => t.status === newStatus);
+
+      const fromIndex = columnTasks.findIndex((t) => t.id === activeId);
+      if (fromIndex === -1) return snapshot;
+
+      let toIndex = fromIndex;
+
+      if (dropOnColumn || !overTask) {
+        // Dropped on column header/area – move to end of that column
+        toIndex = columnTasks.length - 1;
+      } else {
+        // Dropped onto another task – position relative to that task
+        const overColIndex = columnTasks.findIndex((t) => t.id === overId);
+        if (overColIndex !== -1) {
+          toIndex = overColIndex;
+        }
       }
+
+      columnTasks = arrayMove(columnTasks, fromIndex, toIndex);
+
+      const others = snapshot.filter((t) => t.status !== newStatus);
+
+      // Keep other statuses' relative order, and place this column's tasks grouped
+      return [...others, ...columnTasks];
+    };
+
+    try {
+      await tasks_list_query.mutate(
+        async (current) => {
+          const next = reorderInMemory(current);
+
+          if (newStatus !== oldStatus) {
+            await updateTaskMutation.updateDoc("Task", activeTask.name, {
+              status: newStatus,
+            });
+            mutate(["Project", project]);
+            // Notify assigned users about status change
+            notifyStatusChange.call({
+              task_name: activeTask.name,
+              old_status: oldStatus,
+              new_status: newStatus,
+            }).catch((err) => {
+              console.error("Failed to send status change notification:", err);
+            });
+          }
+
+          // Persist sort order only for affected columns (old + new)
+          const statusesToUpdate =
+            newStatus === oldStatus ? [newStatus] : [oldStatus, newStatus];
+
+          // Build old state maps for minimal updates
+          const prevById = new Map(
+            (current || []).map((t) => [t.id, t]),
+          );
+
+          const updates = [];
+          const orderMapByStatus = {};
+          statusesToUpdate.forEach((status) => {
+            const colTasks = (next || []).filter((t) => t.status === status);
+            orderMapByStatus[status] = {};
+            colTasks.forEach((t, idx) => {
+              orderMapByStatus[status][t.id] = idx;
+              const prev = prevById.get(t.id);
+              const prevSort = prev?.custom_sort_order;
+              const prevStatus = prev?.status;
+              if (prevStatus !== t.status || prevSort !== idx) {
+                updates.push({
+                  name: t.name || t.id,
+                  custom_sort_order: idx,
+                });
+              }
+            });
+          });
+
+          const nextWithSort = (next || []).map((t) => {
+            if (!statusesToUpdate.includes(t.status)) return t;
+            const idx = orderMapByStatus?.[t.status]?.[t.id];
+            if (idx === undefined) return t;
+            return { ...t, custom_sort_order: idx };
+          });
+
+          if (updates.length) {
+            await updateSortOrderMutation.call({
+              payload: JSON.stringify({ tasks: updates }),
+            });
+          }
+
+          return nextWithSort;
+        },
+        {
+          optimisticData: (current) => {
+            const next = reorderInMemory(current);
+            const statusesToUpdate =
+              newStatus === oldStatus ? [newStatus] : [oldStatus, newStatus];
+            const orderMapByStatus = {};
+            statusesToUpdate.forEach((status) => {
+              const colTasks = (next || []).filter((t) => t.status === status);
+              orderMapByStatus[status] = {};
+              colTasks.forEach((t, idx) => {
+                orderMapByStatus[status][t.id] = idx;
+              });
+            });
+            return (next || []).map((t) => {
+              if (!statusesToUpdate.includes(t.status)) return t;
+              const idx = orderMapByStatus?.[t.status]?.[t.id];
+              if (idx === undefined) return t;
+              return { ...t, custom_sort_order: idx };
+            });
+          },
+          rollbackOnError: true,
+          revalidate: false,
+          populateCache: true,
+        },
+      );
+    } catch (e) {
+      if (newStatus !== oldStatus) {
+        message.error(String(e.exception || e.message || e).split(":").slice(-1)[0]);
+      }
+    } finally {
+      setActiveIssue(null);
     }
-    // setActiveIssue(null);
-    // const { active, over } = event;
-    // if (!over) return;
-
-    // const activeId = active.id;
-    // const overId = over.id;
-
-    // if (activeId !== overId) {
-    //   console.log("activeId!=overId", activeId, overId);
-    //   // setIssues((prev) => {
-    //     // console.log("Prev issues:", prev);
-    //     const activeIndex = prev.findIndex((i) => i.id === activeId);
-    //     const overIndex = prev.findIndex((i) => i.id === overId);
-
-    //     console.log("Active index:", activeIndex, "Over index:", overIndex);
-    //     // return arrayMove(prev, activeIndex, overIndex);
-    //   // });
-    // }
-
-    // const columnName = tasks_list.find((i) => i.id === activeId)?.status || overId;
-
-    // console.log("Mutating status", activeId, columnName);
-
-    // mutate(activeId, columnName);
-    //  tasks_list_query.mutate()
   };
 
   const dropAnimation = {
@@ -556,8 +726,8 @@ export default function KanbanView() {
     );
   }
   return (
-    <div className="text-slate-900">
-      <div className="mx-auto flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-180px)] items-start">
+    <div className="text-slate-900 h-[calc(100vh-180px)] overflow-hidden">
+      <div className="mx-auto flex gap-6 overflow-x-auto hide-scrollbar pb-8 h-full items-start">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -569,7 +739,25 @@ export default function KanbanView() {
               key={col.id}
               id={col.id}
               title={col.title}
-              tasks_list={tasks_list.filter((i) => i.status === col.id)}
+              tasks_list={tasks_list
+                .filter((i) => i.status === col.id)
+                .slice()
+                .sort((a, b) => {
+                  const aSort =
+                    a.custom_sort_order === null ||
+                    a.custom_sort_order === undefined
+                      ? Number.POSITIVE_INFINITY
+                      : Number(a.custom_sort_order);
+                  const bSort =
+                    b.custom_sort_order === null ||
+                    b.custom_sort_order === undefined
+                      ? Number.POSITIVE_INFINITY
+                      : Number(b.custom_sort_order);
+                  if (aSort !== bSort) return aSort - bSort;
+                  return String(b.modified || "").localeCompare(
+                    String(a.modified || ""),
+                  );
+                })}
               createTask={createNewTask}
             />
           ))}
