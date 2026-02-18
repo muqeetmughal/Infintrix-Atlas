@@ -67,6 +67,10 @@ const TaskDetail = () => {
   const assignee_mutation = useFrappePostCall(
     "infintrix_atlas.api.v1.switch_assignee_of_task",
   );
+  
+  const notifyStatusChange = useFrappePostCall(
+    "infintrix_atlas.api.v1.notify_status_changed",
+  );
 
   const assignees_of_task = (assignee_of_task_query?.data || []).map((todo) => {
     return todo.allocated_to;
@@ -418,12 +422,23 @@ const TaskDetail = () => {
               <StatusWidget
                 value={task.status}
                 onChange={(newStatus) => {
+                  const oldStatus = task.status;
                   updateMutation
                     .updateDoc("Task", task.name, {
                       status: newStatus,
                     })
                     .then(() => {
                       task_details_query.mutate();
+                      // Notify assigned users about status change
+                      if (oldStatus !== newStatus) {
+                        notifyStatusChange.call({
+                          task_name: task.name,
+                          old_status: oldStatus,
+                          new_status: newStatus,
+                        }).catch((err) => {
+                          console.error("Failed to send status change notification:", err);
+                        });
+                      }
                     });
                 }}
               />

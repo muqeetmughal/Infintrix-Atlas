@@ -90,78 +90,81 @@ export const AssigneeSelectWidget = (props) => {
     return user ? user.full_name : value;
   };
   return (
-    <Dropdown
-      disabled={props.disabled}
-      menu={{
-        items,
-        selectedKeys: assignees_of_task.concat(selected),
-        onClick: ({ key }) => {
-          console.log("updateing assignee:", key);
+    <div onClick={(e) => e.stopPropagation()}>
+      <Dropdown
+        disabled={props.disabled}
+        menu={{
+          items,
+          selectedKeys: assignees_of_task.concat(selected),
+          onClick: ({ key, domEvent }) => {
+            domEvent?.stopPropagation?.();
+            console.log("updateing assignee:", key);
 
-          let newSelected = [];
-          if (props.single) {
-            newSelected = [key];
-          } else {
-            if (selected.includes(key)) {
-              newSelected = selected.filter((s) => s !== key);
+            let newSelected = [];
+            if (props.single) {
+              newSelected = [key];
             } else {
-              newSelected = [...selected, key];
+              if (selected.includes(key)) {
+                newSelected = selected.filter((s) => s !== key);
+              } else {
+                newSelected = [...selected, key];
+              }
             }
-          }
-          setSelected(newSelected);
-          assignee_mutation
-            .call({
-              task_name: props.task,
-              new_assignee: key,
-            })
-            .then(() => {
-              assignee_of_task_query.mutate();
-            });
-        },
-      }}
-      trigger={["click"]}
-      onOpenChange={(flag) => setOpen(flag)}
-      open={open}
-      popupRender={(menu) => (
-        <div style={contentStyle}>
-          <Space style={{ padding: 8 }}>
-            <Input
-              prefix={<Avatar size={24} icon={<UserOutlined />} />}
-              placeholder=""
-              style={{
-                width: "100%",
-              }}
-            />
-          </Space>
-          <Divider style={{ margin: 0 }} />
-          {React.cloneElement(menu, { style: menuStyle })}
-        </div>
-      )}
-    >
-      <Button size="small" type="text">
-        {assignees_of_task.length > 0 ? (
-          <div className="flex items-center -space-x-2">
-            {assignees_of_task.map((assignee) => (
-              <div key={assignee} className="inline-block">
-                <AvatarGen name={assignee} enable_tooltip={false} />
-              </div>
-            ))}
-            {props.show_label && (
-              <span className="ml-3 text-sm">
-                {assignees_of_task.length === 1
-                  ? getNameByValue(assignees_of_task[0])
-                  : `${assignees_of_task.length} assignees`}
-              </span>
-            )}
+            setSelected(newSelected);
+            assignee_mutation
+              .call({
+                task_name: props.task,
+                new_assignee: key,
+              })
+              .then(() => {
+                assignee_of_task_query.mutate();
+              });
+          },
+        }}
+        trigger={["click"]}
+        onOpenChange={(flag) => setOpen(flag)}
+        open={open}
+        popupRender={(menu) => (
+          <div style={contentStyle} onClick={(e) => e.stopPropagation()}>
+            <Space style={{ padding: 8 }}>
+              <Input
+                prefix={<Avatar size={24} icon={<UserOutlined />} />}
+                placeholder=""
+                style={{
+                  width: "100%",
+                }}
+              />
+            </Space>
+            <Divider style={{ margin: 0 }} />
+            {React.cloneElement(menu, { style: menuStyle })}
           </div>
-        ) : (
-          <>
-            <Avatar size={24} icon={<UserOutlined />} />{" "}
-            {props.show_label && "Unassigned"}
-          </>
         )}
-      </Button>
-    </Dropdown>
+      >
+        <Button size="small" type="text">
+          {assignees_of_task.length > 0 ? (
+            <div className="flex items-center -space-x-2">
+              {assignees_of_task.map((assignee) => (
+                <div key={assignee} className="inline-block">
+                  <AvatarGen name={assignee} enable_tooltip={false} />
+                </div>
+              ))}
+              {props.show_label && (
+                <span className="ml-3 text-sm">
+                  {assignees_of_task.length === 1
+                    ? getNameByValue(assignees_of_task[0])
+                    : `${assignees_of_task.length} assignees`}
+                </span>
+              )}
+            </div>
+          ) : (
+            <>
+              <Avatar size={24} icon={<UserOutlined />} />{" "}
+              {props.show_label && "Unassigned"}
+            </>
+          )}
+        </Button>
+      </Dropdown>
+    </div>
   );
 };
 

@@ -55,7 +55,8 @@ const ProjectCard = ({ project: p }) => {
           {p.status}
         </Badge>
         <Button
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             if (is_archived) {
               updateMutation
                 .updateDoc("Project", p.name, { custom_is_archived: 0 })

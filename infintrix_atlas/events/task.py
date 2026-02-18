@@ -46,3 +46,31 @@ def before_task_save(doc, method):
     )
 
     doc.is_group = 1 if is_container else 0
+    
+    # Store old status if it has changed (for notification in after_save)
+    if doc.has_value_changed("status") and not doc.is_new():
+        doc._old_status = doc.get_doc_before_save().get("status") if doc.get_doc_before_save() else None
+
+
+def after_task_save(doc, method):
+    """
+    Hook that triggers after a Task document is saved.
+    Sends notification to assigned users if status has changed.
+    """
+    # Check if status was changed (stored in before_save)
+    if hasattr(doc, "_old_status") and doc._old_status is not None:
+        old_status = doc._old_status
+        new_status = doc.status
+        
+        # Only notify if status actually changed
+        if old_status != new_status:
+            try:
+                # Call the whitelisted function using frappe.call
+                frappe.call(
+                    "infintrix_atlas.api.v1.notify_status_changed",
+                    task_name=doc.name,
+                    old_status=old_status,
+                    new_status=new_status
+                )
+            except Exception as e:
+                frappe.log_error(f"Failed to notify status change for task {doc.name}: {e}", "Task Status Notification Hook Error")

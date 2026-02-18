@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useFrappeUpdateDoc } from "frappe-react-sdk";
+import { useFrappeUpdateDoc, useFrappePostCall } from "frappe-react-sdk";
 import Card from "../components/ui/Card";
 import PriorityWidget from "../components/widgets/PriorityWidget";
 import StatusWidget from "../components/widgets/StatusWidget";
@@ -15,6 +15,9 @@ const TableView = () => {
   const tasks_list_query = useTasksQuery();
   const navigate = useNavigate();
   const updateMutation = useFrappeUpdateDoc();
+  const notifyStatusChange = useFrappePostCall(
+    "infintrix_atlas.api.v1.notify_status_changed",
+  );
 
   const statusFilter = qp.getArray("status");
   const priorityFilter = qp.getArray("priority");
@@ -46,7 +49,10 @@ const TableView = () => {
       rowKey="name"
       className="dark:bg-slate-800"
       onRow={(record) => ({
-        onClick: () => {
+        onClick: (e) => {
+          // Don't open modal if clicking on interactive elements
+          const el = e.target.closest?.("button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker");
+          if (el) return;
           qp.set("selected_task", record.name);
         },
       })}
@@ -105,12 +111,23 @@ const TableView = () => {
             <StatusWidget
               value={value}
               onChange={(v) => {
+                const oldStatus = value;
                 updateMutation
                   .updateDoc("Task", record.name, {
                     status: v,
                   })
                   .then(() => {
                     tasks_list_query.mutate();
+                    // Notify assigned users about status change
+                    if (oldStatus !== v) {
+                      notifyStatusChange.call({
+                        task_name: record.name,
+                        old_status: oldStatus,
+                        new_status: v,
+                      }).catch((err) => {
+                        console.error("Failed to send status change notification:", err);
+                      });
+                    }
                   });
               }}
             />
