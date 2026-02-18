@@ -62,6 +62,7 @@ export const useTasksQuery = (
 		"status",
 		"type",
 		"custom_cycle as cycle",
+		"custom_sort_order",
 		"priority",
 		"modified",
 		"project",
@@ -90,8 +91,8 @@ export const useTasksQuery = (
 			filters: final_filters,
 			fields: fields,
 			orderBy: {
-				field: "modified",
-				order: "desc",
+				field: "custom_sort_order",
+				order: "asc",
 			},
 			limit_page_length: 999999,
 		},
@@ -182,6 +183,12 @@ export const useAssigneeUpdateMutation = () => {
 
 	return useFrappePostCall(
 		"infintrix_atlas.api.v1.switch_assignee_of_task"
+	);
+}
+
+export const useSendAttachmentNotificationMutation = () => {
+	return useFrappePostCall(
+		"infintrix_atlas.api.v1.notify_attachment_added"
 	);
 }
 

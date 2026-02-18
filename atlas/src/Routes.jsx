@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import Team from "./pages/Team";
 import TeamDetail from "./pages/TeamDetail";
+import CustomerPortal from "./pages/CustomerPortal";
 export const router = createBrowserRouter(
   [
     {
@@ -73,6 +74,10 @@ export const router = createBrowserRouter(
         {
             path : "team/:id",
             element : <TeamDetail/>
+        },
+        {
+            path : "customer-portal",
+            element : <CustomerPortal/>
         },
         {
           path: "*",

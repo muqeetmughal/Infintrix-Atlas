@@ -54,7 +54,8 @@ const WorkItemTypeWidget = (props) => {
     <>
      
       {(!open && selected_type) ? (
-        <div className="flex items-center" onClick={()=>{
+        <div className="flex items-center" onClick={(e)=>{
+          e.stopPropagation();
           setOpen(true)
         }}>
           <IconRenderer
@@ -66,19 +67,20 @@ const WorkItemTypeWidget = (props) => {
             style={{ color: selected_type.color }}
           />
         </div>
-      ) :  <Select
-        variant="borderless"
-        {...props}
-        open={open}
-        onOpenChange={(visible) => setOpen(visible)}
-        onSelect={() => setOpen(false)}
-        value={selected}
-        onChange={(v) => {
-          setSelected(v);
-          props.onChange && props.onChange(v);
-        }}
-        popupMatchSelectWidth={false}
-      >
+      ) :  <div onClick={(e) => e.stopPropagation()}>
+        <Select
+          variant="borderless"
+          {...props}
+          open={open}
+          onOpenChange={(visible) => setOpen(visible)}
+          onSelect={() => setOpen(false)}
+          value={selected}
+          onChange={(v) => {
+            setSelected(v);
+            props.onChange && props.onChange(v);
+          }}
+          popupMatchSelectWidth={false}
+        >
         {task_types.map((option) => (
           <Select.Option key={option.key} value={option.label}>
             <IconRenderer
@@ -95,7 +97,8 @@ const WorkItemTypeWidget = (props) => {
             </span>
           </Select.Option>
         ))}
-      </Select>}
+      </Select>
+    </div>}
     </>
   );
 };

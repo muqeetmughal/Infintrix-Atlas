@@ -1,14 +1,30 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useFrappeGetDocList } from "frappe-react-sdk";
+import { useQueryParams } from "../hooks/useQueryParams";
 import { menuItems } from "../data/menu";
 import logo from "../assets/logo.png";
+import { useFrappeGetCall } from "frappe-react-sdk";
+
 import Logo from "./Logo";
+import { Dropdown, Typography } from "antd";
+import { Info, LayoutDashboard, LogOut, Menu, Settings } from "lucide-react";
 const Sidebar = () => {
+  const qp = useQueryParams();
+  const currentProject = qp.get("project");
+
+  const projectsQuery = useFrappeGetDocList("Project", {
+    fields: ["name as value", "project_name as label"],
+    limit_page_length: 100,
+  });
   const location = useLocation();
+
+  const installed_apps_query = useFrappeGetCall("frappe.apps.get_apps");
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     const saved = localStorage.getItem("sidebarOpen");
     return saved !== null ? JSON.parse(saved) : false;
   });
+  const installed_apps = installed_apps_query.data?.message || [];
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => {
@@ -27,10 +43,65 @@ const Sidebar = () => {
           isSidebarOpen ? "w-72" : "w-24"
         }`}
       >
-        <div className="p-8 mb-4 flex items-center justify-between">
+        <Dropdown
+          trigger={"click"}
+          menu={{
+            items: [
+              {
+                icon: <LayoutDashboard />,
+                key: "apps",
+                label: "Apps",
+                children: installed_apps.map((app) => ({
+                  key: app.name,
+                  label: (
+                    <div
+                      className="flex items-center space-x-2 cursor-pointer"
+                      onClick={() =>{
+                        window.location.href = app.route;
+                      }}
+                    >
+                      <img src={app.logo} alt={app.title} className="w- h-5" />
+                      <span>{app.title}</span>
+                    </div>
+                  ),
+                })),
+              },
+              {
+                icon: <Settings />,
+                key: "settings",
+                label: "Settings",
+              },
+              {
+                key: "about",
+                label: "About",
+                icon: <Info />,
+              },
+              {
+                key: "logout",
+                label: "Logout",
+                icon: <LogOut />,
+              },
+            ],
+          }}
+        >
+          <div className="flex justify-start items-center p-4 mb-4 hover:cursor-pointer">
+            <div>
+              <Logo fullLogo={false} />
+            </div>
 
-            <Logo fullLogo={isSidebarOpen} />
-        </div>
+            <div>
+              <div level={4} className="font-bold mb-0 ml-2">
+                Atlas
+              </div>
+              <div className="mb-0 ml-2 text-sm text-slate-500 dark:text-slate-400">
+                Muqeet Mughal
+              </div>
+            </div>
+          </div>
+        </Dropdown>
+        {/* <div className="p-8 mb-4 flex items-center justify-between">
+          <Logo fullLogo={isSidebarOpen} />
+        </div> */}
 
         <nav className="px-4 space-y-2">
           {menuItems.map((item) => (
@@ -70,6 +141,36 @@ const Sidebar = () => {
             </button>
           ))}
         </nav>
+
+        {/* project selector when viewing tasks */}
+        {location.pathname.includes("/tasks") && isSidebarOpen && (
+          <div className="px-4 mt-6">
+            <h4 className="text-xs font-semibold uppercase text-slate-400 mb-2">
+              Projects
+            </h4>
+            <div className="space-y-1">
+              {(projectsQuery.data || []).map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => {
+                    if (currentProject === p.value) {
+                      qp.set("project", "");
+                    } else {
+                      qp.set("project", p.value);
+                    }
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    currentProject === p.value
+                      ? "bg-indigo-600 text-white"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="px-4 mt-8">
           <button
