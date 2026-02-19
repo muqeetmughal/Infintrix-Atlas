@@ -46,6 +46,7 @@ import { useAssigneeOfTask } from "../hooks/query";
 import { useGetDoctypeField } from "../hooks/doctype";
 import SubjectWidget from "../components/widgets/SubjectWidget";
 import FileAttachment from "./FileAttachment";
+import PriorityWidget from "../components/widgets/PriorityWidget";
 
 const TaskDetail = () => {
   const [isResizing, setIsResizing] = useState(false);
@@ -498,6 +499,25 @@ const TaskDetail = () => {
                     show_label={true}
                     value={assignees_of_task || []}
                     task={selectedTask}
+                  />
+                </div>
+              </>
+              <>
+                <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
+                  Priority
+                </div>
+                <div className="flex items-center space-x-2 py-1 group cursor-pointer">
+                  <PriorityWidget
+                    value={task.priority}
+                    onChange={(newPriority) => {
+                      updateMutation
+                        .updateDoc("Task", task.name, {
+                          priority: newPriority,
+                        })
+                        .then(() => {
+                          task_details_query.mutate();
+                        });
+                    }}
                   />
                 </div>
               </>

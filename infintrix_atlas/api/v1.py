@@ -221,7 +221,7 @@ def switch_assignee_of_task(task_name, new_assignee):
         frappe.db.set_value("ToDo", existing_todo, "status", "Closed")
         create_custom_notification(
             user=existing_assignee,
-            subject=f"Task Removed: {task_doc.subject}",
+            subject=f"{task_doc.subject}",
             content=f"The task '<b>{task_doc.subject}</b>' has been removed from you.",
             document_type="Task",
             document_name=task_name,
@@ -244,7 +244,7 @@ def switch_assignee_of_task(task_name, new_assignee):
         ).insert()
         create_custom_notification(
             user=new_assignee,
-            subject=f"Task Assigned: {task_doc.subject}",
+            subject=f"{task_doc.subject}",
             content=f"You have been assigned to task '<b>{task_doc.subject}</b>'.",
             document_type="Task",
             document_name=task_name,

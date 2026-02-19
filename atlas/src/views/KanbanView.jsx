@@ -302,7 +302,6 @@ const Column = ({ id, title, tasks_list, createTask }) => {
 
 export default function KanbanView() {
   const [activeIssue, setActiveIssue] = useState(null);
-  const [searchParams, setSearchParams] = useSearchParams();
   const { mutate } = useSWRConfig();
   // const { project } = useParams();
   const qp = useQueryParams();
@@ -734,7 +733,8 @@ export default function KanbanView() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          {COLUMNS.map((col) => (
+          {COLUMNS.map((col) => {
+            return (
             <Column
               key={col.id}
               id={col.id}
@@ -760,7 +760,7 @@ export default function KanbanView() {
                 })}
               createTask={createNewTask}
             />
-          ))}
+          )})}
 
           <DragOverlay dropAnimation={dropAnimation}>
             {activeIssue ? (
