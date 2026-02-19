@@ -4,12 +4,13 @@ import {
   useFrappeGetDocList,
   useFrappeUpdateDoc,
 } from "frappe-react-sdk";
-import { Plus } from "lucide-react";
+import { CheckCircle, CheckSquare, CircleIcon, Plus } from "lucide-react";
 import { useState } from "react";
 import { useRef, useEffect } from "react";
 import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import { useSearchParams } from "react-router-dom";
 import PriorityWidget from "./widgets/PriorityWidget";
+import { Button } from "antd";
 const SubTasks = ({ task }) => {
   console.log("task in subtasks", task);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -231,6 +232,9 @@ const SubTasks = ({ task }) => {
                 <th className="text-left px-2 py-2 font-semibold text-slate-700 dark:text-slate-300">
                   Status
                 </th>
+                <th className="text-left px-2 py-2 font-semibold text-slate-700 dark:text-slate-300">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -282,6 +286,34 @@ const SubTasks = ({ task }) => {
                       className={`text-xs px-2 py-1 rounded ${subtask.status === "Completed" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}
                     >
                       {subtask.status}
+                    </span>
+                  </td>
+                  <td className="px-2 py-2">
+                    <span>
+                      <Button
+                        loading={updateMutation.loading}
+                        color="red"
+                        onClick={() => {
+                          let status_to_set =
+                            subtask.status === "Completed"
+                              ? "Open"
+                              : "Completed";
+
+                          updateMutation
+                            .updateDoc("Task", subtask.name, {
+                              status: status_to_set,
+                            })
+                            .then(() => subtasks_of_task_query.mutate());
+                        }}
+                        type="text"
+                        icon={
+                          subtask.status === "Completed" ? (
+                            <CheckCircle color="green" />
+                          ) : (
+                            <CircleIcon />
+                          )
+                        }
+                      />
                     </span>
                   </td>
                 </tr>

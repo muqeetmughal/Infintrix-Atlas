@@ -8,6 +8,7 @@ import { useTasksQuery } from "../hooks/query";
 import { Table } from "antd";
 import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import { useQueryParams } from "../hooks/useQueryParams";
+import RelativeTime from "../components/RelativeTIme";
 
 const TableView = () => {
   const qp = useQueryParams();
@@ -45,17 +46,21 @@ const TableView = () => {
 
   return (
     <Table
+    rowSelection={{
+      type: "checkbox",
+      onChange: (selectedRowKeys, selectedRows) => {
+        // const selectedNames = selectedRows.map(row => row.name);
+        // qp.set("selected_tasks", selectedNames);
+        console.log("Selected rows:", selectedRows);
+      },
+      getCheckboxProps: (record) => ({
+        name: record.name,
+      }),
+    }}
       dataSource={tasks}
       rowKey="name"
       className="dark:bg-slate-800"
-      onRow={(record) => ({
-        onClick: (e) => {
-          // Don't open modal if clicking on interactive elements
-          const el = e.target.closest?.("button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker");
-          if (el) return;
-          qp.set("selected_task", record.name);
-        },
-      })}
+  
       columns={[
         {
           title: "Subject",
@@ -148,12 +153,12 @@ const TableView = () => {
           ),
         },
         {
-          title: "Deadline",
-          dataIndex: "exp_end_date",
-          key: "exp_end_date",
+          title: "Last Modified",
+          dataIndex: "modified",
+          key: "modified",
           render: (text) => (
             <div className="text-xs font-bold text-slate-400 dark:text-slate-500">
-              {text}
+              <RelativeTime date={text} />
             </div>
           ),
         },
