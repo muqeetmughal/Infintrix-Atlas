@@ -16,6 +16,7 @@ import {
   Minimize,
   Trash,
   Menu,
+  ExternalLink,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -27,7 +28,7 @@ import {
   useFrappeCreateDoc,
 } from "frappe-react-sdk";
 import { useQueryClient } from "@tanstack/react-query";
-import { Modal as AntdModal } from "antd";
+import { Modal as AntdModal, Typography } from "antd";
 import dayjs from "dayjs";
 import {
   AssigneeSelectWidget,
@@ -47,6 +48,7 @@ import { useGetDoctypeField } from "../hooks/doctype";
 import SubjectWidget from "../components/widgets/SubjectWidget";
 import FileAttachment from "./FileAttachment";
 import PriorityWidget from "../components/widgets/PriorityWidget";
+import ActivityTimeline from "../components/ActivityTimeline";
 
 const TaskDetail = () => {
   const [isResizing, setIsResizing] = useState(false);
@@ -262,9 +264,16 @@ const TaskDetail = () => {
                       }
                     },
                   });
+                } else if (key === "open_in_desk") {
+                  window.open(`/app/task/${task.name}`, "_blank");
                 }
               },
               items: [
+                {
+                  key: "open_in_desk",
+                  label: "Open in Desk",
+                  icon: <ExternalLink size={14} />,
+                },
                 {
                   key: "delete_task",
                   label: "Delete Task",
@@ -365,45 +374,8 @@ const TaskDetail = () => {
 
             {/* Activity Section */}
             <section className="mt-12">
-              <div className="flex items-center justify-between mb-6 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex space-x-6">
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative ${
-                        activeTab === tab.id
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                      }`}
-                    >
-                      {tab.label}
-                      {activeTab === tab.id && (
-                        <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 animate-in slide-in-from-left-2" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <button className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-                  <Filter size={16} />
-                </button>
-              </div>
-              {tabs.map((tab) => {
-                if (tab.id === activeTab) {
-                  return (
-                    <div key={tab.id} className="">
-                      {/* Render content based on active tab */}
-                      {tab.id === "comments" && (
-                        <CommentSection task_id={task.name} />
-                      )}
-                      {tab.id === "history" && (
-                        <HistorySection task_id={task.name} />
-                      )}
-                    </div>
-                  );
-                }
-                return null;
-              })}
+              <ActivityTimeline task_id={task.name} />
+              
             </section>
           </div>
         </main>

@@ -79,13 +79,7 @@ const AvatarGen = ({ name = null, size = 30, enable_tooltip = false }) => {
           className="cursor-pointer"
           // icon={<UserOutlined />}
         />
-        {/* <img
-          src={avatar_query.data}
-          alt="Avatar"
-          width={size}
-          height={size}
-          className="cursor-pointer"
-        /> */}
+      
       </Tooltip>
     );
   } else {

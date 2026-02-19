@@ -1146,3 +1146,25 @@ def get_task_tree(project=None):
         root["children"] = get_children(root["name"])
 
     return roots
+
+
+@frappe.whitelist()
+def get_task_activity(task):
+    versions = frappe.get_all(
+        "Version",
+        filters={"ref_doctype": "Task", "docname": task},
+        fields=["owner", "creation", "data"],
+        order_by="creation desc"
+    )
+
+    comments = frappe.get_all(
+        "Comment",
+        filters={"reference_doctype": "Task", "reference_name": task},
+        fields=["comment_type", "content", "owner", "creation"],
+        order_by="creation desc"
+    )
+
+    return {
+        "versions": versions,
+        "comments": comments
+    }
