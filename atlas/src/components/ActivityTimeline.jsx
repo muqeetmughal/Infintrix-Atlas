@@ -12,7 +12,7 @@ export default function ActivityTimeline({ task_id }) {
   const [commentText, setCommentText] = React.useState("");
   const auth = useAuth();
 
-  console.log("auth", auth.currentUser)
+  console.log("auth", auth.currentUser);
 
   const versions_query = useFrappeGetCall(
     "infintrix_atlas.api.v1.get_task_activity",
@@ -111,10 +111,23 @@ export default function ActivityTimeline({ task_id }) {
   const data = versions_query?.data?.message || {};
 
   const timeline = React.useMemo(() => formatTaskActivity(data), [data]);
-  console.log("Timeline:", timeline);
-  if (!timeline.length) {
-    return <div style={{ opacity: 0.6 }}>No activity yet</div>;
-  }
+
+  const [inputHeight, setInputHeight] = React.useState(40);
+
+  const handleInputChange = (e) => {
+    setCommentText(e.target.value);
+    // Auto-grow height based on scrollHeight
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+    setInputHeight(Math.min(e.target.scrollHeight, 200));
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleAddComment(commentText);
+    }
+  };
 
   return (
     <div>
@@ -125,21 +138,35 @@ export default function ActivityTimeline({ task_id }) {
           </div>
           <div className="flex-1 space-y-3">
             <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-colors focus-within:border-blue-400 dark:focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/30 bg-white dark:bg-slate-800">
-              <input
-                type="text"
-                placeholder="Add a comment..."
+              <textarea
+                placeholder="Add a comment... (Shift+Enter for new line)"
                 value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                className="w-full outline-none text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 mb-4 bg-transparent"
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+                disabled={createMutation.isPending}
+                style={{ height: inputHeight }}
+                className="w-full outline-none text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 mb-4 bg-transparent resize-none overflow-y-auto"
               />
               <div className="flex flex-wrap gap-2">
-                {["🎉 Looks good!", "👋 Need help?", "⛔ This is blocked"].map(
+                {[
+                  "🎉 Looks good!",
+                  "👋 Need help?",
+                  "⛔ This is blocked",
+                  "✅ Mark as done",
+                  "🚀 Ready to ship",
+                  "💭 Let's discuss",
+                  "🐛 Found a bug",
+                  "📝 Needs review",
+                ].map(
                   (suggestion) => (
                     <button
                       key={suggestion}
-                      onClick={() => handleAddComment(suggestion)}
+                      onClick={() => {
+                        setCommentText(suggestion);
+                        setInputHeight(40);
+                      }}
                       disabled={createMutation.isPending}
-                      className="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                      className="cursor-pointer bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
                     >
                       {suggestion}
                     </button>
@@ -158,9 +185,9 @@ export default function ActivityTimeline({ task_id }) {
               <span className="font-bold">Pro tip:</span>
               <span>press</span>
               <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-400">
-                M
+                Enter
               </span>
-              <span>to comment</span>
+              <span>to submit</span>
             </div>
           </div>
         </div>
@@ -170,52 +197,56 @@ export default function ActivityTimeline({ task_id }) {
         Activity
       </Typography.Title>
 
-      <div style={{ paddingLeft: 12 }}>
-        {timeline.map((item, idx) => (
-          <div
-            key={item.id}
-            style={{
-              display: "flex",
-              gap: 10,
-              position: "relative",
-              paddingBottom: 16,
-            }}
-          >
-            {/* Dot + line */}
-            <div style={{ position: "relative" }}>
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: "#888",
-                  marginTop: 6,
-                }}
-              />
-              {idx !== timeline.length - 1 && (
+      {!timeline.length ? (
+        <div style={{ opacity: 0.6 }}>No activity yet</div>
+      ) : (
+        <div style={{ paddingLeft: 12 }}>
+          {timeline.map((item, idx) => (
+            <div
+              key={item.id}
+              style={{
+                display: "flex",
+                gap: 10,
+                position: "relative",
+                paddingBottom: 16,
+              }}
+            >
+              {/* Dot + line */}
+              <div style={{ position: "relative" }}>
                 <div
                   style={{
-                    position: "absolute",
-                    top: 14,
-                    left: 3,
-                    width: 1,
-                    height: "100%",
-                    background: "#444",
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: "#888",
+                    marginTop: 6,
                   }}
                 />
-              )}
-            </div>
+                {idx !== timeline.length - 1 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 14,
+                      left: 3,
+                      width: 1,
+                      height: "100%",
+                      background: "#444",
+                    }}
+                  />
+                )}
+              </div>
 
-            {/* Text */}
-            <div>
-              <div style={{ fontSize: 14 }}>{item.text}</div>
-              <div style={{ fontSize: 12, opacity: 0.6 }}>
-                {dayjs(item.time).fromNow()}
+              {/* Text */}
+              <div>
+                <div style={{ fontSize: 14 }}>{item.text}</div>
+                <div style={{ fontSize: 12, opacity: 0.6 }}>
+                  {dayjs(item.time).fromNow()}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
