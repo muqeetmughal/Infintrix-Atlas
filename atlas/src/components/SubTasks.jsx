@@ -261,7 +261,7 @@ const SubTasks = ({ task }) => {
                     <PriorityWidget
                       value={subtask.priority}
                       onChange={(v) => {
-                        createMutation
+                        updateMutation
                           .updateDoc("Task", subtask.name, { priority: v })
                           .then(() => subtasks_of_task_query.mutate());
                       }}
