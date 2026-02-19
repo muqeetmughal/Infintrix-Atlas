@@ -1,36 +1,78 @@
 # your_app/overrides/task.py
 
 import frappe
-# from erpnext.doctype.task.task import Task
 from erpnext.projects.doctype.task.task import Task
 
-class TaskOverride(Task):
-    
-    # def validate(self):
-        # self.validate_dates()
-        # self.validate_progress()
-        # self.validate_status()
-        # self.update_depends_on()
-        # self.validate_dependencies_for_template_task()
-        # self.validate_completed_on()
-        # self.validate_parent_is_group()
-        # pass
 
+class TaskOverride(Task):
+
+    def validate(self):
+        # ALWAYS call core validation
+        super().validate()
+
+        # Your custom hierarchy + business rules
+        # self.validate_task_type_hierarchy()
+        # self.validate_cycle_lock()
+
+   
+    def validate_task_type_hierarchy(self):
+        if not self.parent_task or not self.type:
+            return
+
+        parent = frappe.get_doc("Task", self.parent_task)
+        if not parent.type:
+            return
+
+        parent_type = frappe.get_doc("Task Type", parent.type)
+        child_type = frappe.get_doc("Task Type", self.type)
+
+        # Parent must be container by design
+        if not parent_type.custom_is_container:
+            frappe.throw(f"{parent_type.name} cannot have child tasks")
+
+        # Validate allowed child task types
+        allowed = [
+            d.task_type
+            for d in parent_type.custom_allowed_child_types
+        ] if parent_type.custom_allowed_child_types else []
+
+        if allowed and child_type.name not in allowed:
+            frappe.throw(
+                f"{child_type.name} cannot be child of {parent_type.name}"
+            )
+
+    def validate_cycle_lock(self):
+        if not self.project:
+            return
+
+        print("Validating cycle lock...")
+
+        active_cycle = frappe.db.get_value(
+            "Project",
+            self.project,
+            "custom_active_cycle"
+        )
+
+        if (
+            active_cycle
+            and self.custom_cycle
+            and self.custom_cycle != active_cycle
+        ):
+            frappe.throw(
+                f"Cannot change cycle while project has active cycle: {active_cycle}"
+            )
 
     def has_permission(self, permission_type=None, user=None):
         user = user or frappe.session.user
 
-        # Admin
         if user == "Administrator":
             return True
 
         roles = frappe.get_roles(user)
 
-        # System User
         if "System User" in roles:
             return True
 
-        # Owner
         if self.owner == user:
             return True
 
@@ -47,11 +89,9 @@ class TaskOverride(Task):
 
         # Project-based access
         if self.project:
-            # Project owner
             if frappe.db.get_value("Project", self.project, "owner") == user:
                 return True
 
-            # Project User child table
             if frappe.db.exists(
                 "Project User",
                 {
@@ -62,3 +102,69 @@ class TaskOverride(Task):
                 return True
 
         return False
+
+
+# # your_app/overrides/task.py
+
+# import frappe
+# # from erpnext.doctype.task.task import Task
+# from erpnext.projects.doctype.task.task import Task
+
+# class TaskOverride(Task):
+    
+#     # def validate(self):
+#     #     self.validate_dates()
+#     #     self.validate_progress()
+#     #     self.validate_status()
+#     #     self.update_depends_on()
+#     #     self.validate_dependencies_for_template_task()
+#     #     self.validate_completed_on()
+#     #     self.validate_parent_is_group()
+        
+
+
+#     def has_permission(self, permission_type=None, user=None):
+#         user = user or frappe.session.user
+
+#         # Admin
+#         if user == "Administrator":
+#             return True
+
+#         roles = frappe.get_roles(user)
+
+#         # System User
+#         if "System User" in roles:
+#             return True
+
+#         # Owner
+#         if self.owner == user:
+#             return True
+
+#         # Assigned via ToDo
+#         if frappe.db.exists(
+#             "ToDo",
+#             {
+#                 "reference_type": "Task",
+#                 "reference_name": self.name,
+#                 "allocated_to": user
+#             }
+#         ):
+#             return True
+
+#         # Project-based access
+#         if self.project:
+#             # Project owner
+#             if frappe.db.get_value("Project", self.project, "owner") == user:
+#                 return True
+
+#             # Project User child table
+#             if frappe.db.exists(
+#                 "Project User",
+#                 {
+#                     "parent": self.project,
+#                     "user": user
+#                 }
+#             ):
+#                 return True
+
+#         return False

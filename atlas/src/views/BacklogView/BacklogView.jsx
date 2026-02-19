@@ -196,7 +196,7 @@ const InlineTaskCreator = ({
       const doc = await createMutation.createDoc("Task", {
         subject: value,
         project: project_id,
-        custom_cycle: cycle,
+        custom_cycle: cycle ? cycle : undefined,
         status: "Open",
       });
 
@@ -297,7 +297,6 @@ const BacklogView = () => {
       },
     }),
   );
-
   // Derived filters
   const backlogTasks = useMemo(() => {
     return tasks.filter((t) => (isScrum ? !t.cycle : t.status === "Open"));

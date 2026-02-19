@@ -29,9 +29,12 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Modal as AntdModal } from "antd";
 import dayjs from "dayjs";
-import { AssigneeSelectWidget, ShowUserWidget } from "../components/widgets/AssigneeSelectWidget";
+import {
+  AssigneeSelectWidget,
+  ShowUserWidget,
+} from "../components/widgets/AssigneeSelectWidget";
 import TextWidget from "../components/widgets/TextWidget";
-import RichTextWidget from "../components/widgets/RichTextWidget";
+import RichTextWidget from "../components/widgets/RichTextWidget/RichTextWidget";
 import { TagsSelectWidget } from "../components/widgets/TagsSelectWidget";
 import StatusWidget from "../components/widgets/StatusWidget";
 import { Button, Dropdown, Space, Form, Input, Select } from "antd";
@@ -67,7 +70,7 @@ const TaskDetail = () => {
   const assignee_mutation = useFrappePostCall(
     "infintrix_atlas.api.v1.switch_assignee_of_task",
   );
-  
+
   const notifyStatusChange = useFrappePostCall(
     "infintrix_atlas.api.v1.notify_status_changed",
   );
@@ -77,6 +80,7 @@ const TaskDetail = () => {
   });
 
   const task = task_details_query.data || {};
+  console.log("task details:", task)
   const issueName = task.issue || null;
   const issue_query = useFrappeGetDoc(
     "Issue",
@@ -241,7 +245,8 @@ const TaskDetail = () => {
                 if (key === "delete_task") {
                   AntdModal.confirm({
                     title: "Delete task",
-                    content: "Are you sure you want to delete this task? This action cannot be undone.",
+                    content:
+                      "Are you sure you want to delete this task? This action cannot be undone.",
                     okText: "Delete",
                     okType: "danger",
                     cancelText: "Cancel",
@@ -297,17 +302,21 @@ const TaskDetail = () => {
               inputStyle={{
                 fontSize: "2rem",
               }}
-              style={{ fontSize: "2rem", fontWeight: "600", marginBottom: "1.5rem" }}
+              style={{
+                fontSize: "2rem",
+                fontWeight: "600",
+                marginBottom: "1.5rem",
+              }}
               value={task.subject}
-            // onSubmit={(newValue) => {
-            //   updateMutation
-            //     .updateDoc("Task", task.name, {
-            //       subject: newValue,
-            //     })
-            //     .then(() => {
-            //       task_details_query.mutate();
-            //     });
-            // }}
+              // onSubmit={(newValue) => {
+              //   updateMutation
+              //     .updateDoc("Task", task.name, {
+              //       subject: newValue,
+              //     })
+              //     .then(() => {
+              //       task_details_query.mutate();
+              //     });
+              // }}
             />
           </h1>
 
@@ -342,16 +351,16 @@ const TaskDetail = () => {
               </div>
             </section>
 
-            {/* <SubTasks task={selectedTask} />
+            <SubTasks task={selectedTask} />
 
-                <section>
-                  <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-3 uppercase tracking-wider">
-                  Linked work items
-                  </h3>
-                  <button className="flex items-center text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 -ml-2 rounded transition-colors">
-                  <Plus size={16} className="mr-1" /> Add linked work item
-                  </button>
-                </section> */}
+            {/* <section>
+              <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-3 uppercase tracking-wider">
+                Linked work items
+              </h3>
+              <button className="flex items-center text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 -ml-2 rounded transition-colors">
+                <Plus size={16} className="mr-1" /> Add linked work item
+              </button>
+            </section> */}
 
             {/* Activity Section */}
             <section className="mt-12">
@@ -361,10 +370,11 @@ const TaskDetail = () => {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative ${activeTab === tab.id
-                        ? "text-blue-600 dark:text-blue-400"
-                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                        }`}
+                      className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative ${
+                        activeTab === tab.id
+                          ? "text-blue-600 dark:text-blue-400"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                      }`}
                     >
                       {tab.label}
                       {activeTab === tab.id && (
@@ -431,13 +441,18 @@ const TaskDetail = () => {
                       task_details_query.mutate();
                       // Notify assigned users about status change
                       if (oldStatus !== newStatus) {
-                        notifyStatusChange.call({
-                          task_name: task.name,
-                          old_status: oldStatus,
-                          new_status: newStatus,
-                        }).catch((err) => {
-                          console.error("Failed to send status change notification:", err);
-                        });
+                        notifyStatusChange
+                          .call({
+                            task_name: task.name,
+                            old_status: oldStatus,
+                            new_status: newStatus,
+                          })
+                          .catch((err) => {
+                            console.error(
+                              "Failed to send status change notification:",
+                              err,
+                            );
+                          });
                       }
                     });
                 }}
@@ -477,7 +492,6 @@ const TaskDetail = () => {
                 <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
                   Assignee
                 </div>
-                {console.log("assignees_of_task", assignees_of_task)}
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
                   <AssigneeSelectWidget
                     single={true}
@@ -547,17 +561,13 @@ const TaskDetail = () => {
                 </div>
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
                   {console.log("task.owner", task.owner)}
-                  <ShowUserWidget
-                    value={task.owner}
-                    show_label={true}
-                  />
+                  <ShowUserWidget value={task.owner} show_label={true} />
                 </div>
               </>
             </div>
           </div>
 
           <FileAttachment
-
             doctype="Task"
             docname={task.name}
             // fieldname="attachments"
@@ -702,10 +712,11 @@ const TaskDetail = () => {
     return (
       <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 flex items-center justify-center animate-in fade-in duration-200">
         <div
-          className={`bg-white dark:bg-slate-900 overflow-hidden transition-all duration-300 ease-in-out ${fullScreen
-            ? "w-full h-screen max-w-none rounded-none shadow-none"
-            : "w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl"
-            }`}
+          className={`bg-white dark:bg-slate-900 overflow-hidden transition-all duration-300 ease-in-out ${
+            fullScreen
+              ? "w-full h-screen max-w-none rounded-none shadow-none"
+              : "w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl"
+          }`}
         >
           {task_details_query.isLoading || assignee_of_task_query.isLoading
             ? "Loading..."

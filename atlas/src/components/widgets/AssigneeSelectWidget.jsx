@@ -20,16 +20,12 @@ import {
 } from "../../hooks/query";
 
 export const AssigneeSelectWidget = (props) => {
-  // console.log("AssigneeSelectWidget props:", props);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value || []);
   const assignee_of_task_query = useAssigneeOfTask(props.task);
   const assignees_of_task = (assignee_of_task_query?.data || []).map((todo) => {
     return todo.allocated_to;
   });
-
-  // console.log("Assignee of task query data:", assignees_of_task);
-
   const collegues_list_query = useFrappeGetDocList("User", {
     fields: ["name", "full_name"],
     filters: [
@@ -42,7 +38,6 @@ export const AssigneeSelectWidget = (props) => {
       field: "creation",
       order: "asc",
     },
-  
   });
   const { token } = theme.useToken();
 
@@ -174,14 +169,10 @@ export const ShowUserWidget = (props) => {
     <div>
       {user ? (
         <div className="flex items-center -space-x-2">
-            <div className="inline-block">
-              <AvatarGen name={user} enable_tooltip={false} />
-            </div>
-          {props.show_label && (
-            <span className="ml-3 text-sm">
-              {user}
-            </span>
-          )}
+          <div className="inline-block">
+            <AvatarGen name={user} enable_tooltip={false} />
+          </div>
+          {props.show_label && <span className="ml-3 text-sm">{user}</span>}
         </div>
       ) : (
         <>
