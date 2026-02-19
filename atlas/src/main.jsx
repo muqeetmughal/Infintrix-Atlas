@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from "./App.jsx";
 import React from "react";
 import relativeTime from "dayjs/plugin/relativeTime"
+import dayjs from "dayjs";
 dayjs.extend(relativeTime)
 
 
