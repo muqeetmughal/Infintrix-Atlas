@@ -1,14 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { useFrappeUpdateDoc, useFrappePostCall } from "frappe-react-sdk";
-import Card from "../components/ui/Card";
 import PriorityWidget from "../components/widgets/PriorityWidget";
 import StatusWidget from "../components/widgets/StatusWidget";
-import PreviewAssignees from "../components/PreviewAssignees";
 import { useTasksQuery } from "../hooks/query";
 import { Table } from "antd";
 import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import { useQueryParams } from "../hooks/useQueryParams";
-import RelativeTime from "../components/RelativeTIme";
+import RelativeTime from "../components/RelativeTime";
 
 const TableView = () => {
   const qp = useQueryParams();

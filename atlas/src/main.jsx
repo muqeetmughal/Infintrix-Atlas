@@ -2,6 +2,9 @@ import "./index.css";
 import ReactDOM from 'react-dom/client'
 import App from "./App.jsx";
 import React from "react";
+import relativeTime from "dayjs/plugin/relativeTime"
+dayjs.extend(relativeTime)
+
 
 if (import.meta.env.DEV) {
   fetch("/api/method/infintrix_atlas.www.atlas.get_context_for_dev", {
