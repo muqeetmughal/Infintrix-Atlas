@@ -83,7 +83,8 @@ export const useTasksQuery = (
 		final_filters.push(["custom_cycle", "=", cycle_name]);
 	}
 
-	console.log("cacheKey:", cacheKey);
+	// final_filters.push(["parent_task", "=", null]);
+
 
 	return useFrappeGetDocList(
 		"Task",

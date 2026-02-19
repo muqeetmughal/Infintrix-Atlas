@@ -212,7 +212,7 @@ def switch_assignee_of_task(task_name, new_assignee):
     if existing_todo:
         existing_assignee = frappe.db.get_value("ToDo", existing_todo, "allocated_to")
 
-    # Return early if assignee hasn't changed 
+    # Return early if assignee hasn't changed
     if existing_assignee == new_assignee:
         return {"success": True, "message": "No changes made"}
 
@@ -263,7 +263,7 @@ def notify_attachment_added(task_name, file_name):
 
     try:
         task_doc = frappe.get_doc("Task", task_name)
-        
+
         assignee = frappe.db.get_value(
             "ToDo",
             {
@@ -271,7 +271,7 @@ def notify_attachment_added(task_name, file_name):
                 "reference_name": task_name,
                 "status": ["!=", "Cancelled"],
             },
-            "allocated_to"
+            "allocated_to",
         )
 
         # If there's an assignee, send them a notification
@@ -286,10 +286,16 @@ def notify_attachment_added(task_name, file_name):
             )
             return {"success": True, "message": f"Notification sent to {assignee}"}
         else:
-            return {"success": True, "message": "No assignee found, no notification sent"}
-    
+            return {
+                "success": True,
+                "message": "No assignee found, no notification sent",
+            }
+
     except Exception as e:
-        frappe.log_error(f"Failed to send attachment notification: {e}", "Attachment Notification Error")
+        frappe.log_error(
+            f"Failed to send attachment notification: {e}",
+            "Attachment Notification Error",
+        )
         return {"success": False, "message": str(e)}
 
 
@@ -301,7 +307,7 @@ def notify_status_changed(task_name, old_status, new_status):
 
     try:
         task_doc = frappe.get_doc("Task", task_name)
-        
+
         # Get all assignees (there might be multiple)
         assignees = frappe.db.get_all(
             "ToDo",
@@ -311,7 +317,7 @@ def notify_status_changed(task_name, old_status, new_status):
                 "status": ["!=", "Cancelled"],
             },
             fields=["allocated_to"],
-            distinct=True
+            distinct=True,
         )
 
         # If there are assignees, send them notifications
@@ -324,7 +330,7 @@ def notify_status_changed(task_name, old_status, new_status):
                 "Cancelled": '<i class="fa fa-times-circle"></i>',
             }
             icon = status_icons.get(new_status, '<i class="fa fa-info-circle"></i>')
-            
+
             for assignee_row in assignees:
                 assignee = assignee_row.allocated_to
                 # Don't notify if the assignee is the one who changed the status
@@ -337,16 +343,26 @@ def notify_status_changed(task_name, old_status, new_status):
                         document_name=task_name,
                         icons=icon,
                     )
-            
-            return {"success": True, "message": f"Notifications sent to {len(assignees)} assignee(s)"}
+
+            return {
+                "success": True,
+                "message": f"Notifications sent to {len(assignees)} assignee(s)",
+            }
         else:
-            return {"success": True, "message": "No assignee found, no notification sent"}
-    
+            return {
+                "success": True,
+                "message": "No assignee found, no notification sent",
+            }
+
     except Exception as e:
-        frappe.log_error(f"Failed to send status change notification: {e}", "Status Change Notification Error")
+        frappe.log_error(
+            f"Failed to send status change notification: {e}",
+            "Status Change Notification Error",
+        )
         return {"success": False, "message": str(e)}
 
 
+@frappe.whitelist()
 def get_project_flow_metrics(project):
     """
     Returns execution efficiency (%) and backlog health label
@@ -701,7 +717,9 @@ def get_project_user_stats(user=None, activity_limit=5):
             "active_tasks": 0,
             "avg_progress": 0,
             "team_members": 0,
-            "recent_activities": [{"text": "No recent activities found", "time_display": ""}]
+            "recent_activities": [
+                {"text": "No recent activities found", "time_display": ""}
+            ],
         }
 
     # -----------------------------
@@ -717,7 +735,9 @@ def get_project_user_stats(user=None, activity_limit=5):
         WHERE status NOT IN ('Completed', 'Cancelled')
         AND project IN %(projects)s
         {task_where}
-        """.format(task_where=task_where),
+        """.format(
+            task_where=task_where
+        ),
         {"projects": tuple(project_names)},
     )[0][0]
 
@@ -742,7 +762,6 @@ def get_project_user_stats(user=None, activity_limit=5):
         {"projects": tuple(project_names)},
     )[0][0]
 
-
     projects_list = []
     for p in projects:
         try:
@@ -753,13 +772,15 @@ def get_project_user_stats(user=None, activity_limit=5):
             except Exception:
                 pct = 0
 
-        projects_list.append({
-            "name": p.get("name"),
-            "project_name": p.get("project_name") or p.get("name"),
-            "project_type": p.get("project_type") or "",
-            "status": p.get("status") or "",
-            "percent_complete": pct,
-        })
+        projects_list.append(
+            {
+                "name": p.get("name"),
+                "project_name": p.get("project_name") or p.get("name"),
+                "project_type": p.get("project_type") or "",
+                "status": p.get("status") or "",
+                "percent_complete": pct,
+            }
+        )
 
     try:
         activity_limit = int(activity_limit)
@@ -802,14 +823,16 @@ def get_project_user_stats(user=None, activity_limit=5):
 
     project_activities = []
     for p in project_activities_raw:
-        project_activities.append({
-            "type": p.type,
-            "doc_name": p.doc_name,
-            "title": p.title,
-            "detail": f"Status: {p.status}",
-            "user": p.user,
-            "timestamp": p.timestamp,
-        })
+        project_activities.append(
+            {
+                "type": p.type,
+                "doc_name": p.doc_name,
+                "title": p.title,
+                "detail": f"Status: {p.status}",
+                "user": p.user,
+                "timestamp": p.timestamp,
+            }
+        )
 
     activities = task_activities + project_activities
     activities.sort(key=lambda x: x["timestamp"], reverse=True)
@@ -819,16 +842,20 @@ def get_project_user_stats(user=None, activity_limit=5):
 
     recent_activities = []
     for d in activity_data:
-        user_full_name = frappe.db.get_value("User", d["user"], "full_name") or d["user"]
+        user_full_name = (
+            frappe.db.get_value("User", d["user"], "full_name") or d["user"]
+        )
         text = f"{user_full_name} updated {d['type']}: {d['title']} ({d['detail']})"
 
-        recent_activities.append({
-            "text": text,
-            "time_display": pretty_date(d["timestamp"]),
-            "timestamp": str(d["timestamp"]),
-            "type": d["type"],
-            "doc_name": d["doc_name"]
-        })
+        recent_activities.append(
+            {
+                "text": text,
+                "time_display": pretty_date(d["timestamp"]),
+                "timestamp": str(d["timestamp"]),
+                "type": d["type"],
+                "doc_name": d["doc_name"],
+            }
+        )
 
     if not recent_activities:
         recent_activities = [{"text": "No recent activities found", "time_display": ""}]
@@ -841,8 +868,6 @@ def get_project_user_stats(user=None, activity_limit=5):
         "projects": projects_list,
         "recent_activities": recent_activities,
     }
-
-
 
 
 @frappe.whitelist()
@@ -934,9 +959,6 @@ def update_users_on_project(project, users):
     return {"success": True, "message": "Project users updated"}
 
 
-import frappe
-
-
 @frappe.whitelist()
 def global_search(query: str, limit: int = 10):
     """
@@ -1015,21 +1037,112 @@ def global_search(query: str, limit: int = 10):
 
 @frappe.whitelist()
 def online_users():
-	sessions = frappe.db.sql(
-		"""
+    sessions = frappe.db.sql(
+        """
 		SELECT user, MAX(lastupdate) as lastupdate
 		FROM `tabSessions`
 		WHERE status = 'Active'
 		GROUP BY user
 	""",
-		as_dict=True,
-	)
+        as_dict=True,
+    )
 
-	now = datetime.now()
-	online_threshold = now - timedelta(minutes=5)
+    now = datetime.now()
+    online_threshold = now - timedelta(minutes=5)
 
-	online_users = [
-		s["user"] for s in sessions if s["lastupdate"] and s["lastupdate"] > online_threshold
-	]
+    online_users = [
+        s["user"]
+        for s in sessions
+        if s["lastupdate"] and s["lastupdate"] > online_threshold
+    ]
 
-	return online_users
+    return online_users
+
+
+@frappe.whitelist()
+def tasks_accountability_report(project=None):
+    """
+    Returns accountability report with metrics per assignee:
+    - Open: count of open tasks
+    - Overdue: count of overdue tasks
+    - Aging > 3d: count of tasks not updated for > 3 days
+    - Pending Review: count of pending review tasks
+    - Avg Delay: average days overdue
+    - Completed: count of completed tasks
+    """
+
+    conditions = []
+    params = {}
+
+    if project:
+        conditions.append("t.project = %(project)s")
+        params["project"] = project
+
+    where_clause = ""
+    if conditions:
+        where_clause = "WHERE " + " AND ".join(conditions)
+
+    tasks = frappe.db.sql(
+        f"""
+                SELECT
+                    u.name AS assignee,
+                    u.full_name,
+                    COUNT(CASE WHEN t.status = 'Open' THEN 1 END) AS open_count,
+                    COUNT(CASE WHEN t.status = 'Open' AND t.modified < DATE_SUB(CURDATE(), INTERVAL 1 DAY) THEN 1 END) AS overdue_count,
+                    COUNT(CASE WHEN DATE_SUB(NOW(), INTERVAL 3 DAY) > t.modified THEN 1 END) AS aging_3d_count,
+                    COUNT(CASE WHEN t.status = 'Pending Review' THEN 1 END) AS pending_review_count,
+                    ROUND(AVG(CASE WHEN t.modified < CURDATE() THEN DATEDIFF(CURDATE(), t.modified) ELSE 0 END), 2) AS avg_delay,
+                    COUNT(CASE WHEN t.status = 'Completed' THEN 1 END) AS completed_count
+                FROM `tabTask` t
+                LEFT JOIN `tabToDo` td ON td.reference_name = t.name AND td.reference_type = 'Task' AND td.status != 'Cancelled'
+                LEFT JOIN `tabUser` u ON u.name = td.allocated_to
+                {where_clause}
+                GROUP BY u.name, u.full_name
+                ORDER BY open_count DESC, overdue_count DESC
+                """,
+        params,
+        as_dict=True,
+    )
+
+    return tasks
+
+
+# file: your_app/your_app/api/task_tree.py
+
+from frappe import _
+
+@frappe.whitelist()
+def get_task_tree(project=None):
+
+    def get_children(parent):
+        filters = {"parent_task": parent}
+        if project:
+            filters["project"] = project
+
+        children = frappe.get_all(
+            "Task",
+            filters=filters,
+            fields=["name", "subject", "status", "priority"],
+        )
+
+        for child in children:
+            child["children"] = get_children(child["name"])
+
+        return children
+
+    # ROOT tasks → parent_task == ""
+    root_filters = {"parent_task": ""}
+    if project:
+        root_filters["project"] = project
+
+    roots = frappe.get_all(
+        "Task",
+        filters=root_filters,
+        fields=["name", "subject", "status", "priority"],
+    )
+
+    for root in roots:
+        print("task:", root)
+        root["children"] = get_children(root["name"])
+
+    return roots

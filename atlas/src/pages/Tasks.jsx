@@ -47,6 +47,7 @@ import CompleteCycleModal from "../components/custom/CompleteCycleModal";
 import { useQueryParams } from "../hooks/useQueryParams";
 import ProjectHealth from "../components/ProjectHealth";
 import ManageProjectPeople from "../modals/ManageProjectPeople";
+import TreeView from "../views/TreeView";
 
 const Tasks = () => {
   // const [isOpen, setIsOpen] = React.useState(false);
@@ -97,7 +98,7 @@ const Tasks = () => {
     { id: "ai-architect", label: "AI Architect" },
     { id: "list", label: "List" },
     { id: "backlog", label: "Backlog" },
-    // { id: "list", label: "List" },
+    { id: "tree", label: "Tree" },
     { id: "kanban", label: "Kanban" },
   ];
 
@@ -369,6 +370,7 @@ const Tasks = () => {
           {view === "list" && <TableView />}
           {view === "kanban" && <KanbanView />}
           {view === "backlog" && <BacklogView />}
+          {view === "tree" && <TreeView />}
         </div>
       </div>
       <CompleteCycleModal />

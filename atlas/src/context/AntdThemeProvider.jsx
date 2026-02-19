@@ -24,10 +24,10 @@ export function AntdThemeProvider({
                 algorithm: isDark
                     ? antdTheme.darkAlgorithm
                     : antdTheme.defaultAlgorithm,
-                // token: {
-                //     colorBgBase: isDark ? "#0f172a" : "#ffffff",
-                //     colorTextBase: isDark ? "#e5e7eb" : "#111827",
-                // },
+                token: {
+                    colorBgBase: isDark ? "#0f172a" : "#ffffff",
+                    colorTextBase: isDark ? "#e5e7eb" : "#111827",
+                },
             }}
             prefixCls="infintrix-atlas"
         >

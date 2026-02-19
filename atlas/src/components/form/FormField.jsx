@@ -8,7 +8,7 @@ import {
   InputNumber,
   Select,
 } from "antd";
-import { RichTextWidgetForm } from "../widgets/RichTextWidget";
+import { RichTextWidgetForm } from "../widgets/RichTextWidget/RichTextWidget";
 
 export function FormField({ field }) {
   if (field.hidden) return null;

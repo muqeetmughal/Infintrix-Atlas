@@ -10,6 +10,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { useFrappeGetCall } from 'frappe-react-sdk';
 import { Spin } from 'antd';
+import Accountability from '../components/Accountability';
 
 const Dashboard = () => {
     const [tasks] = useState(INITIAL_TASKS);
@@ -163,6 +164,8 @@ const Dashboard = () => {
                     </div>
                 </Card>
             </div>
+
+            <Accountability/>
         </div>
     );
 }

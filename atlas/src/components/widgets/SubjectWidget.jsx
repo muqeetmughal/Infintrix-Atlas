@@ -10,7 +10,10 @@ const SubjectWidget = ({ task, disableClick, style, inputStyle, onUpdate }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const updateMutation = useFrappeUpdateDoc();
   const swr = useSWRConfig();
-
+  React.useEffect(() => {
+    setEditingSubject(false);
+    setSubject(task.subject);
+  }, [task.subject]);
   const handleSave = () => {
     // Use correct SDK method: updateDoc
     updateMutation
@@ -18,7 +21,7 @@ const SubjectWidget = ({ task, disableClick, style, inputStyle, onUpdate }) => {
         subject: subject,
       })
       .then((updatedTask) => {
-        message.success("Task name updated successfully");
+        // message.success("Task name updated successfully");
         // Immediately update parent component's task state
         if (onUpdate) {
           onUpdate({ ...task, subject: subject });
@@ -31,13 +34,19 @@ const SubjectWidget = ({ task, disableClick, style, inputStyle, onUpdate }) => {
               key.some((k) => k === "Task") ||
               key.some((k) => k === task.name) ||
               key.some((k) => k === "tasks") ||
-              key.some((k) => typeof k === "string" && k.toLowerCase().includes("task")) ||
+              key.some(
+                (k) =>
+                  typeof k === "string" && k.toLowerCase().includes("task"),
+              ) ||
               key.some((k) => k === "Cycle") ||
-              key.some((k) => typeof k === "string" && k.toLowerCase().includes("cycle"))
+              key.some(
+                (k) =>
+                  typeof k === "string" && k.toLowerCase().includes("cycle"),
+              )
             );
           },
           undefined,
-          { revalidate: true }
+          { revalidate: true },
         );
         setEditingSubject(false);
       })
