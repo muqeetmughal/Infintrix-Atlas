@@ -29,7 +29,7 @@ const SubTasks = ({ task }) => {
   const updateMutation = useFrappeUpdateDoc();
   const parent_task = task_detail_query.data || {};
   const subtasks = subtasks_of_task_query.data || [];
-
+  console.log("Subtasks query data:", subtasks);
   // const subtasks = [
   //   {
   //     name: "TASK-2026-00034",
@@ -169,16 +169,13 @@ const SubTasks = ({ task }) => {
       // Create task with parent task reference
       console.log("Creating subtask:", inputValue, "for parent:", task);
       // Add your API call here
-      if (!parent_task.is_group) {
-        updateMutation
-          .updateDoc("Task", parent_task.name, { is_group: 1 })
-          .then(() => {
-            createSubTask();
-            task_detail_query.refetch();
-          });
-      } else {
-        createSubTask();
-      }
+
+      updateMutation
+        .updateDoc("Task", parent_task.name, { is_group: 1 })
+        .finally(() => {
+          createSubTask();
+          task_detail_query.refetch();
+        });
 
       setIsAdding(false);
       setInputValue("");
