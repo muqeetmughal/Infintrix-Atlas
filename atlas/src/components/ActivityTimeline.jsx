@@ -37,9 +37,16 @@ export default function ActivityTimeline({ task_id }) {
 
       // Field changes
       (parsed.changed || []).forEach(([field, oldVal, newVal]) => {
+        console.log("Field change detected:", { field, oldVal, newVal });
+        // let fieldtype = "text";
         const label = field
           .replace(/_/g, " ")
           .replace(/\b\w/g, (l) => l.toUpperCase());
+
+        // if (field === "description") {
+        //   fieldtype = "html";
+        //   oldVal = oldVal || "";
+        // }
 
         items.push({
           id: `version-${time}-${field}`,
@@ -157,21 +164,19 @@ export default function ActivityTimeline({ task_id }) {
                   "💭 Let's discuss",
                   "🐛 Found a bug",
                   "📝 Needs review",
-                ].map(
-                  (suggestion) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => {
-                        setCommentText(suggestion);
-                        setInputHeight(40);
-                      }}
-                      disabled={createMutation.isPending}
-                      className="cursor-pointer bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                    >
-                      {suggestion}
-                    </button>
-                  ),
-                )}
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => {
+                      setCommentText(suggestion);
+                      setInputHeight(40);
+                    }}
+                    disabled={createMutation.isPending}
+                    className="cursor-pointer bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
                 <button
                   onClick={() => handleAddComment(commentText)}
                   disabled={createMutation.isPending || !commentText.trim()}
@@ -238,7 +243,11 @@ export default function ActivityTimeline({ task_id }) {
 
               {/* Text */}
               <div>
-                <div style={{ fontSize: 14 }}>{item.text}</div>
+                <div style={{ fontSize: 14 }}>
+                  <div dangerouslySetInnerHTML={{
+                    __html : item.text
+                  }}/>
+                </div>
                 <div style={{ fontSize: 12, opacity: 0.6 }}>
                   {dayjs(item.time).fromNow()}
                 </div>

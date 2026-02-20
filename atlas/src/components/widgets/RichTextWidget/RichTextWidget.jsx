@@ -55,7 +55,7 @@ const RichTextWidget = (props) => {
         }}
       >
         <ReactQuill
-         className={editable ? "ql-editing" : "ql-readonly  cursor-text hover:bg-slate-50 p-2 -ml-2 rounded transition-colors"}
+         className={editable ? "ql-editing" : "ql-readonly  cursor-text hover:bg-slate-50 dark:hover:bg-slate-700 p-2 -ml-2 rounded transition-colors"}
           modules={{
             toolbar: editable
               ? [

@@ -1,5 +1,5 @@
 import frappe
-from .utils import create_custom_notification
+from infintrix_atlas.api.utils import create_custom_notification
 
 def on_file_insert(doc, method):
     """

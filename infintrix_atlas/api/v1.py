@@ -217,16 +217,16 @@ def switch_assignee_of_task(task_name, new_assignee):
         return {"success": True, "message": "No changes made"}
 
     # Notify old assignee that task has been removed
-    if existing_assignee:
-        frappe.db.set_value("ToDo", existing_todo, "status", "Closed")
-        create_custom_notification(
-            user=existing_assignee,
-            subject=f"{task_doc.subject}",
-            content=f"The task '<b>{task_doc.subject}</b>' has been removed from you.",
-            document_type="Task",
-            document_name=task_name,
-            icons='<i class="fa fa-trash"></i>',
-        )
+    # if existing_assignee:
+    #     frappe.db.set_value("ToDo", existing_todo, "status", "Closed")
+    #     create_custom_notification(
+    #         user=existing_assignee,
+    #         subject=f"{task_doc.subject}",
+    #         content=f"The task '<b>{task_doc.subject}</b>' has been removed from you.",
+    #         document_type="Task",
+    #         document_name=task_name,
+    #         icons='<i class="fa fa-trash"></i>',
+    #     )
 
     # Create new todo for new assignee only if not unassigned
     if new_assignee:
