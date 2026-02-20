@@ -96,9 +96,14 @@ const UserDetails = ({ user = {} }) => {
       limit_page_length: 100,
     },
     user ? ["user_tasks", user.name] : null,
+    {
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+      revalidateOnReconnect: false,
+      
+    }
   );
   const userTodos = user_tasks_query?.data || [];
-  console.log("User tasks query data:", userTodos);
 
   //   const userTasks = tasks.filter((t) => t.assignee === user.name);
   const completed = userTodos.filter((t) => t.status === "Completed").length;
