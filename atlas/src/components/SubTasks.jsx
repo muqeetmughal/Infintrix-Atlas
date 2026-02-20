@@ -22,7 +22,10 @@ const SubTasks = ({ task }) => {
   const subtasks_of_task_query = useFrappeGetDocList("Task", {
     filters: [["parent_task", "=", task]],
     fields: ["*"],
-    order_by: "modified desc",
+    orderBy: {
+      field: "modified",
+      order: "asc",
+    },
   });
 
   const createMutation = useFrappeCreateDoc();
