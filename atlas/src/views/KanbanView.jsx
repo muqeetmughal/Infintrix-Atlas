@@ -518,7 +518,6 @@ export default function KanbanView() {
     // console.log("Drag ended:", activeId, overId);
 
     const activeTask = tasks_list.find((i) => i.id === activeId);
-    console.log("Active task:", activeTask);
     if (!activeTask) return;
 
     // If dropped back onto itself, do nothing

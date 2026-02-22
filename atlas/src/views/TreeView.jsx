@@ -60,9 +60,8 @@ const TreeView = () => {
 
   const tree_query = useFrappeGetCall("infintrix_atlas.api.v1.get_task_tree", { project });
 
-  console.log("tree query:", tree_query.data);
   const onSelect = (selectedKeys, info) => {
-    console.log('selected', selectedKeys, info);
+    // console.log('selected', selectedKeys, info);
   };
   return (
     <Tree

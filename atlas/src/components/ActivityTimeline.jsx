@@ -11,9 +11,6 @@ dayjs.extend(relativeTime);
 export default function ActivityTimeline({ task_id }) {
   const [commentText, setCommentText] = React.useState("");
   const auth = useAuth();
-
-  console.log("auth", auth.currentUser);
-
   const versions_query = useFrappeGetCall(
     "infintrix_atlas.api.v1.get_task_activity",
     { task: task_id },
@@ -37,7 +34,6 @@ export default function ActivityTimeline({ task_id }) {
 
       // Field changes
       (parsed.changed || []).forEach(([field, oldVal, newVal]) => {
-        console.log("Field change detected:", { field, oldVal, newVal });
         // let fieldtype = "text";
         const label = field
           .replace(/_/g, " ")

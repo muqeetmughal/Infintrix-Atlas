@@ -25,7 +25,6 @@ const ManageProjectPeople = () => {
   };
 
   const handleSubmit = (values) => {
-    console.log("Form submitted with people: ", values);
     // Add your effect/logic here
     updateMutation
       .call({

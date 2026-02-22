@@ -11,7 +11,6 @@ const HistorySection = ({ task_id }) => {
     order_by: "creation desc",
     limit_page_length: 50,
   });
-  console.log("versions_query", versions_query.data);
     const versions = versions_query?.data || [];
 
 //   const versions = [

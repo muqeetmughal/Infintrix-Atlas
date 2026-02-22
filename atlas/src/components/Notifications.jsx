@@ -54,7 +54,6 @@ const Notifications = () => {
   }, []);
 
   useFrappeEventListener("update_system_notifications", (data) => {
-    console.log("Realtime notification received:", data);
     soundManager.play("ALERT");
 
     const key = `notif-${Date.now()}-${Math.random().toString(36).slice(2)}`;

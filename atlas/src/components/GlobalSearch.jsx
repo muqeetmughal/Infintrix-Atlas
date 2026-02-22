@@ -15,7 +15,6 @@ const GlobalSearch = () => {
     },
   );
 
-  // console.log("Search Query Result:", search_query.data);
 
   // Close on outside click
   useEffect(() => {

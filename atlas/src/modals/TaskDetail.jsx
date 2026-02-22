@@ -83,7 +83,6 @@ const TaskDetail = () => {
   });
 
   const task = task_details_query.data || {};
-  console.log("task details:", task)
   const issueName = task.issue || null;
   const issue_query = useFrappeGetDoc(
     "Issue",
@@ -552,7 +551,6 @@ const TaskDetail = () => {
                   Reporter
                 </div>
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
-                  {console.log("task.owner", task.owner)}
                   <ShowUserWidget value={task.owner} show_label={true} />
                 </div>
               </>

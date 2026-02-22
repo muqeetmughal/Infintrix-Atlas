@@ -61,7 +61,6 @@ const ProjectCard = ({ project: p }) => {
               updateMutation
                 .updateDoc("Project", p.name, { custom_is_archived: 0 })
                 .then((resp) => {
-                  console.log("Restored", resp);
                   swr.mutate(
                     (key) =>
                       Array.isArray(key) && key.some((k) => k === "Project"),
@@ -74,7 +73,6 @@ const ProjectCard = ({ project: p }) => {
               updateMutation
                 .updateDoc("Project", p.name, { custom_is_archived: 1 })
                 .then((resp) => {
-                  console.log("Archived", resp);
                   swr.mutate(
                     (key) =>
                       Array.isArray(key) && key.some((k) => k === "Project"),

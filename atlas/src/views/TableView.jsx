@@ -49,7 +49,6 @@ const TableView = () => {
       onChange: (selectedRowKeys, selectedRows) => {
         // const selectedNames = selectedRows.map(row => row.name);
         // qp.set("selected_tasks", selectedNames);
-        console.log("Selected rows:", selectedRows);
       },
       getCheckboxProps: (record) => ({
         name: record.name,

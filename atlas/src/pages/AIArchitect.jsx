@@ -586,8 +586,6 @@ const handleExtractIntents = async () => {
         project,
       })
       .then((res) => {
-        console.log("Create Tasks Response:", res);
-
         setDrafts((prev) =>
           prev.map((d) =>
             d.status === "APPROVED"

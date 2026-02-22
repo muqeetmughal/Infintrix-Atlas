@@ -93,7 +93,6 @@ export const AssigneeSelectWidget = (props) => {
           selectedKeys: assignees_of_task.concat(selected),
           onClick: ({ key, domEvent }) => {
             domEvent?.stopPropagation?.();
-            console.log("updateing assignee:", key);
 
             let newSelected = [];
             if (props.single) {

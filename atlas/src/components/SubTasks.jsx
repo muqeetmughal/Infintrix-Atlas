@@ -12,7 +12,6 @@ import { useSearchParams } from "react-router-dom";
 import PriorityWidget from "./widgets/PriorityWidget";
 import { Button } from "antd";
 const SubTasks = ({ task }) => {
-  console.log("task in subtasks", task);
   const [searchParams, setSearchParams] = useSearchParams();
   const [isAdding, setIsAdding] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -32,7 +31,6 @@ const SubTasks = ({ task }) => {
   const updateMutation = useFrappeUpdateDoc();
   const parent_task = task_detail_query.data || {};
   const subtasks = subtasks_of_task_query.data || [];
-  console.log("Subtasks query data:", subtasks);
   // const subtasks = [
   //   {
   //     name: "TASK-2026-00034",
@@ -170,8 +168,6 @@ const SubTasks = ({ task }) => {
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && inputValue.trim()) {
       // Create task with parent task reference
-      console.log("Creating subtask:", inputValue, "for parent:", task);
-      // Add your API call here
 
       updateMutation
         .updateDoc("Task", parent_task.name, { is_group: 1 })
@@ -273,7 +269,6 @@ const SubTasks = ({ task }) => {
                     </span> */}
                   </td>
                   <td className="px-2 py-2 text-slate-600 dark:text-slate-400">
-                    {console.log("subtask", subtask)}
                     <AssigneeSelectWidget
                       single={true}
                       show_label={true}
