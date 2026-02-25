@@ -44,7 +44,7 @@ const PriorityWidget = (props) => {
         </div>
       )}
       popupMatchSelectWidth={150}
-      dropdownClassName="dark:bg-gray-800"
+      classNames={{ popup: { root: "dark:bg-gray-800" } }}
       className="dark:text-gray-200"
       maxTagCount="responsive"
     >
