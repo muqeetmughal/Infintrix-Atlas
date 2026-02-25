@@ -9,11 +9,18 @@ import { useAuth } from "../hooks/query";
 
 import Logo from "./Logo";
 import { Dropdown, Typography } from "antd";
-import { ChevronDown, Info, LayoutDashboard, LogOut, Menu, Settings } from "lucide-react";
+import {
+  ChevronDown,
+  Info,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Settings,
+} from "lucide-react";
 const Sidebar = () => {
   const qp = useQueryParams();
-  const auth = useAuth()
-  
+  const auth = useAuth();
+
   const currentProject = qp.get("project");
 
   const projectsQuery = useFrappeGetDocList("Project", {
@@ -46,65 +53,16 @@ const Sidebar = () => {
           isSidebarOpen ? "w-72" : "w-24"
         }`}
       >
-        <Dropdown
-          trigger={"click"}
-          menu={{
-            items: [
-              {
-                icon: <LayoutDashboard />,
-                key: "apps",
-                label: "Apps",
-                children: installed_apps.map((app) => ({
-                  key: app.name,
-                  label: (
-                    <div
-                      className="flex items-center space-x-2 cursor-pointer"
-                      onClick={() =>{
-                        window.location.href = app.route;
-                        }}
-                      >
-                        <img src={app.logo} alt={app.title} className="w- h-5" />
-                        <span>{app.title}</span>
-                      </div>
-                      ),
-                    })),
-                    },
-                    {
-                    icon: <Settings />,
-                    key: "settings",
-                    label: "Settings",
-                    },
-                    {
-                    key: "about",
-                    label: "About",
-                    icon: <Info />,
-                    },
-                    {
-                    key: "logout",
-                    label: "Logout",
-                    icon: <LogOut />,
-                    },
-                  ],
-                  }}
-                >
-                  <div className="flex justify-between items-center p-4 mb-4 hover:cursor-pointer">
-                  <div className="flex items-center">
-                    <div>
-                    <Logo fullLogo={false} />
-                    </div>
+       <div className="flex justify-between items-center p-4 mb-4 hover:cursor-pointer">
+            <div className="flex items-center">
+              <div>
+                <Logo fullLogo={isSidebarOpen} />
+              </div>
 
-                    <div>
-                    <div level={4} className="font-bold mb-0 ml-2">
-                      Atlas
-                    </div>
-                    <div className="mb-0 ml-2 text-sm text-slate-500 dark:text-slate-400">
-                      {auth.user.full_name}
-                    </div>
-                    </div>
-                  </div>
-                  <ChevronDown size={20} className="text-slate-600 dark:text-slate-400" />
-                  </div>
-                </Dropdown>
+             
+            </div>
+         
+          </div>
 
         <nav className="px-4 space-y-2">
           {menuItems.map((item) => (
