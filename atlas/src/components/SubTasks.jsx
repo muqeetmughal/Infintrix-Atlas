@@ -234,9 +234,9 @@ const SubTasks = ({ task }) => {
               </tr>
             </thead>
             <tbody>
-              {subtasks.map((subtask) => (
+              {subtasks.map((subtask, index) => (
                 <tr
-                  key={subtask.id}
+                  key={`${subtask.id}-${index}`}
                   className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   <td className="px-2 py-2 text-slate-900 dark:text-slate-100">
