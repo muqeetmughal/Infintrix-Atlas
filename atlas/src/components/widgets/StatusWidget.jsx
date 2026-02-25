@@ -31,7 +31,7 @@ const StatusWidget = (props) => {
         //     <span className="ml-2">{props.label}</span>
         //   </div>
         // )}
-        popupClasses="dark:bg-gray-800"
+        // popupClasses="dark:bg-gray-800"
         className=" dark:text-gray-200"
         maxTagCount="responsive"
         // style={{ width: "100%" }}
