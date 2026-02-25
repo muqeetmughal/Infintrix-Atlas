@@ -98,7 +98,7 @@ export const useTasksQuery = (
 			fields: fields,
 			orderBy: {
 				field: "modified",
-				order: "asc",
+				order: "desc",
 			},
 			limit_start: 0,
 			limit: 99999,
