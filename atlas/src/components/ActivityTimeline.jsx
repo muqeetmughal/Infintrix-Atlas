@@ -5,6 +5,7 @@ import { useFrappeCreateDoc, useFrappeGetCall } from "frappe-react-sdk";
 import { Typography } from "antd";
 import AvatarGen from "./AvatarGen";
 import { useAuth } from "../hooks/query";
+import { MessageSquare } from "lucide-react";
 
 dayjs.extend(relativeTime);
 
@@ -73,7 +74,7 @@ export default function ActivityTimeline({ task_id }) {
         items.push({
           id: `comment-${c.creation}`,
           type: "comment",
-          text: `${who} Commented: ${c.content}`,
+          text: `${who}: ${c.content}`,
           time: c.creation,
         });
       }
@@ -148,58 +149,30 @@ export default function ActivityTimeline({ task_id }) {
                 onKeyPress={handleKeyPress}
                 disabled={createMutation.isPending}
                 style={{ height: inputHeight }}
-                className="w-full outline-none text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 mb-4 bg-transparent resize-none overflow-y-auto"
+                className="w-full outline-none text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 mb-4 bg-transparent resize-none overflow-hidden"
               />
               <div className="flex flex-wrap gap-2">
-                {[
-                  "🎉 Looks good!",
-                  "👋 Need help?",
-                  "⛔ This is blocked",
-                  "✅ Mark as done",
-                  "🚀 Ready to ship",
-                  "💭 Let's discuss",
-                  "🐛 Found a bug",
-                  "📝 Needs review",
-                ].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => {
-                      setCommentText(suggestion);
-                      setInputHeight(40);
-                    }}
-                    disabled={createMutation.isPending}
-                    className="cursor-pointer bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
                 <button
                   onClick={() => handleAddComment(commentText)}
                   disabled={createMutation.isPending || !commentText.trim()}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                  className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
                 >
                   {createMutation.isPending ? "Posting..." : "Post"}
                 </button>
               </div>
             </div>
-            <div className="text-xs text-slate-400 dark:text-slate-500 space-x-1 pl-1">
-              <span className="font-bold">Pro tip:</span>
-              <span>press</span>
-              <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-400">
-                Enter
-              </span>
-              <span>to submit</span>
-            </div>
           </div>
         </div>
       </div>
 
-      <Typography.Title level={4} className="mt-8">
+      <Typography.Title level={4} className="mt-8 text-slate-900 dark:text-slate-100">
         Activity
       </Typography.Title>
 
+      {console.log("Timeline Data:", timeline)}
+
       {!timeline.length ? (
-        <div style={{ opacity: 0.6 }}>No activity yet</div>
+        <div className="opacity-60 text-slate-600 dark:text-slate-400">No activity yet</div>
       ) : (
         <div style={{ paddingLeft: 12 }}>
           {timeline.map((item, idx) => (
@@ -212,14 +185,13 @@ export default function ActivityTimeline({ task_id }) {
                 paddingBottom: 16,
               }}
             >
-              {/* Dot + line */}
               <div style={{ position: "relative" }}>
                 <div
                   style={{
                     width: 8,
                     height: 8,
                     borderRadius: "50%",
-                    background: "#888",
+                    background: item.type === "comment" ? "#3b82f6" : "#888",
                     marginTop: 6,
                   }}
                 />
@@ -231,20 +203,31 @@ export default function ActivityTimeline({ task_id }) {
                       left: 3,
                       width: 1,
                       height: "100%",
-                      background: "#444",
+                      background: item.type === "comment" ? "#93c5fd" : "#444",
                     }}
                   />
                 )}
               </div>
+             
 
-              {/* Text */}
-              <div>
-                <div style={{ fontSize: 14 }}>
-                  <div dangerouslySetInnerHTML={{
-                    __html : item.text
-                  }}/>
+              <div className={item.type === "comment" ? "bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 overflow-hidden" : "overflow-hidden"}>
+                
+                <div
+                  className={item.type === "comment" ? "text-blue-900 dark:text-blue-300 font-medium" : "text-slate-900 dark:text-slate-100"}
+                  style={{
+                    fontSize: 14,
+                    lineClamp: 2,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  
+                  <div dangerouslySetInnerHTML={{ __html: item.text }} />
                 </div>
-                <div style={{ fontSize: 12, opacity: 0.6 }}>
+                <div className="text-slate-600 dark:text-slate-400" style={{ fontSize: 12 }}>
                   {dayjs(item.time).fromNow()}
                 </div>
               </div>
