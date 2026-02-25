@@ -160,7 +160,7 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
                 centered
                 width={isFullscreen ? "100vw" : "80vw"}
                 style={isFullscreen ? { position: "fixed", top: 0, left: 0, margin: 0, padding: 0 } : {}}
-                bodyStyle={isFullscreen ? { padding: 0, height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" } : { padding: "20px" }}
+                styles={{ body: isFullscreen ? { padding: 0, height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" } : { padding: "20px" } }}
                 title={
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span>Image Preview</span>
