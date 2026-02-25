@@ -78,7 +78,7 @@ const IssueCard = React.forwardRef(
             setSearchParams(searchParams);
           }}
       >
-        <div className="flex items-start justify-between mb-2">
+        <div className="flex items-start justify-between mb-1">
           <SubjectWidget task={issue} />
 
           {/* {issue.id !== "new_item" && (
@@ -92,7 +92,7 @@ const IssueCard = React.forwardRef(
           )} */}
         </div>
 
-        <div className="flex justify-between items-center mt-4">
+        <div className="flex justify-between items-center mt-1">
           <div className="flex items-center gap-2">
             <Tooltip title={issue.type}>
               <WorkItemTypeWidget
