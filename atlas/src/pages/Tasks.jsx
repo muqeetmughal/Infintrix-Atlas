@@ -95,7 +95,7 @@ const Tasks = () => {
   const active_cycle_name = cycle?.name;
 
   const tabs = [
-    { id: "ai-architect", label: "AI Architect" },
+    // { id: "ai-architect", label: "AI Architect" },
     { id: "list", label: "List" },
     { id: "backlog", label: "Backlog" },
     { id: "tree", label: "Tree" },
@@ -366,7 +366,7 @@ const Tasks = () => {
 
         {/* View Content */}
         <div className="overflow-x-auto">
-          {view === "ai-architect" && <AIArchitect />}
+          {/* {view === "ai-architect" && <AIArchitect />} */}
           {view === "list" && <TableView />}
           {view === "kanban" && <KanbanView />}
           {view === "backlog" && <BacklogView />}
