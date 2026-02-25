@@ -212,7 +212,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
   return (
     <div
       ref={setNodeRef}
-      className="flex flex-col min-w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 border border-slate-200/50 dark:border-slate-700"
+      className="flex flex-col min-w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 border border-slate-200/50 dark:border-slate-700 h-full"
     >
       <div className="sticky top-0 z-10 bg-slate-100/80 dark:bg-slate-800 flex items-center justify-between mb-4 px-1 pb-3">
         <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
@@ -238,7 +238,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar min-h-[60vh]">
+      <div className="flex-1 overflow-y-auto hide-scrollbar">
         <SortableContext
           items={tasks_list.map((i) => i.id)}
           strategy={verticalListSortingStrategy}
