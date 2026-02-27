@@ -1,47 +1,28 @@
-import { Filter, Hamburger, Menu, Plus, Search } from "lucide-react";
-import React, { act, useEffect } from "react";
-import Card from "../components/ui/Card";
+import { Filter, Menu, Plus } from "lucide-react";
+import React, {  useEffect } from "react";
 import {
-  INITIAL_TASKS,
   TASK_PRIORITY_COLORS,
   TASK_STATUS_COLORS,
 } from "../data/constants";
-import Badge from "../components/ui/Badge";
 import {
   useFrappeCreateDoc,
-  useFrappeGetCall,
   useFrappeGetDoc,
   useFrappeGetDocList,
   useFrappePostCall,
   useFrappeUpdateDoc,
   useSWRConfig,
 } from "frappe-react-sdk";
-// import dayjs from "dayjs";
-// import Assignee from "../components/widgets/Assignee";
-// import Priority from "../components/widgets/PriorityWidget";
-// import FormRender from "../components/form/FormRender";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { useDoctypeSchema } from "../hooks/doctype";
 import TaskDetail from "../modals/TaskDetail";
 import TableView from "../views/TableView";
 import KanbanView from "../views/KanbanView";
-import LinkField from "../components/form/LinkField";
 import {
-  Avatar,
   Button,
   Dropdown,
   Input,
-  Progress,
   Select,
-  Tooltip,
 } from "antd";
 import BacklogView from "../views/BacklogView/BacklogView";
-import { set } from "react-hook-form";
-import AIArchitect from "./AIArchitect";
-import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
-import AvatarGen from "../components/AvatarGen";
-import ListView from "../views/ListView";
-import PreviewAssignees from "../components/PreviewAssignees";
 import CycleModal from "../components/custom/CycleModal";
 import CompleteCycleModal from "../components/custom/CompleteCycleModal";
 import { useQueryParams } from "../hooks/useQueryParams";
@@ -51,7 +32,6 @@ import TreeView from "../views/TreeView";
 import InsightsView from "../views/InsightsView/InsightsView";
 
 const Tasks = () => {
-  // const [isOpen, setIsOpen] = React.useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
   const qp = useQueryParams();
@@ -64,13 +44,10 @@ const Tasks = () => {
   const priorityFilter = qp.getArray("priority");
   const { mutate } = useSWRConfig();
 
-  // const selectedTask = searchParams.get("selected_task") || null;
-  // const project = searchParams.get("project") || null;
   const navigate = useNavigate();
   const createMutation = useFrappeCreateDoc();
   const updateMutation = useFrappeUpdateDoc();
 
-  // const query = useDoctypeSchema("Task");
   const create_cycles_for_project_mutatation = useFrappePostCall(
     "infintrix_atlas.api.v1.create_cycles_for_project",
   );
@@ -291,7 +268,7 @@ const Tasks = () => {
             </Button>
           </div>
         </div>
-
+{/* 
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="hidden md:block" style={{ width: 200 }} />
 
@@ -308,7 +285,7 @@ const Tasks = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Advanced Filters Panel */}
         {showFilters && (

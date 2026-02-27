@@ -2,6 +2,9 @@ import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Plus,
   MoreHorizontal,
+  GripVertical,
+  Edit,
+  X,
   Ellipsis,
   Check,
 } from "lucide-react";
@@ -25,21 +28,25 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   useFrappeCreateDoc,
+  useFrappeGetCall,
   useFrappeGetDoc,
   useFrappeGetDocList,
   useFrappeUpdateDoc,
   useFrappePostCall,
   useSWRConfig,
 } from "frappe-react-sdk";
-import { useGetDoctypeField } from "../hooks/doctype";
-import { Link, useSearchParams } from "react-router-dom";
-import { Button, Dropdown, message, Tooltip } from "antd";
-import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
-import { useTasksQuery } from "../hooks/query";
-import { useQueryParams } from "../hooks/useQueryParams";
-import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
-import SubjectWidget from "../components/widgets/SubjectWidget";
-import { TASK_STATUS_COLORS, TASK_STATUS_ICONS } from "../data/constants";
+import { useGetDoctypeField } from "../../hooks/doctype";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Badge, Button, Dropdown, Input, message, Tooltip } from "antd";
+import { IconRenderer } from "../../components/IconRenderer";
+import WorkItemTypeWidget from "../../components/widgets/WorkItemTypeWidget";
+import PreviewAssignees from "../../components/PreviewAssignees";
+import { useTasksQuery } from "../../hooks/query";
+import { useQueryParams } from "../../hooks/useQueryParams";
+import Confetti from "../../components/Confetti";
+import { AssigneeSelectWidget } from "../../components/widgets/AssigneeSelectWidget";
+import SubjectWidget from "../../components/widgets/SubjectWidget";
+import { TASK_STATUS_COLORS, TASK_STATUS_ICONS } from "../../data/constants";
 
 const IssueCard = React.forwardRef(
   (
@@ -262,7 +269,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
       ref={setNodeRef}
       className="flex flex-col min-w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 border border-slate-200/50 dark:border-slate-700 h-full"
     >
-      <div className="sticky top-0 z-10 bg-slate-100/80 dark:bg-slate-800 flex items-center justify-between px-1 pb-3">
+      <div className="sticky top-0 z-10 bg-slate-100/80 dark:bg-slate-800 flex items-center justify-between mb-4 px-1 pb-3">
         <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
           <div>
             <div className="flex justify-start items-center">
@@ -287,11 +294,18 @@ const Column = ({ id, title, tasks_list, createTask }) => {
       </div>
 
       <div className="flex-1 overflow-y-auto hide-scrollbar">
-        
+        <SortableContext
+          items={tasks_list.map((i) => i.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {tasks_list.map((issue) => (
+            <SortableIssue key={issue.id} issue={issue} />
+          ))}
+        </SortableContext>
 
         {addNew ? (
           <div data-create-item>
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm mb-3">
               <input
                 type="text"
                 className="w-full border-0 bg-transparent focus:ring-0 p-0 m-0 outline-none text-sm font-medium text-slate-800 dark:text-slate-100"
@@ -324,21 +338,12 @@ const Column = ({ id, title, tasks_list, createTask }) => {
             onClick={() => {
               setAddNew(true);
             }}
-            className="cursor-pointer w-full py-2 flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg text-sm font-medium transition-colors"
+            className="cursor-pointer w-full mt-2 py-2 flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg text-sm font-medium transition-colors"
           >
             <Plus size={16} />
             Create
           </button>
         )}
-
-        <SortableContext
-          items={tasks_list.map((i) => i.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {tasks_list.map((issue) => (
-            <SortableIssue key={issue.id} issue={issue} />
-          ))}
-        </SortableContext>
       </div>
     </div>
   );
