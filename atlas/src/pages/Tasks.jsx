@@ -48,6 +48,7 @@ import { useQueryParams } from "../hooks/useQueryParams";
 import ProjectHealth from "../components/ProjectHealth";
 import ManageProjectPeople from "../modals/ManageProjectPeople";
 import TreeView from "../views/TreeView";
+import InsightsView from "../views/InsightsView/InsightsView";
 
 const Tasks = () => {
   // const [isOpen, setIsOpen] = React.useState(false);
@@ -96,6 +97,7 @@ const Tasks = () => {
 
   const tabs = [
     // { id: "ai-architect", label: "AI Architect" },
+    { id: "insights", label: "Insights" },
     { id: "list", label: "List" },
     { id: "backlog", label: "Backlog" },
     { id: "tree", label: "Tree" },
@@ -371,6 +373,7 @@ const Tasks = () => {
           {view === "kanban" && <KanbanView />}
           {view === "backlog" && <BacklogView />}
           {view === "tree" && <TreeView />}
+          {view === "insights" && <InsightsView />}
         </div>
       </div>
       <CompleteCycleModal />

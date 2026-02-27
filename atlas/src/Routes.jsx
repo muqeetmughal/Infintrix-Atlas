@@ -75,10 +75,7 @@ export const router = createBrowserRouter(
             path : "team/:id",
             element : <TeamDetail/>
         },
-        {
-            path : "customer-portal",
-            element : <CustomerPortal/>
-        },
+     
         {
           path: "*",
           element: <NotFound />,

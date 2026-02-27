@@ -1,5 +1,13 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { Plus, MoreHorizontal, GripVertical, Edit, X } from "lucide-react";
+import {
+  Plus,
+  MoreHorizontal,
+  GripVertical,
+  Edit,
+  X,
+  Ellipsis,
+  Check,
+} from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -29,7 +37,7 @@ import {
 } from "frappe-react-sdk";
 import { useGetDoctypeField } from "../hooks/doctype";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { Badge, Button, Input, message, Tooltip } from "antd";
+import { Badge, Button, Dropdown, Input, message, Tooltip } from "antd";
 import { IconRenderer } from "../components/IconRenderer";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
 import PreviewAssignees from "../components/PreviewAssignees";
@@ -67,29 +75,68 @@ const IssueCard = React.forwardRef(
       }
       `}
         {...attributes}
-          {...listeners}
-          {...props}
-          onClick={(e) => {
-            // Don't open modal if clicking on interactive elements
-            const el = e.target.closest?.("button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker");
-            if (el) return;
-            if (issue.id === "new_item") return;
-            searchParams.set("selected_task", issue.id);
-            setSearchParams(searchParams);
-          }}
+        {...listeners}
+        {...props}
+        onClick={(e) => {
+          // Don't open modal if clicking on interactive elements
+          const el = e.target.closest?.(
+            "button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker",
+          );
+          if (el) return;
+          if (issue.id === "new_item") return;
+          searchParams.set("selected_task", issue.id);
+          setSearchParams(searchParams);
+        }}
       >
         <div className="flex items-start justify-between mb-1">
           <SubjectWidget task={issue} />
 
-          {/* {issue.id !== "new_item" && (
-            <div
-              className="text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors p-1 -mr-2"
-              {...attributes}
-              {...listeners}
+          {issue.id !== "new_item" && (
+            <Dropdown
+              trigger={"click"}
+              menu={{
+                items: [
+                  {
+                    label: "Change Status",
+                    key: "change_status",
+                    children: [
+                      {
+                        label: "Open",
+                        key: "Open",
+                      },
+                      {
+                        label: "Completed",
+                        key: "Completed",
+                      },
+                    ],
+                  },
+                  {
+                    label: "Copy Link",
+                    key: "copy_link",
+                  },
+                  {
+                    label: "Copy Key",
+                    key: "copy_key",
+                  },
+                  {
+                    label: "Archive",
+                    key: "archive",
+                  },
+                  {
+                    label: "Delete",
+                    key: "delete",
+                  },
+                ],
+              }}
             >
-              <GripVertical size={16} />
-            </div>
-          )} */}
+              <Button
+                icon={<Ellipsis size={16} />}
+                size="small"
+                type="text"
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+              />
+            </Dropdown>
+          )}
         </div>
 
         <div className="flex justify-between items-center mt-1">
@@ -112,29 +159,37 @@ const IssueCard = React.forwardRef(
               {issue.id}
             </span>
           </div>
-          <div
-            className={`w-7 h-7 rounded-full ${issue.assigneeColor} text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm`}
-          >
-            <AssigneeSelectWidget
-              single={true}
-              show_label={false}
-              value={issue.assignees || []}
-              task={issue.id}
-              // onChange={(newAssignees) => {
-              //   updateMutation
-              //     .updateDoc("Task", issue.name, {
-              //       assignees: newAssignees,
-              //     })
-              //     .then(() => {
-              //       // task_details_query.mutate();
-              //     });
-              // }}
-            />
+          <div className="flex items-center gap-2">
+            {issue.status === "Completed" && (
+              <Tooltip title={"Done"}>
+                <Check size={14} className="text-green-500" />
+              </Tooltip>
+            )}
 
-            {/* <PreviewAssignees
+            <div
+              className={`w-7 h-7 rounded-full text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm`}
+            >
+              <AssigneeSelectWidget
+                single={true}
+                show_label={false}
+                value={issue.assignees || []}
+                task={issue.id}
+                // onChange={(newAssignees) => {
+                //   updateMutation
+                //     .updateDoc("Task", issue.name, {
+                //       assignees: newAssignees,
+                //     })
+                //     .then(() => {
+                //       // task_details_query.mutate();
+                //     });
+                // }}
+              />
+
+              {/* <PreviewAssignees
               assignees={issue.assignees}
               enable_tooltip={false}
             /> */}
+            </div>
           </div>
         </div>
       </div>
@@ -333,20 +388,24 @@ export default function KanbanView() {
     () =>
       raw_tasks
         .filter((task) => {
-        if (statusFilter.length && !statusFilter.includes(task.status)) {
-          return false;
-        }
-        if (priorityFilter.length && !priorityFilter.includes(task.priority)) {
-          return false;
-        }
-        if (searchText) {
-          const haystack = `${task.subject || ""} ${task.name || ""}`.toLowerCase();
-          if (!haystack.includes(searchText)) {
+          if (statusFilter.length && !statusFilter.includes(task.status)) {
             return false;
           }
-        }
-        return true;
-      })
+          if (
+            priorityFilter.length &&
+            !priorityFilter.includes(task.priority)
+          ) {
+            return false;
+          }
+          if (searchText) {
+            const haystack =
+              `${task.subject || ""} ${task.name || ""}`.toLowerCase();
+            if (!haystack.includes(searchText)) {
+              return false;
+            }
+          }
+          return true;
+        })
         .slice()
         .sort((a, b) => {
           // Keep list stable across re-fetches: status ASC, custom_sort_order ASC
@@ -366,7 +425,9 @@ export default function KanbanView() {
           if (aSort !== bSort) return aSort - bSort;
 
           // fallback
-          return String(b.modified || "").localeCompare(String(a.modified || ""));
+          return String(b.modified || "").localeCompare(
+            String(a.modified || ""),
+          );
         }),
     [raw_tasks, statusFilter, priorityFilter, searchText],
   );
@@ -417,7 +478,7 @@ export default function KanbanView() {
     // Find the current task to get old status
     const currentTask = tasks_list.find((t) => t.name === task);
     const oldStatus = currentTask?.status;
-    
+
     await tasks_list_query
       .mutate(
         async (current) => {
@@ -450,13 +511,15 @@ export default function KanbanView() {
         mutate(["Project", project]);
         // Notify assigned users about status change
         if (oldStatus && oldStatus !== newStatus) {
-          notifyStatusChange.call({
-            task_name: task,
-            old_status: oldStatus,
-            new_status: newStatus,
-          }).catch((err) => {
-            console.error("Failed to send status change notification:", err);
-          });
+          notifyStatusChange
+            .call({
+              task_name: task,
+              old_status: oldStatus,
+              new_status: newStatus,
+            })
+            .catch((err) => {
+              console.error("Failed to send status change notification:", err);
+            });
         }
       });
   };
@@ -580,13 +643,18 @@ export default function KanbanView() {
             });
             mutate(["Project", project]);
             // Notify assigned users about status change
-            notifyStatusChange.call({
-              task_name: activeTask.name,
-              old_status: oldStatus,
-              new_status: newStatus,
-            }).catch((err) => {
-              console.error("Failed to send status change notification:", err);
-            });
+            notifyStatusChange
+              .call({
+                task_name: activeTask.name,
+                old_status: oldStatus,
+                new_status: newStatus,
+              })
+              .catch((err) => {
+                console.error(
+                  "Failed to send status change notification:",
+                  err,
+                );
+              });
           }
 
           // Persist sort order only for affected columns (old + new)
@@ -594,9 +662,7 @@ export default function KanbanView() {
             newStatus === oldStatus ? [newStatus] : [oldStatus, newStatus];
 
           // Build old state maps for minimal updates
-          const prevById = new Map(
-            (current || []).map((t) => [t.id, t]),
-          );
+          const prevById = new Map((current || []).map((t) => [t.id, t]));
 
           const updates = [];
           const orderMapByStatus = {};
@@ -659,7 +725,11 @@ export default function KanbanView() {
       );
     } catch (e) {
       if (newStatus !== oldStatus) {
-        message.error(String(e.exception || e.message || e).split(":").slice(-1)[0]);
+        message.error(
+          String(e.exception || e.message || e)
+            .split(":")
+            .slice(-1)[0],
+        );
       }
     } finally {
       setActiveIssue(null);
@@ -728,32 +798,33 @@ export default function KanbanView() {
         >
           {COLUMNS.map((col) => {
             return (
-            <Column
-              key={col.id}
-              id={col.id}
-              title={col.title}
-              tasks_list={tasks_list
-                .filter((i) => i.status === col.id)
-                .slice()
-                .sort((a, b) => {
-                  const aSort =
-                    a.custom_sort_order === null ||
-                    a.custom_sort_order === undefined
-                      ? Number.POSITIVE_INFINITY
-                      : Number(a.custom_sort_order);
-                  const bSort =
-                    b.custom_sort_order === null ||
-                    b.custom_sort_order === undefined
-                      ? Number.POSITIVE_INFINITY
-                      : Number(b.custom_sort_order);
-                  if (aSort !== bSort) return aSort - bSort;
-                  return String(b.modified || "").localeCompare(
-                    String(a.modified || ""),
-                  );
-                })}
-              createTask={createNewTask}
-            />
-          )})}
+              <Column
+                key={col.id}
+                id={col.id}
+                title={col.title}
+                tasks_list={tasks_list
+                  .filter((i) => i.status === col.id)
+                  .slice()
+                  .sort((a, b) => {
+                    const aSort =
+                      a.custom_sort_order === null ||
+                      a.custom_sort_order === undefined
+                        ? Number.POSITIVE_INFINITY
+                        : Number(a.custom_sort_order);
+                    const bSort =
+                      b.custom_sort_order === null ||
+                      b.custom_sort_order === undefined
+                        ? Number.POSITIVE_INFINITY
+                        : Number(b.custom_sort_order);
+                    if (aSort !== bSort) return aSort - bSort;
+                    return String(b.modified || "").localeCompare(
+                      String(a.modified || ""),
+                    );
+                  })}
+                createTask={createNewTask}
+              />
+            );
+          })}
 
           <DragOverlay dropAnimation={dropAnimation}>
             {activeIssue ? (

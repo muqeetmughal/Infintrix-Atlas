@@ -29,14 +29,14 @@ def on_file_insert(doc, method):
         )
 
         # If there's an assignee, send them a notification
-        if assignee:
-            create_custom_notification(
-                user=assignee,
-                subject=f"File attached to task: {task_doc.subject}",
-                content=f"A new file '<b>{doc.file_name}</b>' has been attached to task '<b>{task_doc.subject}</b>'.",
-                document_type="Task",
-                document_name=task_name,
-                icons='<i class="fa fa-paperclip"></i>',
-            )
+        # if assignee:
+        #     create_custom_notification(
+        #         user=assignee,
+        #         subject=f"File attached to task: {task_doc.subject}",
+        #         content=f"A new file '<b>{doc.file_name}</b>' has been attached to task '<b>{task_doc.subject}</b>'.",
+        #         document_type="Task",
+        #         document_name=task_name,
+        #         icons='<i class="fa fa-paperclip"></i>',
+        #     )
     except Exception as e:
         frappe.log_error(f"Failed to send attachment notification: {e}", "Attachment Notification Error")

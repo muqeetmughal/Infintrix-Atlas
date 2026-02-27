@@ -17,6 +17,7 @@ import {
   Trash,
   Menu,
   ExternalLink,
+  MessageCircle,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -28,7 +29,7 @@ import {
   useFrappeCreateDoc,
 } from "frappe-react-sdk";
 import { useQueryClient } from "@tanstack/react-query";
-import { Modal as AntdModal, Typography } from "antd";
+import { Modal as AntdModal, Drawer, Typography } from "antd";
 import dayjs from "dayjs";
 import {
   AssigneeSelectWidget,
@@ -49,6 +50,7 @@ import SubjectWidget from "../components/widgets/SubjectWidget";
 import FileAttachment from "./FileAttachment";
 import PriorityWidget from "../components/widgets/PriorityWidget";
 import ActivityTimeline from "../components/ActivityTimeline";
+import TaskCopilot from "../components/TaskCopilot";
 
 const TaskDetail = () => {
   const [isResizing, setIsResizing] = useState(false);
@@ -66,6 +68,7 @@ const TaskDetail = () => {
   const createIssueMutation = useFrappeCreateDoc();
   const queryClient = useQueryClient();
   const selectedTask = searchParams.get("selected_task") || null;
+  const copilot = searchParams.get("copilot") === "true";
 
   const task_details_query = useFrappeGetDoc("Task", selectedTask || "");
 
@@ -239,6 +242,14 @@ const TaskDetail = () => {
           </div>
           <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
             <Share2 size={18} />
+          </button>
+           <button onClick={()=>{
+
+            searchParams.set("copilot", "true");
+            setSearchParams(searchParams);
+
+}} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+            <MessageCircle size={18} />
           </button>
           <Dropdown
             trigger={"click"}
@@ -459,7 +470,7 @@ const TaskDetail = () => {
             </div>
 
             {/* Attributes Grid */}
-            <div className="grid grid-cols-[100px_1fr] gap-y-5 text-sm">
+            <div className="grid grid-cols-[100px_1fr] gap-y-2 text-sm">
               <>
                 <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
                   Assignee
@@ -711,6 +722,23 @@ const TaskDetail = () => {
           {task_details_query.isLoading || assignee_of_task_query.isLoading
             ? "Loading..."
             : TaskBody}{" "}
+
+            <Drawer
+            open={!!copilot}
+            onClose={() => {
+              searchParams.set("copilot", "false");
+              setSearchParams(searchParams);
+            }}
+            size={"large"}
+            styles={{
+              body : { padding: 0 }
+            }}
+            // bodyStyle={{ padding: 0 }}
+            // headerStyle={{ display: "none" }}
+            closable={false}
+            >
+              <TaskCopilot/>
+            </Drawer>
         </div>
       </div>
     );

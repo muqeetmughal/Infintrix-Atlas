@@ -1,4 +1,4 @@
-# 🚀 Infintrix Atlas
+*# 🚀 Infintrix Atlas
 
 > AI-Augmented Project Management built on top of ERPNext  
 > Inspired by Jira. Designed for execution clarity. Built Open-Source.
@@ -218,3 +218,4 @@ Open an issue. Challenge assumptions. Propose better invariants.
 # 📜 License
 
 MIT
+*
