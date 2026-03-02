@@ -51,6 +51,7 @@ import FileAttachment from "./FileAttachment";
 import PriorityWidget from "../components/widgets/PriorityWidget";
 import ActivityTimeline from "../components/ActivityTimeline";
 import TaskCopilot from "../components/TaskCopilot";
+import TaskSkeleton from "./TaskSkeleton";
 
 const TaskDetail = () => {
   const [isResizing, setIsResizing] = useState(false);
@@ -70,7 +71,7 @@ const TaskDetail = () => {
   const selectedTask = searchParams.get("selected_task") || null;
   const copilot = searchParams.get("copilot") === "true";
 
-  const task_details_query = useFrappeGetDoc("Task", selectedTask || "");
+  const task_details_query = useFrappeGetDoc("Task", selectedTask);
 
   const assignee_of_task_query = useAssigneeOfTask(selectedTask);
   const assignee_mutation = useFrappePostCall(
@@ -243,12 +244,13 @@ const TaskDetail = () => {
           <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
             <Share2 size={18} />
           </button>
-           <button onClick={()=>{
-
-            searchParams.set("copilot", "true");
-            setSearchParams(searchParams);
-
-}} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+          <button
+            onClick={() => {
+              searchParams.set("copilot", "true");
+              setSearchParams(searchParams);
+            }}
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+          >
             <MessageCircle size={18} />
           </button>
           <Dropdown
@@ -357,6 +359,7 @@ const TaskDetail = () => {
               </h3>
               <div className="group relative">
                 <RichTextWidget
+                  loading={updateMutation.loading}
                   value={task.description}
                   onSubmit={(newValue) => {
                     updateMutation
@@ -385,7 +388,6 @@ const TaskDetail = () => {
             {/* Activity Section */}
             <section className="mt-12">
               <ActivityTimeline task_id={task.name} />
-              
             </section>
           </div>
         </main>
@@ -719,26 +721,29 @@ const TaskDetail = () => {
               : "w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl"
           }`}
         >
-          {task_details_query.isLoading || assignee_of_task_query.isLoading
-            ? "Loading..."
-            : TaskBody}{" "}
-
-            <Drawer
-            open={!!copilot}
-            onClose={() => {
-              searchParams.set("copilot", "false");
-              setSearchParams(searchParams);
-            }}
-            size={"large"}
-            styles={{
-              body : { padding: 0 }
-            }}
-            // bodyStyle={{ padding: 0 }}
-            // headerStyle={{ display: "none" }}
-            closable={false}
-            >
-              <TaskCopilot/>
-            </Drawer>
+          {task_details_query.isLoading || assignee_of_task_query.isLoading ? (
+            <TaskSkeleton />
+          ) : (
+            <>
+              {TaskBody}
+              <Drawer
+                open={!!copilot}
+                onClose={() => {
+                  searchParams.set("copilot", "false");
+                  setSearchParams(searchParams);
+                }}
+                size={"large"}
+                styles={{
+                  body: { padding: 0 },
+                }}
+                // bodyStyle={{ padding: 0 }}
+                // headerStyle={{ display: "none" }}
+                closable={false}
+              >
+                <TaskCopilot />
+              </Drawer>
+            </>
+          )}{" "}
         </div>
       </div>
     );

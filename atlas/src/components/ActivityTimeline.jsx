@@ -169,8 +169,6 @@ export default function ActivityTimeline({ task_id }) {
         Activity
       </Typography.Title>
 
-      {console.log("Timeline Data:", timeline)}
-
       {!timeline.length ? (
         <div className="opacity-60 text-slate-600 dark:text-slate-400">No activity yet</div>
       ) : (
