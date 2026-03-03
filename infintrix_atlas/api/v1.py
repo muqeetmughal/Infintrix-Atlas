@@ -186,10 +186,8 @@ def get_doctype_meta(doctype_name):
         frappe.throw(f"Error fetching metadata: {e}")
 
 
-@frappe.whitelist()  # Adjust permissions as needed
+@frappe.whitelist()
 def switch_assignee_of_task(task_name, new_assignee):
-    # task_name = frappe.request.args.get("task")
-    # new_assignee = frappe.request.args.get("assignee")
     if not task_name:
         frappe.throw("Task is required")
 
@@ -200,39 +198,36 @@ def switch_assignee_of_task(task_name, new_assignee):
     elif new_assignee == "auto":
         new_assignee = frappe.session.user
 
-    # Get existing assignee
-    existing_todo = frappe.db.get_value(
+    # Get all existing open ToDos for this task
+    existing_todos = frappe.db.get_all(
         "ToDo",
-        {
+        filters={
             "reference_type": "Task",
             "reference_name": task_name,
-            "status": ["!=", "Cancelled"],
+            "status": "Open",
         },
-        "name",
+        fields=["name", "allocated_to"],
     )
 
-    existing_assignee = None
-    if existing_todo:
-        existing_assignee = frappe.db.get_value(
-            "ToDo", existing_todo, "allocated_to")
+    # Check if the only existing open ToDo is already assigned to new_assignee
+    if len(existing_todos) == 1 and existing_todos[0]["allocated_to"] == new_assignee:
+        return {"success": True, "message": "Task already assigned to this user"}
 
-    # Return early if assignee hasn't changed
-    if existing_assignee == new_assignee:
-        return {"success": True, "message": "No changes made"}
+    # Close all existing open ToDos
+    for todo in existing_todos:
+        frappe.db.set_value("ToDo", todo["name"], "status", "Closed")
 
-    # Notify old assignee that task has been removed
-    # if existing_assignee:
-    #     frappe.db.set_value("ToDo", existing_todo, "status", "Closed")
-    #     create_custom_notification(
-    #         user=existing_assignee,
-    #         subject=f"{task_doc.subject}",
-    #         content=f"The task '<b>{task_doc.subject}</b>' has been removed from you.",
-    #         document_type="Task",
-    #         document_name=task_name,
-    #         icons='<i class="fa fa-trash"></i>',
-    #     )
+        # Notify old assignee
+        create_custom_notification(
+            user=todo["allocated_to"],
+            subject=f"{task_doc.subject}",
+            content=f"The task '<b>{task_doc.subject}</b>' has been removed from you.",
+            document_type="Task",
+            document_name=task_name,
+            icons='<i class="fa fa-trash"></i>',
+        )
 
-    # Create new todo for new assignee only if not unassigned
+    # Create new ToDo for new assignee only if not unassigned
     if new_assignee:
         frappe.get_doc(
             {
@@ -246,6 +241,7 @@ def switch_assignee_of_task(task_name, new_assignee):
                 "assigned_by": frappe.session.user,
             }
         ).insert()
+
         create_custom_notification(
             user=new_assignee,
             subject=f"{task_doc.subject}",
@@ -1163,20 +1159,21 @@ def get_task_activity(task):
         "comments": comments
     }
 
+
 @frappe.whitelist()
 def get_customer_portal_data(project=None):
     print(f"Fetching customer portal data for project: {project}")
     project_doc = frappe.get_doc("Project", project)
     print(f"Project found: {project_doc.project_name}")
     over_all_status = "On Track"  # This could be calculated based on project metrics
-    
+
     if project_doc.status == "Open":
         over_all_status = "On Track"
     elif project_doc.status == "Completed":
         over_all_status = "Completed"
     else:
         over_all_status = "At Risk"
-        
+
     percent_complete = project_doc.percent_complete or 0
     active_cycle = frappe.db.get_value(
         "Cycle",
@@ -1184,7 +1181,7 @@ def get_customer_portal_data(project=None):
         ["cycle_name as title", "start_date", "end_date"],
         as_dict=True,
     )
-    
+
     next_milestone_date = frappe.db.sql(
         """
         SELECT end_date FROM `tabCycle`
@@ -1195,173 +1192,174 @@ def get_customer_portal_data(project=None):
         (project,),
         as_dict=True,
     )
-    
+
     # print(f"Active cycle: {active_cycle}")
     # print(f"Next milestone date: {next_milestone_date}")
-    
+
     cycles = frappe.get_all(
         "Cycle",
         filters={"project": project},
-        fields=["name as id","name", "cycle_name as title", "start_date", "end_date", "status"],
+        fields=["name as id", "name", "cycle_name as title",
+                "start_date", "end_date", "status"],
         order_by="start_date asc",
     )
-        
+
     data = {
-    "summary": {
-        "project_name": project_doc.project_name,
-        "overall_status": over_all_status,
-        "percent_complete": percent_complete,
-        "days_to_milestone": 14,
-        "project_mode" : project_doc.custom_execution_mode or "Kanban",
-        "active_cycle": active_cycle,
-        "next_milestone_date": next_milestone_date[0]["end_date"] if next_milestone_date else None,
-    },
-    "cycles": cycles,
-    "cycles2": [
-        {
-            "id": "C1",
-            "title": "Discovery & UX",
-            "start_date": "2024-01-01",
-            "end_date": "2024-02-15",
-            "status": "Completed",
-            "deliverables": ["Architecture Doc", "User Flow Maps"],
-            "completion": 100,
+        "summary": {
+            "project_name": project_doc.project_name,
+            "overall_status": over_all_status,
+            "percent_complete": percent_complete,
+            "days_to_milestone": 14,
+            "project_mode": project_doc.custom_execution_mode or "Kanban",
+            "active_cycle": active_cycle,
+            "next_milestone_date": next_milestone_date[0]["end_date"] if next_milestone_date else None,
         },
-        {
-            "id": "C2",
-            "title": "Visual Design",
-            "start_date": "2024-02-16",
-            "end_date": "2024-04-30",
-            "status": "Completed",
-            "deliverables": ["Hi-Fi Prototypes", "Brand Guidelines"],
-            "completion": 100,
+        "cycles": cycles,
+        "cycles2": [
+            {
+                "id": "C1",
+                "title": "Discovery & UX",
+                "start_date": "2024-01-01",
+                "end_date": "2024-02-15",
+                "status": "Completed",
+                "deliverables": ["Architecture Doc", "User Flow Maps"],
+                "completion": 100,
+            },
+            {
+                "id": "C2",
+                "title": "Visual Design",
+                "start_date": "2024-02-16",
+                "end_date": "2024-04-30",
+                "status": "Completed",
+                "deliverables": ["Hi-Fi Prototypes", "Brand Guidelines"],
+                "completion": 100,
+            },
+            {
+                "id": "C3",
+                "title": "Core Integration",
+                "start_date": "2024-05-01",
+                "end_date": "2024-05-30",
+                "status": "Active",
+                "deliverables": ["Stripe Connect API", "KYC Module"],
+                "completion": 45,
+            },
+            {
+                "id": "C4",
+                "title": "UAT & Scaling",
+                "start_date": "2024-06-01",
+                "end_date": "2024-07-01",
+                "status": "Planned",
+                "deliverables": ["Security Audit", "Beta Launch"],
+                "completion": 0,
+            },
+        ],
+        "pendingActions": [
+            {
+                "id": "ACT-001",
+                "title": "Approve Design Prototype (v2.4)",
+                "type": "Approval",
+                "due_date": "2024-05-18",
+                "status": "Pending",
+                "priority": "High",
+            },
+            {
+                "id": "ACT-002",
+                "title": "Submit Bank API Documentation",
+                "type": "Requirement Submission",
+                "due_date": "2024-05-20",
+                "status": "Pending",
+                "priority": "Medium",
+            },
+        ],
+        "requirements": [
+            {
+                "id": "REQ-1",
+                "title": "Auth Specification",
+                "submitted_on": "2024-04-10",
+                "status": "Approved",
+                "owner": "Alex Rivera",
+            },
+            {
+                "id": "REQ-2",
+                "title": "KYC Flow Prototype",
+                "submitted_on": "2024-05-02",
+                "status": "In Review",
+                "owner": "Jane Doe",
+            },
+            {
+                "id": "REQ-3",
+                "title": "Performance Benchmarks",
+                "submitted_on": "2024-05-12",
+                "status": "Submitted",
+                "owner": "Alex Rivera",
+            },
+            {
+                "id": "REQ-4",
+                "title": "Mobile UI Kit",
+                "submitted_on": "2024-05-14",
+                "status": "Approved",
+                "owner": "Jane Doe",
+            },
+        ],
+        "progress": {
+            "completed": 45,
+            "in_progress": 12,
+            "pending": 8,
         },
-        {
-            "id": "C3",
-            "title": "Core Integration",
-            "start_date": "2024-05-01",
-            "end_date": "2024-05-30",
-            "status": "Active",
-            "deliverables": ["Stripe Connect API", "KYC Module"],
-            "completion": 45,
+        "financials": {
+            "total_budget": 185000,
+            "total_invoiced": 125000,
+            "paid": 110000,
+            "last_invoice_date": "2024-05-01",
         },
-        {
-            "id": "C4",
-            "title": "UAT & Scaling",
-            "start_date": "2024-06-01",
-            "end_date": "2024-07-01",
-            "status": "Planned",
-            "deliverables": ["Security Audit", "Beta Launch"],
-            "completion": 0,
-        },
-    ],
-    "pendingActions": [
-        {
-            "id": "ACT-001",
-            "title": "Approve Design Prototype (v2.4)",
-            "type": "Approval",
-            "due_date": "2024-05-18",
-            "status": "Pending",
-            "priority": "High",
-        },
-        {
-            "id": "ACT-002",
-            "title": "Submit Bank API Documentation",
-            "type": "Requirement Submission",
-            "due_date": "2024-05-20",
-            "status": "Pending",
-            "priority": "Medium",
-        },
-    ],
-    "requirements": [
-        {
-            "id": "REQ-1",
-            "title": "Auth Specification",
-            "submitted_on": "2024-04-10",
-            "status": "Approved",
-            "owner": "Alex Rivera",
-        },
-        {
-            "id": "REQ-2",
-            "title": "KYC Flow Prototype",
-            "submitted_on": "2024-05-02",
-            "status": "In Review",
-            "owner": "Jane Doe",
-        },
-        {
-            "id": "REQ-3",
-            "title": "Performance Benchmarks",
-            "submitted_on": "2024-05-12",
-            "status": "Submitted",
-            "owner": "Alex Rivera",
-        },
-        {
-            "id": "REQ-4",
-            "title": "Mobile UI Kit",
-            "submitted_on": "2024-05-14",
-            "status": "Approved",
-            "owner": "Jane Doe",
-        },
-    ],
-    "progress": {
-        "completed": 45,
-        "in_progress": 12,
-        "pending": 8,
-    },
-    "financials": {
-        "total_budget": 185000,
-        "total_invoiced": 125000,
-        "paid": 110000,
-        "last_invoice_date": "2024-05-01",
-    },
-    "team": [
-        {
-            "id": "T-1",
-            "name": "Sarah Chen",
-            "role": "Account Manager",
-            "avatar": "SC",
-            "color": "#f56a00",
-            "email": "sarah@erp.io",
-        },
-        {
-            "id": "T-2",
-            "name": "Mike Ross",
-            "role": "Lead Engineer",
-            "avatar": "MR",
-            "color": "#87d068",
-            "email": "mike@erp.io",
-        },
-        {
-            "id": "T-3",
-            "name": "Jane Doe",
-            "role": "UI Designer",
-            "avatar": "JD",
-            "color": "#1677ff",
-            "email": "jane@erp.io",
-        },
-    ],
-    "resources": [
-        {
-            "id": "RES-1",
-            "title": "Brand Identity Guidelines",
-            "type": "PDF",
-            "size": "4.2 MB",
-            "date": "2024-02-10",
-        },
-        {
-            "id": "RES-2",
-            "title": "Project Kickoff Notes",
-            "type": "Doc",
-            "size": "124 KB",
-            "date": "2024-01-05",
-        },
-        {
-            "id": "RES-3",
-            "title": "API Security Baseline",
-            "type": "PDF",
-            "size": "1.8 MB",
-            "date": "2024-04-22",
-        },
-    ],
-}
+        "team": [
+            {
+                "id": "T-1",
+                "name": "Sarah Chen",
+                "role": "Account Manager",
+                "avatar": "SC",
+                "color": "#f56a00",
+                "email": "sarah@erp.io",
+            },
+            {
+                "id": "T-2",
+                "name": "Mike Ross",
+                "role": "Lead Engineer",
+                "avatar": "MR",
+                "color": "#87d068",
+                "email": "mike@erp.io",
+            },
+            {
+                "id": "T-3",
+                "name": "Jane Doe",
+                "role": "UI Designer",
+                "avatar": "JD",
+                "color": "#1677ff",
+                "email": "jane@erp.io",
+            },
+        ],
+        "resources": [
+            {
+                "id": "RES-1",
+                "title": "Brand Identity Guidelines",
+                "type": "PDF",
+                "size": "4.2 MB",
+                "date": "2024-02-10",
+            },
+            {
+                "id": "RES-2",
+                "title": "Project Kickoff Notes",
+                "type": "Doc",
+                "size": "124 KB",
+                "date": "2024-01-05",
+            },
+            {
+                "id": "RES-3",
+                "title": "API Security Baseline",
+                "type": "PDF",
+                "size": "1.8 MB",
+                "date": "2024-04-22",
+            },
+        ],
+    }
     return data
