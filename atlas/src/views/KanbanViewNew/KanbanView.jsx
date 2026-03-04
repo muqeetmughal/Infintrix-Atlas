@@ -38,12 +38,9 @@ import {
 import { useGetDoctypeField } from "../../hooks/doctype";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Badge, Button, Dropdown, Input, message, Tooltip } from "antd";
-import { IconRenderer } from "../../components/IconRenderer";
 import WorkItemTypeWidget from "../../components/widgets/WorkItemTypeWidget";
-import PreviewAssignees from "../../components/PreviewAssignees";
 import { useTasksQuery } from "../../hooks/query";
 import { useQueryParams } from "../../hooks/useQueryParams";
-import Confetti from "../../components/Confetti";
 import { AssigneeSelectWidget } from "../../components/widgets/AssigneeSelectWidget";
 import SubjectWidget from "../../components/widgets/SubjectWidget";
 import { TASK_STATUS_COLORS, TASK_STATUS_ICONS } from "../../data/constants";
