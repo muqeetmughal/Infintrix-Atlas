@@ -966,23 +966,78 @@ def global_search(query: str, limit: int = 10):
     """
     Global search for Tasks and Projects
     """
-    if not query or len(query) < 2:
-        return []
-
     results = []
+
+    if not query or len(query) < 2:
+        # Return last 5 from all if query is empty
+        tasks = frappe.get_all(
+            "Task",
+            fields=["name", "subject", "project"],
+            order_by="modified desc",
+            limit=5,
+            filters={"project": ["!=", ""]},
+        )
+
+        projects = frappe.get_all(
+            "Project",
+            fields=["name", "project_name"],
+            order_by="modified desc",
+            limit=5,
+        )
+        cycles = frappe.get_all(
+            "Cycle",
+            fields=["name", "cycle_name", "project"],
+            order_by="modified desc",
+            limit=5,
+        )
+
+        for task in tasks:
+            print(f"Checking permissions for task '{task.project}'")
+            if frappe.has_permission("Task", "read", task.name):
+                results.append(
+                    {
+                        "type": "Task",
+                        "name": task.name,
+                        "title": task.subject,
+                        "route": f"/tasks/kanban?project={task.project}&selected_task={task.name}",
+                    }
+                )
+
+        for project in projects:
+            if frappe.has_permission("Project", "read", project.name):
+                results.append(
+                    {
+                        "type": "Project",
+                        "name": project.name,
+                        "title": project.project_name,
+                        "route": f"/tasks/kanban?project={project.name}",
+                    }
+                )
+
+        for cycle in cycles:
+            project_name = frappe.db.get_value(
+                "Project", cycle.project, "project_name") or cycle.project
+            if frappe.has_permission("Cycle", "read", cycle.name):
+                results.append(
+                    {
+                        "type": "Cycle",
+                        "name": cycle.name,
+                        "title": f"{cycle.cycle_name} (Project: {project_name})",
+                        "route": f"/tasks/backlog?project={cycle.project}",
+                    }
+                )
+
+        return results
 
     # ---- TASKS ----
     tasks = frappe.get_all(
         "Task",
-
         filters=[
-
             ["subject", "like", f"%{query}%"],
-
         ],
-        fields=["name", "subject"],
+        fields=["name", "subject", "project"],
         order_by="modified desc",
-        limit_page_length=limit,
+        limit=limit,
     )
 
     print(f"Found {len(tasks)} tasks matching query '{query}'")
@@ -994,20 +1049,20 @@ def global_search(query: str, limit: int = 10):
                     "type": "Task",
                     "name": task.name,
                     "title": task.subject,
-                    "route": f"/app/task/{task.name}",
+                    "route": f"/tasks/kanban?project={task.project}&selected_task={task.name}",
                 }
             )
 
     # ---- PROJECTS ----
     projects = frappe.get_all(
         "Project",
-        filters=[
+        or_filters=[
             ["name", "like", f"%{query}%"],
             ["project_name", "like", f"%{query}%"],
         ],
         fields=["name", "project_name"],
         order_by="modified desc",
-        limit_page_length=limit,
+        limit=limit,
     )
     print(f"Found {len(projects)} projects matching query '{query}'")
 
@@ -1019,10 +1074,33 @@ def global_search(query: str, limit: int = 10):
                     "type": "Project",
                     "name": project.name,
                     "title": project.project_name,
-                    "route": f"/app/project/{project.name}",
+                    "route": f"/tasks/kanban?project={project.name}",
                 }
             )
 
+    cycles = frappe.get_all(
+        "Cycle",
+        or_filters=[
+            ["cycle_name", "like", f"%{query}%"],
+        ],
+        fields=["name", "cycle_name", "project"],
+        order_by="modified desc",
+        limit=limit,
+    )
+
+    print(f"Found {len(cycles)} cycles matching query '{query}'")
+    for cycle in cycles:
+        project_name = frappe.db.get_value(
+            "Project", cycle.project, "project_name") or cycle.project
+        if frappe.has_permission("Cycle", "read", cycle.name):
+            results.append(
+                {
+                    "type": "Cycle",
+                    "name": cycle.name,
+                    "title": f"{cycle.cycle_name} (Project: {project_name})",
+                    "route": f"/tasks/backlog?project={cycle.project}",
+                }
+            )
     return results
 
 
@@ -1363,3 +1441,157 @@ def get_customer_portal_data(project=None):
         ],
     }
     return data
+
+
+@frappe.whitelist()
+def set_project_mode(project, mode):
+    if mode not in ("Kanban", "Scrum"):
+        return {"success": False, "message": "Invalid mode"}
+
+    try:
+        frappe.db.sql(
+            "UPDATE `tabProject` SET custom_execution_mode = %s WHERE name = %s",
+            (mode, project)
+        )
+        frappe.db.commit()
+        return {"success": True, "message": f"Project mode set to {mode}"}
+    except Exception as e:
+        frappe.log_error(
+            f"Failed to set project mode: {e}",
+            "Set Project Mode Error",
+        )
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def list_tasks(project, group_by=None, filters={}):
+
+    project_execution_mode = frappe.db.get_value(
+        "Project", project, "custom_execution_mode") or "Kanban"
+
+    filters = {"project": project}
+    filters.update(filters)
+    if project_execution_mode == "Scrum":
+        active_cycle = frappe.db.get_value(
+            "Cycle",
+            {"project": project, "status": "Active"},
+            "name"
+        )
+        filters.update({"custom_cycle": active_cycle})
+
+    Task = DocType("Task")
+    ToDo = DocType("ToDo")
+
+    query = (
+        frappe.qb.from_(Task)
+        .select(
+            Task.name,
+            Task.name.as_("id"),
+            Task.subject,
+            Task.status,
+            Task.type,
+            Task.custom_cycle.as_("cycle"),
+            Task.priority,
+            Task.modified,
+            Task.project,
+            fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+        )
+        .left_join(ToDo).on(
+            (ToDo.reference_name == Task.name)
+            & (ToDo.reference_type == "Task")
+            & (ToDo.status == "Open")
+        )
+    )
+
+    # Apply filters
+    for key, value in filters.items():
+        if key == "project":
+            query = query.where(Task.project == value)
+        elif key == "custom_cycle":
+            query = query.where(Task.custom_cycle == value)
+        elif key == "status":
+            query = query.where(Task.status == value)
+
+    query = query.groupby(Task.name).orderby(
+        Task.modified, order=frappe.qb.desc)
+
+    tasks = query.run(as_dict=True)
+
+    # Group tasks by specified field
+    if group_by:
+
+        print(f"Grouping tasks by", group_by)
+        grouped_data = {}
+        for task in tasks:
+            group_key = task.get(group_by, "Ungrouped")
+            if group_key not in grouped_data:
+                grouped_data[group_key] = {
+                    "name": str(group_key),
+                    "id": str(group_key),
+                    "title": str(group_key),
+                    group_by: group_key,
+                    "children": []
+                }
+            grouped_data[group_key]["children"].append(task)
+
+        return list(grouped_data.values())
+
+    return tasks
+
+# @frappe.whitelist()
+# def list_tasks(project, group_by=None,filters={}):
+
+#     project_execution_mode = frappe.db.get_value(
+#         "Project", project, "custom_execution_mode") or "Kanban"
+
+#     filters = {"project": project}
+#     filters.update(filters)
+#     if project_execution_mode == "Scrum":
+#         active_cycle = frappe.db.get_value(
+#             "Cycle",
+#             {"project": project, "status": "Active"},
+#             "name"
+#         )
+#         filters.update({"custom_cycle": active_cycle})
+
+
+#     Task = DocType("Task")
+#     ToDo = DocType("ToDo")
+
+#     query = (
+#         frappe.qb.from_(Task)
+#         .select(
+#             Task.name,
+#             Task.name.as_("id"),
+#             Task.subject,
+#             Task.status,
+#             Task.type,
+#             Task.custom_cycle.as_("cycle"),
+#             # Task.custom_sort_order,
+#             Task.priority,
+#             Task.modified,
+#             Task.project,
+#             fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+#         )
+#         .left_join(ToDo).on(
+#             (ToDo.reference_name == Task.name)
+#             & (ToDo.reference_type == "Task")
+#             & (ToDo.status == "Open")
+#         )
+#     )
+
+#     # Apply filters
+#     for key, value in filters.items():
+#         if key == "project":
+#             query = query.where(Task.project == value)
+#         elif key == "custom_cycle":
+#             query = query.where(Task.custom_cycle == value)
+#         elif key == "status":
+#             query = query.where(Task.status == value)
+#         # Add more filter conditions as needed
+
+#     query = query.groupby(Task.name).orderby(Task.modified, order=frappe.qb.desc)
+
+#     tasks = query.run(as_dict=True)
+
+#     return tasks

@@ -10,8 +10,9 @@ import RelativeTime from "../components/RelativeTime";
 
 const TableView = () => {
   const qp = useQueryParams();
+  const project = qp.get("project") || null;
 
-  const tasks_list_query = useTasksQuery();
+  const tasks_list_query = useTasksQuery(project);
   const navigate = useNavigate();
   const updateMutation = useFrappeUpdateDoc();
   const notifyStatusChange = useFrappePostCall(
@@ -22,7 +23,7 @@ const TableView = () => {
   const priorityFilter = qp.getArray("priority");
   const searchText = (qp.get("search") || "").toLowerCase();
 
-  const tasks = (tasks_list_query.data || []).filter((task) => {
+  const tasks = (tasks_list_query?.data?.message || []).filter((task) => {
     if (statusFilter.length && !statusFilter.includes(task.status)) {
       return false;
     }

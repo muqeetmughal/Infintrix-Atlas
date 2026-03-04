@@ -1,9 +1,6 @@
 import { Filter, Menu, Plus } from "lucide-react";
-import React, {  useEffect } from "react";
-import {
-  TASK_PRIORITY_COLORS,
-  TASK_STATUS_COLORS,
-} from "../data/constants";
+import React, { useEffect } from "react";
+import { TASK_PRIORITY_COLORS, TASK_STATUS_COLORS } from "../data/constants";
 import {
   useFrappeCreateDoc,
   useFrappeGetDoc,
@@ -16,12 +13,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import TaskDetail from "../modals/TaskDetail";
 import TableView from "../views/TableView";
 import KanbanView from "../views/KanbanView";
-import {
-  Button,
-  Dropdown,
-  Input,
-  Select,
-} from "antd";
+import { Button, Dropdown, Input, Select } from "antd";
 import BacklogView from "../views/BacklogView/BacklogView";
 import CycleModal from "../components/custom/CycleModal";
 import CompleteCycleModal from "../components/custom/CompleteCycleModal";
@@ -47,6 +39,7 @@ const Tasks = () => {
   const navigate = useNavigate();
   const createMutation = useFrappeCreateDoc();
   const updateMutation = useFrappeUpdateDoc();
+  const change_mode_mutation = useFrappePostCall("infintrix_atlas.api.v1.set_project_mode");
 
   const create_cycles_for_project_mutatation = useFrappePostCall(
     "infintrix_atlas.api.v1.create_cycles_for_project",
@@ -114,9 +107,7 @@ const Tasks = () => {
         <div className="flex items-center justify-between space-x-3">
           <div>
             {project_data.project_name && (
-              <h1 className="text-xl font-bold">
-                {project_data.project_name}
-              </h1>
+              <h1 className="text-xl font-bold">{project_data.project_name}</h1>
             )}
           </div>
           {project_data.project_name && (
@@ -132,14 +123,18 @@ const Tasks = () => {
               defaultValue={project_data.custom_execution_mode || "Kanban"}
               value={project_data.custom_execution_mode || "Kanban"}
               onChange={(value) => {
-                updateMutation
-                  .updateDoc("Project", project, {
-                    custom_execution_mode: value,
-                  })
-                  .then(() => {
-                    project_query.mutate();
-                    projects_options_query.mutate();
-                  });
+                change_mode_mutation.call({
+                  mode : value,
+                  project :project
+                })
+                // updateMutation
+                //   .updateDoc("Project", project, {
+                //     custom_execution_mode: value,
+                //   })
+                //   .then(() => {
+                //     project_query.mutate();
+                //     projects_options_query.mutate();
+                //   });
               }}
               options={[
                 {
@@ -169,10 +164,11 @@ const Tasks = () => {
                     navigate(`/tasks/${tab.id}`);
                     setSearchParams(oldSearchParams);
                   }}
-                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${view === tab.id
+                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${
+                    view === tab.id
                       ? "text-blue-600 dark:text-blue-400"
                       : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                    }`}
+                  }`}
                 >
                   {tab.label}
                   {view === tab.id && (
@@ -236,24 +232,38 @@ const Tasks = () => {
               </>
             )}
 
-             <Dropdown
-                trigger={"click"}
-                menu={{
-                  onClick: ({ key }) => {
-                    if (key === "manage_people") {
-                      qp.set("manage_project_people", "1");
-                    }
-                  },
-                  items: [
-                    {
-                      key: "manage_people",
-                      label: "Manage People",
+            <Dropdown
+              trigger={"click"}
+              menu={{
+                items: [
+
+                  {
+                    key: "open_in_desk",
+                    label: "Open in Desk",
+                    onClick: () => {
+                      window.open(`/app/project/${project}`, "_blank");
                     },
-                  ],
-                }}
-              >
-                <Button icon={<Menu size={16} />}></Button>
-              </Dropdown>
+                  },
+                  {
+                    key: "manage_people",
+                    label: "Manage People",
+                    onClick: () => {
+                      qp.set("manage_project_people", "1");
+                    },
+                  },
+                  {
+                    key: "edit_project",
+                    label: "Edit Project",
+                    onClick: () => {
+                      qp.set("edit_project", project);
+                    },
+                  }
+                 
+                ],
+              }}
+            >
+              <Button icon={<Menu size={16} />}></Button>
+            </Dropdown>
 
             <Button
               type="primary"
@@ -268,7 +278,7 @@ const Tasks = () => {
             </Button>
           </div>
         </div>
-{/* 
+        {/* 
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="hidden md:block" style={{ width: 200 }} />
 

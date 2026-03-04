@@ -265,7 +265,7 @@ const BacklogView = () => {
       revalidateOnFocus: false,
     },
   );
-  const tasks_query = useTasksQuery();
+  const tasks_query = useTasksQuery(project_id);
 
   const project = project_query.data || {};
   const hasActiveCycle = useMemo(
@@ -274,7 +274,7 @@ const BacklogView = () => {
   );
   const isScrum = project.custom_execution_mode === "Scrum";
 
-  const tasks = (tasks_query.data || []).filter((task) => {
+  const tasks = (tasks_query?.data?.message || []).filter((task) => {
     if (statusFilter.length && !statusFilter.includes(task.status)) {
       return false;
     }

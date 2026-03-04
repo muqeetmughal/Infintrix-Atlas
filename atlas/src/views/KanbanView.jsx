@@ -1,10 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import {
-  Plus,
-  MoreHorizontal,
-  Ellipsis,
-  Check,
-} from "lucide-react";
+import { Plus, MoreHorizontal, Ellipsis, Check } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -40,6 +35,7 @@ import { useQueryParams } from "../hooks/useQueryParams";
 import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import SubjectWidget from "../components/widgets/SubjectWidget";
 import { TASK_STATUS_COLORS, TASK_STATUS_ICONS } from "../data/constants";
+import PriorityWidget from "../components/widgets/PriorityWidget";
 
 const IssueCard = React.forwardRef(
   (
@@ -153,6 +149,7 @@ const IssueCard = React.forwardRef(
             </span>
           </div>
           <div className="flex items-center gap-2">
+           
             {issue.status === "Completed" && (
               <Tooltip title={"Done"}>
                 <Check size={14} className="text-green-500" />
@@ -262,7 +259,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
       ref={setNodeRef}
       className="flex flex-col min-w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 border border-slate-200/50 dark:border-slate-700 h-full"
     >
-      <div className="sticky top-0 z-10 bg-slate-100/80 dark:bg-slate-800 flex items-center justify-between px-1 pb-3">
+      <div className="sticky top-0 z-9 bg-slate-100/80 dark:bg-slate-800 flex items-center justify-between px-1 pb-3">
         <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
           <div>
             <div className="flex justify-start items-center">
@@ -287,8 +284,6 @@ const Column = ({ id, title, tasks_list, createTask }) => {
       </div>
 
       <div className="flex-1 overflow-y-auto hide-scrollbar">
-        
-
         {addNew ? (
           <div data-create-item>
             <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -374,58 +369,12 @@ export default function KanbanView() {
   const project_data = project_query.data || {};
   const isScrum = project_data.custom_execution_mode === "Scrum";
 
-  const tasks_list_query = useTasksQuery(cycle_name);
-
+  const tasks_list_query = useTasksQuery(project);
   const { options } = columns_query.data || [];
 
-  const raw_tasks = tasks_list_query.data || [];
-  const tasks_list = useMemo(
-    () =>
-      raw_tasks
-        .filter((task) => {
-          if (statusFilter.length && !statusFilter.includes(task.status)) {
-            return false;
-          }
-          if (
-            priorityFilter.length &&
-            !priorityFilter.includes(task.priority)
-          ) {
-            return false;
-          }
-          if (searchText) {
-            const haystack =
-              `${task.subject || ""} ${task.name || ""}`.toLowerCase();
-            if (!haystack.includes(searchText)) {
-              return false;
-            }
-          }
-          return true;
-        })
-        .slice()
-        .sort((a, b) => {
-          // Keep list stable across re-fetches: status ASC, custom_sort_order ASC
-          const statusCmp = String(a.status || "").localeCompare(
-            String(b.status || ""),
-          );
-          if (statusCmp !== 0) return statusCmp;
-
-          const aSort =
-            a.custom_sort_order === null || a.custom_sort_order === undefined
-              ? Number.POSITIVE_INFINITY
-              : Number(a.custom_sort_order);
-          const bSort =
-            b.custom_sort_order === null || b.custom_sort_order === undefined
-              ? Number.POSITIVE_INFINITY
-              : Number(b.custom_sort_order);
-          if (aSort !== bSort) return aSort - bSort;
-
-          // fallback
-          return String(b.modified || "").localeCompare(
-            String(a.modified || ""),
-          );
-        }),
-    [raw_tasks, statusFilter, priorityFilter, searchText],
-  );
+  const tasks_list = useMemo(() => {
+    return tasks_list_query?.data?.message || [];
+  }, [tasks_list_query?.data?.message]);
 
   const COLUMNS = useMemo(() => {
     if (!options) {
@@ -523,27 +472,48 @@ export default function KanbanView() {
     await tasks_list_query.mutate(
       async (current) => {
         const newTaskCreated = await createMutation.createDoc("Task", newTask);
-
-        return [
+        return {
           ...current,
-          {
-            ...newTaskCreated,
-            id: newTaskCreated.name,
-            title: newTaskCreated.subject,
-          },
-        ];
+          message: [
+            ...(current?.message || []),
+            {
+              ...newTaskCreated,
+              id: newTaskCreated.name,
+              title: newTaskCreated.subject,
+            },
+          ],
+        };
+
+        // return [
+        //   ...current,
+        //   {
+        //     ...newTaskCreated,
+        //     id: newTaskCreated.name,
+        //     title: newTaskCreated.subject,
+        //   },
+        // ];
       },
       {
         optimisticData: (current) => {
-          return [
+          const tempId = "temp-" + Math.random().toString(36).substr(2, 9);
+          const newTaskOptimistic = {
+            ...newTask,
+            id: tempId,
+            title: newTask.subject,
+          };
+          return {
             ...current,
-            {
-              ...newTask,
-              title: newTask.subject,
+            message: [...(current?.message || []), newTaskOptimistic],
+          };
+          // return [
+          //   ...current,
+          //   {
+          //     ...newTask,
+          //     title: newTask.subject,
 
-              id: "temp-" + Math.random().toString(36).substr(2, 9),
-            },
-          ];
+          //     id: "temp-" + Math.random().toString(36).substr(2, 9),
+          //   },
+          // ];
         },
         rollbackOnError: true,
         revalidate: false,
@@ -566,8 +536,6 @@ export default function KanbanView() {
     const activeId = active.id;
     const overId = over.id;
 
-    // console.log("Drag ended:", activeId, overId);
-
     const activeTask = tasks_list.find((i) => i.id === activeId);
     if (!activeTask) return;
 
@@ -580,12 +548,9 @@ export default function KanbanView() {
     let newStatus = activeTask.status;
     const oldStatus = activeTask.status;
 
-    let dropOnColumn = false;
-
     // Dropped on column
     if (COLUMNS.some((c) => c.id === overId)) {
       newStatus = overId;
-      dropOnColumn = true;
     }
 
     // Dropped on another task
@@ -594,42 +559,12 @@ export default function KanbanView() {
       newStatus = overTask.status;
     }
 
-    const reorderInMemory = (current) => {
-      const snapshot = (current || []).map((t) =>
-        t.id === activeId ? { ...t, status: newStatus } : t,
-      );
-
-      // Work only with tasks belonging to the target status
-      let columnTasks = snapshot.filter((t) => t.status === newStatus);
-
-      const fromIndex = columnTasks.findIndex((t) => t.id === activeId);
-      if (fromIndex === -1) return snapshot;
-
-      let toIndex = fromIndex;
-
-      if (dropOnColumn || !overTask) {
-        // Dropped on column header/area – move to end of that column
-        toIndex = columnTasks.length - 1;
-      } else {
-        // Dropped onto another task – position relative to that task
-        const overColIndex = columnTasks.findIndex((t) => t.id === overId);
-        if (overColIndex !== -1) {
-          toIndex = overColIndex;
-        }
-      }
-
-      columnTasks = arrayMove(columnTasks, fromIndex, toIndex);
-
-      const others = snapshot.filter((t) => t.status !== newStatus);
-
-      // Keep other statuses' relative order, and place this column's tasks grouped
-      return [...others, ...columnTasks];
-    };
-
     try {
       await tasks_list_query.mutate(
         async (current) => {
-          const next = reorderInMemory(current);
+          const next = (current?.message || []).map((t) =>
+            t.id === activeId ? { ...t, status: newStatus } : t,
+          );
 
           if (newStatus !== oldStatus) {
             await updateTaskMutation.updateDoc("Task", activeTask.name, {
@@ -651,66 +586,19 @@ export default function KanbanView() {
               });
           }
 
-          // Persist sort order only for affected columns (old + new)
-          const statusesToUpdate =
-            newStatus === oldStatus ? [newStatus] : [oldStatus, newStatus];
-
-          // Build old state maps for minimal updates
-          const prevById = new Map((current || []).map((t) => [t.id, t]));
-
-          const updates = [];
-          const orderMapByStatus = {};
-          statusesToUpdate.forEach((status) => {
-            const colTasks = (next || []).filter((t) => t.status === status);
-            orderMapByStatus[status] = {};
-            colTasks.forEach((t, idx) => {
-              orderMapByStatus[status][t.id] = idx;
-              const prev = prevById.get(t.id);
-              const prevSort = prev?.custom_sort_order;
-              const prevStatus = prev?.status;
-              if (prevStatus !== t.status || prevSort !== idx) {
-                updates.push({
-                  name: t.name || t.id,
-                  custom_sort_order: idx,
-                });
-              }
-            });
-          });
-
-          const nextWithSort = (next || []).map((t) => {
-            if (!statusesToUpdate.includes(t.status)) return t;
-            const idx = orderMapByStatus?.[t.status]?.[t.id];
-            if (idx === undefined) return t;
-            return { ...t, custom_sort_order: idx };
-          });
-
-          if (updates.length) {
-            await updateSortOrderMutation.call({
-              payload: JSON.stringify({ tasks: updates }),
-            });
-          }
-
-          return nextWithSort;
+          return {
+            ...current,
+            message: next,
+          };
         },
         {
           optimisticData: (current) => {
-            const next = reorderInMemory(current);
-            const statusesToUpdate =
-              newStatus === oldStatus ? [newStatus] : [oldStatus, newStatus];
-            const orderMapByStatus = {};
-            statusesToUpdate.forEach((status) => {
-              const colTasks = (next || []).filter((t) => t.status === status);
-              orderMapByStatus[status] = {};
-              colTasks.forEach((t, idx) => {
-                orderMapByStatus[status][t.id] = idx;
-              });
-            });
-            return (next || []).map((t) => {
-              if (!statusesToUpdate.includes(t.status)) return t;
-              const idx = orderMapByStatus?.[t.status]?.[t.id];
-              if (idx === undefined) return t;
-              return { ...t, custom_sort_order: idx };
-            });
+            return {
+              ...current,
+              message: (current?.message || []).map((t) =>
+                t.id === activeId ? { ...t, status: newStatus } : t,
+              ),
+            };
           },
           rollbackOnError: true,
           revalidate: false,
@@ -718,6 +606,7 @@ export default function KanbanView() {
         },
       );
     } catch (e) {
+      console.error("Failed to update task status:", e);
       if (newStatus !== oldStatus) {
         message.error(
           String(e.exception || e.message || e)

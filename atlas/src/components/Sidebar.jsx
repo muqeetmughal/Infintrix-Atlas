@@ -25,7 +25,7 @@ const Sidebar = () => {
 
   const projectsQuery = useFrappeGetDocList("Project", {
     fields: ["name as value", "project_name as label"],
-    limit_page_length: 100,
+    limit: 9999,
   });
   const location = useLocation();
 
@@ -103,28 +103,31 @@ const Sidebar = () => {
           ))}
         </nav>
 
-        {/* project selector when viewing tasks */}
-        {location.pathname.includes("/tasks") && isSidebarOpen && (
-          <div className="px-4 mt-6">
-            <h4 className="text-xs font-semibold uppercase text-slate-400 mb-2">
-              Projects
+        {/* project selector */}
+        {isSidebarOpen && (
+          <div className="px-4 mt-6 border-t border-slate-200 dark:border-slate-700 pt-4">
+            <h4 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-3 flex items-center space-x-2">
+              <span>Projects</span>
+              <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                {(projectsQuery.data || []).length}
+              </span>
             </h4>
-            <div className="space-y-1">
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {projectsQuery.isLoading && (
+                <p className="text-xs text-slate-400">Loading projects...</p>
+              )}
               {(projectsQuery.data || []).map((p) => (
                 <button
                   key={p.value}
                   onClick={() => {
-                    if (currentProject === p.value) {
-                      qp.set("project", "");
-                    } else {
-                      qp.set("project", p.value);
-                    }
+                    navigate(`/tasks/kanban?project=${p.value}`);
                   }}
-                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                  className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-medium truncate ${
                     currentProject === p.value
-                      ? "bg-indigo-600 text-white"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      ? "bg-indigo-600 dark:bg-indigo-500 text-white shadow-md shadow-indigo-200 dark:shadow-indigo-900/50"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400"
                   }`}
+                  title={p.label}
                 >
                   {p.label}
                 </button>
@@ -166,7 +169,7 @@ const Sidebar = () => {
               <button
                 key={item.id}
                 onClick={() => navigate(`/${item.id}`)}
-                className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-xl transition-all duration-200 ${
+                className={`cursor-pointer flex flex-col items-center space-y-1 px-4 py-2 rounded-xl transition-all duration-200 ${
                   location.pathname.includes(item.id)
                     ? "text-indigo-600 dark:text-indigo-400"
                     : "text-slate-600 dark:text-slate-400"

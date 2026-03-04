@@ -71,7 +71,14 @@ const TaskDetail = () => {
   const selectedTask = searchParams.get("selected_task") || null;
   const copilot = searchParams.get("copilot") === "true";
 
-  const task_details_query = useFrappeGetDoc("Task", selectedTask);
+  const task_details_query = useFrappeGetDoc("Task", selectedTask, selectedTask ? ["Task", selectedTask] : null, {
+    refreshInterval: 5000, // Auto-refresh every 5 seconds
+    refreshWhenHidden: false, // Don't refresh when the modal is hidden
+    refreshWhenOffline: false, // Don't refresh when offline
+    revalidateIfStale: true, // Revalidate if data is stale
+    revalidateOnFocus: false, // Don't revalidate on window focus
+    revalidateOnReconnect: true, // Revalidate when the connection is back
+  });
 
   const assignee_of_task_query = useAssigneeOfTask(selectedTask);
   const assignee_mutation = useFrappePostCall(

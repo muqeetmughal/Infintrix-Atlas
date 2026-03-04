@@ -58,60 +58,68 @@ export const useListQuery = (doctype, filters, fields, options) => {
 		...options,
 	});
 };
-
-export const useTasksQuery = (
-	cycle_name = undefined,
-	fields = [
-		"name",
-		"name as id",
-		"subject",
-		"status",
-		"type",
-		"custom_cycle as cycle",
-		"custom_sort_order",
-		"priority",
-		"modified",
-		"project",
-	],
-	options = {},
-) => {
-	const qp = useQueryParams();
-	const project = qp.get("project") || null;
-
-	const filters_string = qp.all;
-	const cacheKey = ["tasks", filters_string, cycle_name];
-
-	let final_filters = [];
-	if (project) {
-		final_filters.push(["project", "in", [project]]);
-	}
-	if (cycle_name) {
-		final_filters.push(["custom_cycle", "=", cycle_name]);
-	}
-
-	// final_filters.push(["parent_task", "=", null]);
-
-	return useFrappeGetDocList(
-		"Task",
-		{
-			filters: final_filters,
-			fields: fields,
-			orderBy: {
-				field: "modified",
-				order: "desc",
-			},
-			limit_start: 0,
-			limit: 99999,
-		},
-		cacheKey,
-		{
-			// revalidateOnFocus: false,
-			// revalidateIfStale: false,
-			// revalidateOnReconnect: false,
-			...options,
-		},
+export const useTasksQuery = (project, group_by = null, filters = {}) => {
+	const query = useFrappeGetCall(
+		"infintrix_atlas.api.v1.list_tasks",
+		{ project: project, group_by: group_by, filters: filters },
+		project ? ["tasks", project, group_by, filters] : null,
+		{},
 	);
+	return query;
 };
+// export const useTasksQuery = (
+// 	cycle_name = undefined,
+// 	fields = [
+// 		"name",
+// 		"name as id",
+// 		"subject",
+// 		"status",
+// 		"type",
+// 		"custom_cycle as cycle",
+// 		"custom_sort_order",
+// 		"priority",
+// 		"modified",
+// 		"project",
+// 	],
+// 	options = {},
+// ) => {
+// 	const qp = useQueryParams();
+// 	const project = qp.get("project") || null;
+
+// 	const filters_string = qp.all;
+// 	const cacheKey = ["tasks", filters_string, cycle_name];
+
+// 	let final_filters = [];
+// 	if (project) {
+// 		final_filters.push(["project", "in", [project]]);
+// 	}
+// 	if (cycle_name) {
+// 		final_filters.push(["custom_cycle", "=", cycle_name]);
+// 	}
+
+// 	// final_filters.push(["parent_task", "=", null]);
+// console.log("Final filters for tasks query:", final_filters);
+// 	return useFrappeGetDocList(
+// 		"Task",
+// 		{
+// 			filters: final_filters,
+// 			fields: fields,
+// 			orderBy: {
+// 				field: "modified",
+// 				order: "desc",
+// 			},
+// 			limit_start: 0,
+// 			limit: 99999,
+// 		},
+// 		cacheKey,
+// 		{
+// 			// revalidateOnFocus: false,
+// 			// revalidateIfStale: false,
+// 			// revalidateOnReconnect: false,
+// 			...options,
+// 		},
+// 	);
+// };
 
 export const useProjectDetailsQuery = (project) => {
 	return useFrappeGetDoc("Project", project, project ? ["Project", project] : null);
