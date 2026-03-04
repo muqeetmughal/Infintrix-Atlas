@@ -52,6 +52,7 @@ import PriorityWidget from "../components/widgets/PriorityWidget";
 import ActivityTimeline from "../components/ActivityTimeline";
 import TaskCopilot from "../components/TaskCopilot";
 import TaskSkeleton from "./TaskSkeleton";
+import WatchersWidget from "../components/WatchersWidget";
 
 const TaskDetail = () => {
   const [isResizing, setIsResizing] = useState(false);
@@ -245,9 +246,10 @@ const TaskDetail = () => {
           >
             <Lock size={18} />
           </button>
-          <div className="flex items-center bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-1 rounded border border-blue-100 dark:border-blue-800 text-xs font-medium cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
-            <Eye size={14} className="mr-1.5" /> 1
-          </div>
+         <WatchersWidget
+         doctype="Task"
+         docname={task.name}
+         />
           <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
             <Share2 size={18} />
           </button>
@@ -263,9 +265,23 @@ const TaskDetail = () => {
           <Dropdown
             trigger={"click"}
             menu={{
-              onClick: ({ key }) => {
-                if (key === "delete_task") {
-                  AntdModal.confirm({
+             
+              items: [
+                {
+                  key: "open_in_desk",
+                  label: "Open in Desk",
+                  icon: <ExternalLink size={14} />,
+                  onClick: () => {
+                     window.open(`/app/task/${task.name}`, "_blank");
+                  }
+                },
+                {
+                  key: "delete_task",
+                  label: "Delete Task",
+                  danger: true,
+                  icon: <Trash size={14} />,
+                  onClick : () => {
+                     AntdModal.confirm({
                     title: "Delete task",
                     content:
                       "Are you sure you want to delete this task? This action cannot be undone.",
@@ -283,21 +299,7 @@ const TaskDetail = () => {
                       }
                     },
                   });
-                } else if (key === "open_in_desk") {
-                  window.open(`/app/task/${task.name}`, "_blank");
-                }
-              },
-              items: [
-                {
-                  key: "open_in_desk",
-                  label: "Open in Desk",
-                  icon: <ExternalLink size={14} />,
-                },
-                {
-                  key: "delete_task",
-                  label: "Delete Task",
-                  danger: true,
-                  icon: <Trash size={14} />,
+                  }
                 },
               ],
             }}

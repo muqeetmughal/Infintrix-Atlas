@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 import json
 from infintrix_atlas.permissions import project_permission_query, task_permission_query
 from .utils import create_custom_notification
-
-
+from infintrix_atlas.api.notifications import AtlasNotificationEngine
+notifications = AtlasNotificationEngine()
 @frappe.whitelist()
 def get_tasks():
     project = frappe.request.args.get("project")
@@ -216,6 +216,8 @@ def switch_assignee_of_task(task_name, new_assignee):
     # Close all existing open ToDos
     for todo in existing_todos:
         frappe.db.set_value("ToDo", todo["name"], "status", "Closed")
+        
+        notifications.process_task(task_doc, "status_changed")
 
         # Notify old assignee
         create_custom_notification(
@@ -1538,6 +1540,111 @@ def list_tasks(project, group_by=None, filters={}):
 
     return tasks
 
+@frappe.whitelist()
+def get_watchers(doctype, docname):
+    Watcher = DocType("Watcher")
+    User = DocType("User")
+    watchers = (
+        frappe.qb.from_(Watcher)
+        .select(
+            Watcher.user,
+            Watcher.parent,
+            Watcher.parenttype,
+            User.full_name,
+            User.email,
+            User.enabled,
+            User.user_image
+        )
+        .left_join(User).on(User.name == Watcher.user)
+        .where(
+            (Watcher.parenttype == doctype)
+            & (Watcher.parent == docname)
+        )
+        .run(as_dict=True)
+    )
+    return watchers
+@frappe.whitelist()
+def add_watcher(doctype, docname, user):
+    try:
+        # Check if watcher already exists
+        existing_watcher = frappe.db.get_value(
+            "Watcher",
+            {
+            "parent": docname,
+            "parenttype": doctype,
+            "user": user
+            }
+        )
+        
+        if existing_watcher:
+            return {"success": False, "message": f"User {user} is already a watcher"}
+        
+        # Add watcher directly to child table
+        frappe.get_doc({
+            "doctype": "Watcher",
+            "parent": docname,
+            "parenttype": doctype,
+            # "parentfield": "watcher",
+            "user": user
+        }).insert()
+        
+        frappe.db.commit()
+        
+        return {"success": True, "message": f"User {user} added as watcher to {doctype} {docname}"}
+    except Exception as e:
+        frappe.log_error(f"Error adding watcher: {e}", "Add Watcher Error")
+        return {"success": False, "message": str(e)}
+@frappe.whitelist()
+def remove_watcher(doctype, docname, user):
+    try:
+        # Remove watcher directly from child table
+        frappe.db.sql("""
+            DELETE FROM `tabWatcher`
+            WHERE parent = %s AND parenttype = %s AND user = %s
+        """, (docname, doctype, user))
+        
+        frappe.db.commit()
+        
+        return {"success": True, "message": f"User {user} removed from watchers of {doctype} {docname}"}
+    except Exception as e:
+        frappe.log_error(f"Error removing watcher: {e}", "Remove Watcher Error")
+        return {"success": False, "message": str(e)}
+    
+@frappe.whitelist()
+def toggle_self_watch(doctype, docname):
+    user = frappe.session.user
+
+    existing_watcher = frappe.db.get_value(
+        "Watcher",
+        {
+            "parent": docname,
+            "parenttype": doctype,
+            "user": user
+        }
+    )
+
+    if existing_watcher:
+        # Remove watcher
+        return remove_watcher(doctype, docname, user)
+    else:
+        # Add watcher
+        return add_watcher(doctype, docname, user)
+    
+    
+@frappe.whitelist()
+def current_user_is_watching(doctype, docname):
+    user = frappe.session.user
+
+    existing_watcher = frappe.db.get_value(
+        "Watcher",
+        {
+            "parent": docname,
+            "parenttype": doctype,
+            "user": user
+        }
+    )
+
+    return  bool(existing_watcher)
 # @frappe.whitelist()
 # def list_tasks(project, group_by=None,filters={}):
 
@@ -1595,3 +1702,5 @@ def list_tasks(project, group_by=None, filters={}):
 #     tasks = query.run(as_dict=True)
 
 #     return tasks
+
+
