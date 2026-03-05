@@ -4,9 +4,7 @@ from frappe.query_builder import DocType, functions as fn
 from datetime import datetime, timedelta
 import json
 from infintrix_atlas.permissions import project_permission_query, task_permission_query
-from .utils import create_custom_notification
-from infintrix_atlas.api.notifications import AtlasNotificationEngine
-notifications = AtlasNotificationEngine()
+from .utils import send_notification
 @frappe.whitelist()
 def get_tasks():
     project = frappe.request.args.get("project")
@@ -216,11 +214,10 @@ def switch_assignee_of_task(task_name, new_assignee):
     # Close all existing open ToDos
     for todo in existing_todos:
         frappe.db.set_value("ToDo", todo["name"], "status", "Closed")
-        
-        notifications.process_task(task_doc, "status_changed")
+    
 
         # Notify old assignee
-        create_custom_notification(
+        send_notification(
             user=todo["allocated_to"],
             subject=f"{task_doc.subject}",
             content=f"The task '<b>{task_doc.subject}</b>' has been removed from you.",
@@ -244,7 +241,7 @@ def switch_assignee_of_task(task_name, new_assignee):
             }
         ).insert()
 
-        create_custom_notification(
+        send_notification(
             user=new_assignee,
             subject=f"{task_doc.subject}",
             content=f"You have been assigned to task '<b>{task_doc.subject}</b>'.",
@@ -256,7 +253,25 @@ def switch_assignee_of_task(task_name, new_assignee):
     frappe.db.commit()
     return {"success": True, "message": "Assignee updated"}
 
+@frappe.whitelist()
+def get_assignee_of_task(task_name):
+    if not task_name:
+        frappe.throw("Task is required")
 
+    assignee = frappe.db.get_value(
+        "ToDo",
+        {
+            "reference_type": "Task",
+            "reference_name": task_name,
+            "status": ["!=", "Cancelled"],
+        },
+        "allocated_to",
+        
+    )
+    
+    return assignee or "unassigned"
+        
+        
 @frappe.whitelist()
 def notify_attachment_added(task_name, file_name):
 
@@ -278,7 +293,7 @@ def notify_attachment_added(task_name, file_name):
 
         # If there's an assignee, send them a notification
         # if assignee:
-        #     create_custom_notification(
+        #     send_notification(
         #         user=assignee,
         #         subject=f"File attached to task: {task_doc.subject}",
         #         content=f"A new file '<b>{file_name}</b>' has been attached to task '<b>{task_doc.subject}</b>'.",
@@ -338,7 +353,7 @@ def notify_status_changed(task_name, old_status, new_status):
                 assignee = assignee_row.allocated_to
                 # Don't notify if the assignee is the one who changed the status
                 if assignee != frappe.session.user:
-                    create_custom_notification(
+                    send_notification(
                         user=assignee,
                         subject=f"Task status updated: {task_doc.subject}",
                         content=f"Task '<b>{task_doc.subject}</b>' status changed from '<b>{old_status}</b>' to '<b>{new_status}</b>'.",
@@ -941,7 +956,7 @@ def update_users_on_project(project, users):
     project_name = frappe.db.get_value("Project", project, "project_name")
 
     for user in removed_users:
-        create_custom_notification(
+        send_notification(
             user=user,
             subject=f"Removed from Project: {project_name}",
             content=f"You have been removed from project '{project_name}'.",
@@ -951,7 +966,7 @@ def update_users_on_project(project, users):
         )
 
     for user in added_users:
-        create_custom_notification(
+        send_notification(
             user=user,
             subject=f"Added to Project: {project_name}",
             content=f"You have been added to project '{project_name}'.",
@@ -1563,6 +1578,8 @@ def get_watchers(doctype, docname):
         .run(as_dict=True)
     )
     return watchers
+
+
 @frappe.whitelist()
 def add_watcher(doctype, docname, user):
     try:
@@ -1588,7 +1605,37 @@ def add_watcher(doctype, docname, user):
             "user": user
         }).insert()
         
+        # If doctype is Task, get the project and add user to project if not already there
+        if doctype == "Task":
+            task_doc = frappe.get_doc("Task", docname)
+            project = task_doc.project
+            
+            if project:
+                existing_project_user = frappe.db.get_value(
+                    "Project User",
+                    {"parent": project, "user": user}
+                )
+                
+                if not existing_project_user:
+                    frappe.get_doc({
+                        "doctype": "Project User",
+                        "parent": project,
+                        "parenttype": "Project",
+                        "parentfield": "users",
+                        "user": user
+                    }).insert()
+        
         frappe.db.commit()
+        
+        if user is not frappe.session.user:
+            send_notification(
+                user=user,
+                subject=f"Watcher Added",
+                content=f"You have been added as a watcher to {doctype} '{docname}'.",
+                document_type=doctype,
+                document_name=docname,
+                icons='<i class="fa fa-eye"></i>',
+            )
         
         return {"success": True, "message": f"User {user} added as watcher to {doctype} {docname}"}
     except Exception as e:
@@ -1645,6 +1692,24 @@ def current_user_is_watching(doctype, docname):
     )
 
     return  bool(existing_watcher)
+
+@frappe.whitelist()
+def recent_projects_with_activity_of_current_user(limit=5):
+    user = frappe.session.user
+
+    projects = frappe.db.sql(
+        """
+        SELECT DISTINCT p.name, p.project_name
+        FROM `tabProject` p
+        JOIN `tabTask` t ON t.project = p.name
+        JOIN `tabToDo` td ON td.reference_name = t.name AND td.reference_type = 'Task' AND td.allocated_to = %s
+        ORDER BY t.modified DESC
+        LIMIT %s
+        """,
+        (user, limit),
+        as_dict=True,
+    )
+    return projects
 # @frappe.whitelist()
 # def list_tasks(project, group_by=None,filters={}):
 

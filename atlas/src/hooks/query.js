@@ -124,30 +124,36 @@ export const useTasksQuery = (project, group_by = null, filters = {}) => {
 export const useProjectDetailsQuery = (project) => {
 	return useFrappeGetDoc("Project", project, project ? ["Project", project] : null);
 };
-export const useAssigneeOfTask = (selectedTask) => {
-	return useFrappeGetDocList(
-		"ToDo",
-		{
-			filters: [
-				["reference_type", "=", "Task"],
-				["reference_name", "=", selectedTask || ""],
-				["status", "=", "Open"],
-			],
-			fields: ["allocated_to"],
-			limit: 1,
-			orderBy: {
-				field: "modified",
-				order: "desc",
-			},
-		},
-		selectedTask ? ["assignee_of_task", selectedTask] : null,
-		{
-			revalidateOnFocus: false,
-			revalidateIfStale: false,
-			revalidateOnReconnect: false,
-		},
+export const useAssigneeOfTask = (task_name) => {
+	return useFrappeGetCall(
+		"infintrix_atlas.api.v1.get_assignee_of_task",
+		{ task_name: task_name },
+		task_name ? ["assignee_of_task", task_name] : null,
 	);
 };
+// 	return useFrappeGetDocList(
+// 		"ToDo",
+// 		{
+// 			filters: [
+// 				["reference_type", "=", "Task"],
+// 				["reference_name", "=", selectedTask || ""],
+// 				["status", "=", "Open"],
+// 			],
+// 			fields: ["allocated_to"],
+// 			limit: 1,
+// 			orderBy: {
+// 				field: "modified",
+// 				order: "desc",
+// 			},
+// 		},
+// 		selectedTask ? ["assignee_of_task", selectedTask] : null,
+// 		{
+// 			revalidateOnFocus: false,
+// 			revalidateIfStale: false,
+// 			revalidateOnReconnect: false,
+// 		},
+// 	);
+// };
 // export const useTasksQuery = (filters, options) => {
 //   return  useFrappeGetDocList(
 //       `Task`,

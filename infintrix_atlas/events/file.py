@@ -1,5 +1,5 @@
 import frappe
-from infintrix_atlas.api.utils import create_custom_notification
+from infintrix_atlas.api.utils import send_notification
 
 def on_file_insert(doc, method):
     """
@@ -30,7 +30,7 @@ def on_file_insert(doc, method):
 
         # If there's an assignee, send them a notification
         # if assignee:
-        #     create_custom_notification(
+        #     send_notification(
         #         user=assignee,
         #         subject=f"File attached to task: {task_doc.subject}",
         #         content=f"A new file '<b>{doc.file_name}</b>' has been attached to task '<b>{task_doc.subject}</b>'.",

@@ -4,7 +4,6 @@ import PriorityWidget from "../components/widgets/PriorityWidget";
 import StatusWidget from "../components/widgets/StatusWidget";
 import { useTasksQuery } from "../hooks/query";
 import { Table } from "antd";
-import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import { useQueryParams } from "../hooks/useQueryParams";
 import RelativeTime from "../components/RelativeTime";
 
@@ -13,7 +12,6 @@ const TableView = () => {
   const project = qp.get("project") || null;
 
   const tasks_list_query = useTasksQuery(project);
-  const navigate = useNavigate();
   const updateMutation = useFrappeUpdateDoc();
   const notifyStatusChange = useFrappePostCall(
     "infintrix_atlas.api.v1.notify_status_changed",
@@ -141,13 +139,8 @@ const TableView = () => {
           dataIndex: "assignees",
           key: "assignees",
           render: (assignees, record) => (
-            //  <AssigneeSelectWidget task={record} />
-            <AssigneeSelectWidget
-              single={true}
-              show_label={false}
-              // value={assignees_of_task || []}
-              task={record.name}
-            />
+            null
+       
           ),
         },
         {

@@ -30,12 +30,12 @@ import { useGetDoctypeField } from "../hooks/doctype";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button, Dropdown, message, Tooltip } from "antd";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
-import { useTasksQuery } from "../hooks/query";
+import { useAssigneeUpdateMutation, useTasksQuery } from "../hooks/query";
 import { useQueryParams } from "../hooks/useQueryParams";
-import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import SubjectWidget from "../components/widgets/SubjectWidget";
 import { TASK_STATUS_COLORS, TASK_STATUS_ICONS } from "../data/constants";
 import PriorityWidget from "../components/widgets/PriorityWidget";
+import { UsersSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 
 const IssueCard = React.forwardRef(
   (
@@ -45,6 +45,7 @@ const IssueCard = React.forwardRef(
     const [searchParams, setSearchParams] = useSearchParams();
     const [editingSubject, setEditingSubject] = useState(false);
     const updateMutation = useFrappeUpdateDoc();
+    const assignee_update_mutation = useAssigneeUpdateMutation();
 
     return (
       <div
@@ -149,7 +150,6 @@ const IssueCard = React.forwardRef(
             </span>
           </div>
           <div className="flex items-center gap-2">
-           
             {issue.status === "Completed" && (
               <Tooltip title={"Done"}>
                 <Check size={14} className="text-green-500" />
@@ -159,21 +159,18 @@ const IssueCard = React.forwardRef(
             <div
               className={`w-7 h-7 rounded-full text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm`}
             >
-              <AssigneeSelectWidget
-                single={true}
+              <UsersSelectWidget
+              mode="assignee"
                 show_label={false}
-                value={issue.assignees || []}
-                task={issue.id}
-                // onChange={(newAssignees) => {
-                //   updateMutation
-                //     .updateDoc("Task", issue.name, {
-                //       assignees: newAssignees,
-                //     })
-                //     .then(() => {
-                //       // task_details_query.mutate();
-                //     });
-                // }}
+                value={issue.assignee}
+                onSelect={(key) => {
+                  assignee_update_mutation.call({
+                    task_name: issue.name,
+                    new_assignee: key,
+                  });
+                }}
               />
+            
 
               {/* <PreviewAssignees
               assignees={issue.assignees}

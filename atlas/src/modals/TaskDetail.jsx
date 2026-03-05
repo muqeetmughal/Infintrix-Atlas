@@ -32,19 +32,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Modal as AntdModal, Drawer, Typography } from "antd";
 import dayjs from "dayjs";
 import {
-  AssigneeSelectWidget,
+  UsersSelectWidget,
   ShowUserWidget,
 } from "../components/widgets/AssigneeSelectWidget";
-import TextWidget from "../components/widgets/TextWidget";
 import RichTextWidget from "../components/widgets/RichTextWidget/RichTextWidget";
 import { TagsSelectWidget } from "../components/widgets/TagsSelectWidget";
 import StatusWidget from "../components/widgets/StatusWidget";
 import { Button, Dropdown, Space, Form, Input, Select } from "antd";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
-import CommentSection from "../components/CommentSection";
-import HistorySection from "../components/HistorySection";
 import SubTasks from "../components/SubTasks";
-import { useAssigneeOfTask } from "../hooks/query";
+import { useAssigneeOfTask, useAssigneeUpdateMutation } from "../hooks/query";
 import { useGetDoctypeField } from "../hooks/doctype";
 import SubjectWidget from "../components/widgets/SubjectWidget";
 import FileAttachment from "./FileAttachment";
@@ -71,29 +68,32 @@ const TaskDetail = () => {
   const queryClient = useQueryClient();
   const selectedTask = searchParams.get("selected_task") || null;
   const copilot = searchParams.get("copilot") === "true";
+  const assignee_update_mutation = useAssigneeUpdateMutation();
 
-  const task_details_query = useFrappeGetDoc("Task", selectedTask, selectedTask ? ["Task", selectedTask] : null, {
-    refreshInterval: 5000, // Auto-refresh every 5 seconds
-    refreshWhenHidden: false, // Don't refresh when the modal is hidden
-    refreshWhenOffline: false, // Don't refresh when offline
-    revalidateIfStale: true, // Revalidate if data is stale
-    revalidateOnFocus: false, // Don't revalidate on window focus
-    revalidateOnReconnect: true, // Revalidate when the connection is back
-  });
+  const task_details_query = useFrappeGetDoc(
+    "Task",
+    selectedTask,
+    selectedTask ? ["Task", selectedTask] : null,
+    {
+      refreshInterval: 5000, // Auto-refresh every 5 seconds
+      refreshWhenHidden: false, // Don't refresh when the modal is hidden
+      refreshWhenOffline: false, // Don't refresh when offline
+      revalidateIfStale: true, // Revalidate if data is stale
+      revalidateOnFocus: false, // Don't revalidate on window focus
+      revalidateOnReconnect: true, // Revalidate when the connection is back
+    },
+  );
 
   const assignee_of_task_query = useAssigneeOfTask(selectedTask);
-  const assignee_mutation = useFrappePostCall(
-    "infintrix_atlas.api.v1.switch_assignee_of_task",
-  );
 
   const notifyStatusChange = useFrappePostCall(
     "infintrix_atlas.api.v1.notify_status_changed",
   );
 
-  const assignees_of_task = (assignee_of_task_query?.data || []).map((todo) => {
-    return todo.allocated_to;
-  });
-
+  // const assignees_of_task = (assignee_of_task_query?.data || []).map((todo) => {
+  //   return todo.allocated_to;
+  // });
+const task_assignee = assignee_of_task_query?.data?.message || 'unassigned';
   const task = task_details_query.data || {};
   const issueName = task.issue || null;
   const issue_query = useFrappeGetDoc(
@@ -246,10 +246,7 @@ const TaskDetail = () => {
           >
             <Lock size={18} />
           </button>
-         <WatchersWidget
-         doctype="Task"
-         docname={task.name}
-         />
+          <WatchersWidget doctype="Task" docname={task.name} />
           <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
             <Share2 size={18} />
           </button>
@@ -265,41 +262,42 @@ const TaskDetail = () => {
           <Dropdown
             trigger={"click"}
             menu={{
-             
               items: [
                 {
                   key: "open_in_desk",
                   label: "Open in Desk",
                   icon: <ExternalLink size={14} />,
                   onClick: () => {
-                     window.open(`/app/task/${task.name}`, "_blank");
-                  }
+                    window.open(`/app/task/${task.name}`, "_blank");
+                  },
                 },
                 {
                   key: "delete_task",
                   label: "Delete Task",
                   danger: true,
                   icon: <Trash size={14} />,
-                  onClick : () => {
-                     AntdModal.confirm({
-                    title: "Delete task",
-                    content:
-                      "Are you sure you want to delete this task? This action cannot be undone.",
-                    okText: "Delete",
-                    okType: "danger",
-                    cancelText: "Cancel",
-                    onOk: async () => {
-                      try {
-                        if (!task.name) return;
-                        await deleteDoc("Task", task.name);
-                        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                        onClose();
-                      } catch (err) {
-                        console.error("Failed to delete task", err);
-                      }
-                    },
-                  });
-                  }
+                  onClick: () => {
+                    AntdModal.confirm({
+                      title: "Delete task",
+                      content:
+                        "Are you sure you want to delete this task? This action cannot be undone.",
+                      okText: "Delete",
+                      okType: "danger",
+                      cancelText: "Cancel",
+                      onOk: async () => {
+                        try {
+                          if (!task.name) return;
+                          await deleteDoc("Task", task.name);
+                          queryClient.invalidateQueries({
+                            queryKey: ["tasks"],
+                          });
+                          onClose();
+                        } catch (err) {
+                          console.error("Failed to delete task", err);
+                        }
+                      },
+                    });
+                  },
                 },
               ],
             }}
@@ -487,11 +485,24 @@ const TaskDetail = () => {
                   Assignee
                 </div>
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
-                  <AssigneeSelectWidget
-                    single={true}
-                    show_label={true}
-                    value={assignees_of_task || []}
-                    task={selectedTask}
+            
+                  <UsersSelectWidget
+                  show_label={true}
+                  mode={"assignee"}
+                  value={task_assignee}
+                    onSelect={(value) => {
+                    //  alert(value);
+                      assignee_update_mutation
+                        .call({
+                          task_name: task.name,
+                          new_assignee: value,
+                        })
+                        .then(() => {
+                          task_details_query.mutate();
+                          assignee_of_task_query.mutate();
+                        });
+                    
+                    }}
                   />
                 </div>
               </>
@@ -526,7 +537,7 @@ const TaskDetail = () => {
                   />
                 </div>
               </>
-              <>
+              {/* <>
                 <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
                   Issues
                 </div>
@@ -567,7 +578,7 @@ const TaskDetail = () => {
                     </Button>
                   )}
                 </div>
-              </>
+              </> */}
               <>
                 <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
                   Reporter
@@ -600,7 +611,7 @@ const TaskDetail = () => {
               </span>
             </p>
           </div>
-
+          {/* 
           <AntdModal
             open={issueModalOpen}
             onCancel={() => setIssueModalOpen(false)}
@@ -714,7 +725,7 @@ const TaskDetail = () => {
                 />
               </Form.Item>
             </Form>
-          </AntdModal>
+          </AntdModal> */}
         </aside>
       </div>
     </div>
@@ -730,7 +741,7 @@ const TaskDetail = () => {
               : "w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl"
           }`}
         >
-          {task_details_query.isLoading || assignee_of_task_query.isLoading ? (
+          {task_details_query.isLoading ? (
             <TaskSkeleton />
           ) : (
             <>

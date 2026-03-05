@@ -23,18 +23,13 @@ const Sidebar = () => {
 
   const currentProject = qp.get("project");
 
-  const projectsQuery = useFrappeGetDocList("Project", {
-    fields: ["name as value", "project_name as label"],
-    limit: 9999,
-  });
+  const projectsQuery = useFrappeGetCall("infintrix_atlas.api.v1.recent_projects_with_activity_of_current_user");
   const location = useLocation();
 
-  const installed_apps_query = useFrappeGetCall("frappe.apps.get_apps");
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     const saved = localStorage.getItem("sidebarOpen");
     return saved !== null ? JSON.parse(saved) : false;
   });
-  const installed_apps = installed_apps_query.data?.message || [];
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => {
@@ -104,32 +99,32 @@ const Sidebar = () => {
         </nav>
 
         {/* project selector */}
-        {isSidebarOpen && (
+        {isSidebarOpen && (projectsQuery?.data?.message||[]).length > 0 && (
           <div className="px-4 mt-6 border-t border-slate-200 dark:border-slate-700 pt-4">
             <h4 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-3 flex items-center space-x-2">
               <span>Projects</span>
               <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                {(projectsQuery.data || []).length}
+                {(projectsQuery?.data?.message || []).length}
               </span>
             </h4>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {projectsQuery.isLoading && (
                 <p className="text-xs text-slate-400">Loading projects...</p>
               )}
-              {(projectsQuery.data || []).map((p) => (
+              {(projectsQuery?.data?.message || []).map((p) => (
                 <button
-                  key={p.value}
+                  key={p.name}
                   onClick={() => {
-                    navigate(`/tasks/kanban?project=${p.value}`);
+                    navigate(`/tasks/kanban?project=${p.name}`);
                   }}
-                  className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-medium truncate ${
-                    currentProject === p.value
+                  className={`cursor-pointer w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-medium truncate ${
+                    currentProject === p.name
                       ? "bg-indigo-600 dark:bg-indigo-500 text-white shadow-md shadow-indigo-200 dark:shadow-indigo-900/50"
                       : "text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400"
                   }`}
-                  title={p.label}
+                  title={p.project_name}
                 >
-                  {p.label}
+                  {p.project_name}
                 </button>
               ))}
             </div>

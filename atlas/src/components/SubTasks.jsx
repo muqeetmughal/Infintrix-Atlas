@@ -7,10 +7,11 @@ import {
 import { CheckCircle, CheckSquare, CircleIcon, Plus } from "lucide-react";
 import { useState } from "react";
 import { useRef, useEffect } from "react";
-import { AssigneeSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 import { useSearchParams } from "react-router-dom";
 import PriorityWidget from "./widgets/PriorityWidget";
 import { Button } from "antd";
+import { UsersSelectWidget } from "./widgets/AssigneeSelectWidget";
+import { useAssigneeOfTask, useAssigneeUpdateMutation } from "../hooks/query";
 const SubTasks = ({ task }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isAdding, setIsAdding] = useState(false);
@@ -26,7 +27,8 @@ const SubTasks = ({ task }) => {
       order: "asc",
     },
   });
-
+  
+  const assignee_update_mutation = useAssigneeUpdateMutation();
   const createMutation = useFrappeCreateDoc();
   const updateMutation = useFrappeUpdateDoc();
   const parent_task = task_detail_query.data || {};
@@ -234,7 +236,13 @@ const SubTasks = ({ task }) => {
               </tr>
             </thead>
             <tbody>
-              {subtasks.map((subtask, index) => (
+              {subtasks.map((subtask, index) => {
+                    const assignee_of_task_query = useAssigneeOfTask(subtask.name);
+                      const assignee_update_mutation = useAssigneeUpdateMutation();
+                    const task_assignee = assignee_of_task_query?.data?.message || 'unassigned';
+
+
+                return (
                 <tr
                   key={`${subtask.id}-${index}`}
                   className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -269,11 +277,19 @@ const SubTasks = ({ task }) => {
                     </span> */}
                   </td>
                   <td className="px-2 py-2 text-slate-600 dark:text-slate-400">
-                    <AssigneeSelectWidget
-                      single={true}
+                    <UsersSelectWidget
                       show_label={true}
-                      value={[subtask.assignee] || []}
-                      task={subtask.name}
+                      value={task_assignee}
+                      onSelect={(key) => {
+                        assignee_update_mutation
+                          .call({
+                            task_name: subtask.name,
+                            new_assignee: key,
+                          })
+                          .then(() => {
+                            assignee_of_task_query.mutate();
+                          });
+                      }}
                     />
                   </td>
                   <td className="px-2 py-2">
@@ -312,7 +328,7 @@ const SubTasks = ({ task }) => {
                     </span>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         ) : (

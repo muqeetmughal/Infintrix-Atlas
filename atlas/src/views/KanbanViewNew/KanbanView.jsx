@@ -41,7 +41,6 @@ import { Badge, Button, Dropdown, Input, message, Tooltip } from "antd";
 import WorkItemTypeWidget from "../../components/widgets/WorkItemTypeWidget";
 import { useTasksQuery } from "../../hooks/query";
 import { useQueryParams } from "../../hooks/useQueryParams";
-import { AssigneeSelectWidget } from "../../components/widgets/AssigneeSelectWidget";
 import SubjectWidget from "../../components/widgets/SubjectWidget";
 import { TASK_STATUS_COLORS, TASK_STATUS_ICONS } from "../../data/constants";
 
@@ -166,21 +165,7 @@ const IssueCard = React.forwardRef(
             <div
               className={`w-7 h-7 rounded-full text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm`}
             >
-              <AssigneeSelectWidget
-                single={true}
-                show_label={false}
-                value={issue.assignees || []}
-                task={issue.id}
-                // onChange={(newAssignees) => {
-                //   updateMutation
-                //     .updateDoc("Task", issue.name, {
-                //       assignees: newAssignees,
-                //     })
-                //     .then(() => {
-                //       // task_details_query.mutate();
-                //     });
-                // }}
-              />
+             
 
               {/* <PreviewAssignees
               assignees={issue.assignees}
