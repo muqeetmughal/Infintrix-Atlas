@@ -9,6 +9,8 @@ import {
   useSensor,
   useSensors,
   defaultDropAnimationSideEffects,
+  pointerWithin,
+  rectIntersection,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -257,7 +259,7 @@ const Column = React.memo(({ id, title, tasks_list, createTask }) => {
   return (
     <div
       ref={setNodeRef}
-      className="flex flex-col min-w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 border border-slate-200/50 dark:border-slate-700 h-full"
+      className="flex flex-col min-w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 border border-slate-200/50 dark:border-slate-700 h-full min-h-100"
     >
       <div className="sticky top-0 z-9 bg-slate-100/80 dark:bg-slate-800 flex items-center justify-between px-1 pb-3">
         <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
@@ -387,7 +389,11 @@ export default function KanbanView() {
   }, [options]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
@@ -659,6 +665,16 @@ export default function KanbanView() {
     [tasksByStatus, tasksById],
   );
 
+  const collisionDetectionStrategy = (args) => {
+    const pointerCollisions = pointerWithin(args);
+
+    if (pointerCollisions.length > 0) {
+      return pointerCollisions;
+    }
+
+    return rectIntersection(args);
+  };
+
   if (
     tasks_list_query.isLoading &&
     columns_query.isLoading &&
@@ -705,7 +721,7 @@ export default function KanbanView() {
       <div className="mx-auto flex gap-6 overflow-x-auto hide-scrollbar pb-8 h-full items-start">
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={collisionDetectionStrategy}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
