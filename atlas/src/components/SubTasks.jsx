@@ -27,119 +27,30 @@ const SubTasks = React.memo(({ task }) => {
       order: "asc",
     },
   });
-  
-  const assignee_update_mutation = useAssigneeUpdateMutation();
+
   const createMutation = useFrappeCreateDoc();
   const updateMutation = useFrappeUpdateDoc();
   const parent_task = task_detail_query.data || {};
   const subtasks = subtasks_of_task_query.data || [];
-  // const subtasks = [
-  //   {
-  //     name: "TASK-2026-00034",
-  //     owner: "Administrator",
-  //     creation: "2026-02-19 01:24:24.436523",
-  //     modified: "2026-02-19 01:24:24.436523",
-  //     modified_by: "Administrator",
-  //     docstatus: 0,
-  //     idx: 0,
-  //     subject: "Task child A",
-  //     project: null,
-  //     custom_cycle: null,
-  //     issue: null,
-  //     type: "Task",
-  //     color: null,
-  //     is_group: 0,
-  //     is_template: 0,
-  //     status: "Open",
-  //     priority: "Low",
-  //     task_weight: 0,
-  //     parent_task: "TASK-2026-00033",
-  //     completed_by: null,
-  //     completed_on: null,
-  //     custom_sort_order: 0,
-  //     exp_start_date: null,
-  //     expected_time: 0,
-  //     start: 0,
-  //     exp_end_date: null,
-  //     progress: 0,
-  //     duration: 0,
-  //     is_milestone: 0,
-  //     description: null,
-  //     depends_on_tasks: "",
-  //     act_start_date: null,
-  //     actual_time: 0,
-  //     act_end_date: null,
-  //     custom_story_points: 0,
-  //     total_costing_amount: 0,
-  //     total_expense_claim: 0,
-  //     total_billing_amount: 0,
-  //     review_date: null,
-  //     closing_date: null,
-  //     department: null,
-  //     company: "Infintrix Technologies",
-  //     custom_created_by_ai: 0,
-  //     custom_ai_session: null,
-  //     custom_ai_confidence: 0,
-  //     custom_weight: 0,
-  //     lft: 30,
-  //     rgt: 31,
-  //     old_parent: "TASK-2026-00033",
-  //     template_task: null,
-  //   },
-  //   {
-  //     name: "TASK-2026-00035",
-  //     owner: "Administrator",
-  //     creation: "2026-02-19 01:24:38.407951",
-  //     modified: "2026-02-19 01:24:38.407951",
-  //     modified_by: "Administrator",
-  //     docstatus: 0,
-  //     idx: 0,
-  //     subject: "Task Child B",
-  //     project: null,
-  //     custom_cycle: null,
-  //     issue: null,
-  //     type: "Task",
-  //     color: null,
-  //     is_group: 0,
-  //     is_template: 0,
-  //     status: "Open",
-  //     priority: "Low",
-  //     task_weight: 0,
-  //     parent_task: "TASK-2026-00033",
-  //     completed_by: null,
-  //     completed_on: null,
-  //     custom_sort_order: 0,
-  //     exp_start_date: null,
-  //     expected_time: 0,
-  //     start: 0,
-  //     exp_end_date: null,
-  //     progress: 0,
-  //     duration: 0,
-  //     is_milestone: 0,
-  //     description: null,
-  //     depends_on_tasks: "",
-  //     act_start_date: null,
-  //     actual_time: 0,
-  //     act_end_date: null,
-  //     custom_story_points: 0,
-  //     total_costing_amount: 0,
-  //     total_expense_claim: 0,
-  //     total_billing_amount: 0,
-  //     review_date: null,
-  //     closing_date: null,
-  //     department: null,
-  //     company: "Infintrix Technologies",
-  //     custom_created_by_ai: 0,
-  //     custom_ai_session: null,
-  //     custom_ai_confidence: 0,
-  //     custom_weight: 0,
-  //     lft: 32,
-  //     rgt: 33,
-  //     old_parent: "TASK-2026-00033",
-  //     template_task: null,
-  //   },
-  // ];
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (inputRef.current && !inputRef.current.contains(event.target)) {
+        // Only close if input is empty
+        if (inputValue.trim() === "") {
+          setIsAdding(false);
+        }
+      }
+    };
+
+    if (isAdding) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isAdding, inputValue]);
   const handleAddTask = () => {
     setIsAdding(true);
     setInputValue("");
@@ -185,25 +96,6 @@ const SubTasks = React.memo(({ task }) => {
     }
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (inputRef.current && !inputRef.current.contains(event.target)) {
-        // Only close if input is empty
-        if (inputValue.trim() === "") {
-          setIsAdding(false);
-        }
-      }
-    };
-
-    if (isAdding) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isAdding, inputValue]);
-
   return (
     <section>
       <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-3 uppercase tracking-wider">
@@ -237,100 +129,101 @@ const SubTasks = React.memo(({ task }) => {
             </thead>
             <tbody>
               {subtasks.map((subtask, index) => {
-                    const assignee_of_task_query = useAssigneeOfTask(subtask.name);
-                      const assignee_update_mutation = useAssigneeUpdateMutation();
-                    const task_assignee = assignee_of_task_query?.data?.message || 'unassigned';
-
+                const assignee_of_task_query = useAssigneeOfTask(subtask.name);
+                const assignee_update_mutation = useAssigneeUpdateMutation();
+                const task_assignee =
+                  assignee_of_task_query?.data?.message || "unassigned";
 
                 return (
-                <tr
-                  key={`${subtask.id}-${index}`}
-                  className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  <td className="px-2 py-2 text-slate-900 dark:text-slate-100">
-                    <span
-                      className="cursor-pointer hover:underline"
-                      onClick={() => {
-                        searchParams.set("selected_task", subtask.name);
-                        setSearchParams(searchParams);
-                      }}
-                    >
-                      {subtask.name}
-                    </span>
-                  </td>
-                  <td className="px-2 py-2 text-slate-900 dark:text-slate-100">
-                    <span>{subtask.subject}</span>
-                  </td>
-                  <td className="px-2 py-2">
-                    <PriorityWidget
-                      value={subtask.priority}
-                      onChange={(v) => {
-                        updateMutation
-                          .updateDoc("Task", subtask.name, { priority: v })
-                          .then(() => subtasks_of_task_query.mutate());
-                      }}
-                    />
-                    {/* <span
+                  <tr
+                    key={`${subtask.id}-${index}`}
+                    className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    <td className="px-2 py-2 text-slate-900 dark:text-slate-100">
+                      <span
+                        className="cursor-pointer hover:underline"
+                        onClick={() => {
+                          searchParams.set("selected_task", subtask.name);
+                          setSearchParams(searchParams);
+                        }}
+                      >
+                        {subtask.name}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 text-slate-900 dark:text-slate-100">
+                      <span>{subtask.subject}</span>
+                    </td>
+                    <td className="px-2 py-2">
+                      <PriorityWidget
+                        value={subtask.priority}
+                        onChange={(v) => {
+                          updateMutation
+                            .updateDoc("Task", subtask.name, { priority: v })
+                            .then(() => subtasks_of_task_query.mutate());
+                        }}
+                      />
+                      {/* <span
                       className={`text-xs px-2 py-1 rounded ${subtask.priority === "High" ? "bg-red-100 text-red-700" : subtask.priority === "Medium" ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"}`}
                     >
                       {subtask.priority}
                     </span> */}
-                  </td>
-                  <td className="px-2 py-2 text-slate-600 dark:text-slate-400">
-                    <UsersSelectWidget
-                      show_label={true}
-                      mode="assignee"
-                      value={task_assignee}
-                      onSelect={(key) => {
-                        assignee_update_mutation
-                          .call({
-                            task_name: subtask.name,
-                            new_assignee: key,
-                          })
-                          .then(() => {
-                            subtasks_of_task_query.mutate();
-                            assignee_of_task_query.mutate();
-                          });
-                      }}
-                    />
-                  </td>
-                  <td className="px-2 py-2">
-                    <span
-                      className={`text-xs px-2 py-1 rounded ${subtask.status === "Completed" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}
-                    >
-                      {subtask.status}
-                    </span>
-                  </td>
-                  <td className="px-2 py-2">
-                    <span>
-                      <Button
-                        loading={updateMutation.loading}
-                        color="red"
-                        onClick={() => {
-                          let status_to_set =
-                            subtask.status === "Completed"
-                              ? "Open"
-                              : "Completed";
-
-                          updateMutation
-                            .updateDoc("Task", subtask.name, {
-                              status: status_to_set,
+                    </td>
+                    <td className="px-2 py-2 text-slate-600 dark:text-slate-400">
+                      <UsersSelectWidget
+                        show_label={true}
+                        mode="assignee"
+                        value={task_assignee}
+                        onSelect={(key) => {
+                          assignee_update_mutation
+                            .call({
+                              task_name: subtask.name,
+                              new_assignee: key,
                             })
-                            .then(() => subtasks_of_task_query.mutate());
+                            .then(() => {
+                              subtasks_of_task_query.mutate();
+                              assignee_of_task_query.mutate();
+                            });
                         }}
-                        type="text"
-                        icon={
-                          subtask.status === "Completed" ? (
-                            <CheckCircle color="green" />
-                          ) : (
-                            <CircleIcon />
-                          )
-                        }
                       />
-                    </span>
-                  </td>
-                </tr>
-              )})}
+                    </td>
+                    <td className="px-2 py-2">
+                      <span
+                        className={`text-xs px-2 py-1 rounded ${subtask.status === "Completed" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}
+                      >
+                        {subtask.status}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2">
+                      <span>
+                        <Button
+                          loading={updateMutation.loading}
+                          color="red"
+                          onClick={() => {
+                            let status_to_set =
+                              subtask.status === "Completed"
+                                ? "Open"
+                                : "Completed";
+
+                            updateMutation
+                              .updateDoc("Task", subtask.name, {
+                                status: status_to_set,
+                              })
+                              .then(() => subtasks_of_task_query.mutate());
+                          }}
+                          type="text"
+                          icon={
+                            subtask.status === "Completed" ? (
+                              <CheckCircle color="green" />
+                            ) : (
+                              <CircleIcon />
+                            )
+                          }
+                        />
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         ) : (

@@ -618,41 +618,14 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
 const TaskDetail = React.memo(() => {
   const [fullScreen, setFullScreen] = useState(false);
   const [position] = useState("modal");
-  const [issueForm] = Form.useForm();
   const [searchParams, setSearchParams] = useSearchParams();
-  const updateMutation = useFrappeUpdateDoc();
-  const createIssueMutation = useFrappeCreateDoc();
   const selectedTask = searchParams.get("selected_task") || null;
   const copilot = searchParams.get("copilot") === "true";
 
   const task_details_query = useTaskDetailsQuery(selectedTask);
 
-  const notifyStatusChange = useFrappePostCall(
-    "infintrix_atlas.api.v1.notify_status_changed",
-  );
-  console.log("Task details query", task_details_query);
 
   const task = task_details_query.data || {};
-  const issueName = task.issue || null;
-  const issue_query = useFrappeGetDoc(
-    "Issue",
-    issueName,
-    issueName ? ["Issue", issueName] : null,
-  );
-  const issueDoc = issue_query.data || {};
-
-  // Issue field options
-  const issueStatusField = useGetDoctypeField("Issue", "status", "options");
-  const issueStatusOptions = issueStatusField.data?.options || [];
-
-  const issuePriorityQuery = useFrappeGetDocList("Issue Priority", {
-    fields: ["name"],
-    limit_page_length: 1000,
-  });
-  const issueTypeQuery = useFrappeGetDocList("Issue Type", {
-    fields: ["name"],
-    limit_page_length: 1000,
-  });
 
   // Reset the linked-issue highlight whenever the selected task or its issue changes
   useEffect(() => {
@@ -661,36 +634,7 @@ const TaskDetail = React.memo(() => {
     }
   }, [task.name, task.issue]);
 
-  const handleCreateIssue = (values) => {
-    if (!task.name) return;
 
-    createIssueMutation
-      .createDoc("Issue", {
-        subject: values.subject,
-        description: values.description,
-        status: values.status,
-        priority: values.priority,
-        issue_type: values.issue_type,
-        task: task.name,
-      })
-      .then((doc) => {
-        return updateMutation
-          .updateDoc("Task", task.name, { issue: doc.name })
-          .then(() => {
-            issueForm.resetFields();
-            setCreateIssueModalOpen(false);
-            task_details_query.mutate();
-            issue_query.mutate();
-          });
-      })
-      .catch((err) => {
-        console.error("Failed to create issue", err);
-      });
-  };
-
-  const labels_of_task = ((task?._user_tags || "").split(",") || []).filter(
-    (tag) => tag.trim() !== "",
-  );
 
   const onClose = () => {
     searchParams.delete("selected_task");
@@ -705,12 +649,9 @@ const TaskDetail = React.memo(() => {
     return () => window.removeEventListener("keydown", handleEsc);
   }, [onClose]);
 
-  if (!selectedTask) return null;
+  if (!selectedTask) return <></>
 
-  const tabs = [
-    { id: "comments", label: "Comments" },
-    { id: "history", label: "History" },
-  ];
+
 
   if (position === "modal") {
     return (

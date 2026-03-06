@@ -130,7 +130,7 @@ export const useAssigneeOfTask = (task_name) => {
 	return useFrappeGetCall(
 		"infintrix_atlas.api.v1.get_assignee_of_task",
 		{ task_name: task_name },
-		task_name ? ["assignee_of_task", task_name] : null,
+		// task_name ? ["assignee_of_task", task_name] : null,
 	);
 };
 // 	return useFrappeGetDocList(

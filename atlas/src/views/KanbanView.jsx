@@ -70,16 +70,6 @@ const IssueCard = React.memo(
           {...attributes}
           {...listeners}
           {...props}
-          // onClick={(e) => {
-          //   // Don't open modal if clicking on interactive elements
-          //   const el = e.target.closest(
-          //     "button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker",
-          //   );
-          //   if (el) return;
-          //   if (issue.id === "new_item") return;
-          //   searchParams.set("selected_task", issue.id);
-          //   setSearchParams(searchParams);
-          // }}
         >
           <span
             onClick={(e) => {
@@ -88,7 +78,6 @@ const IssueCard = React.memo(
               setSearchParams(searchParams);
             }}
             className="cursor-pointer text-[11px] text-slate-500 dark:text-slate-400 font-bold tracking-tight uppercase"
-            onC
           >
             {issue.id}
           </span>
