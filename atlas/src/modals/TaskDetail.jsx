@@ -75,7 +75,7 @@ const TaskDetail = () => {
     selectedTask,
     selectedTask ? ["Task", selectedTask] : null,
     {
-      refreshInterval: 5000, // Auto-refresh every 5 seconds
+      // refreshInterval: 5000, // Auto-refresh every 5 seconds
       refreshWhenHidden: false, // Don't refresh when the modal is hidden
       refreshWhenOffline: false, // Don't refresh when offline
       revalidateIfStale: true, // Revalidate if data is stale

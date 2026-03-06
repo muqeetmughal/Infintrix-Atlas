@@ -10,6 +10,8 @@ import {
 } from "frappe-react-sdk";
 import { db } from "../lib/frappeClient";
 import { useQueryParams } from "./useQueryParams";
+import { useState, useCallback, use, useEffect } from "react"
+
 export const useAvatarQuery = (name) => {
 	return useQuery({
 		queryKey: ["avatar", name],
@@ -220,3 +222,119 @@ export const useAssigneeUpdateMutation = () => {
 export const useSendAttachmentNotificationMutation = () => {
 	return useFrappePostCall("infintrix_atlas.api.v1.notify_attachment_added");
 };
+
+// export const useTasksQuery = (project, group_by = null, filters = {}) => {
+// 	const query = useFrappeGetCall(
+// 		"infintrix_atlas.api.v1.list_tasks",
+// 		{ project: project, group_by: group_by, filters: filters },
+// 		project ? ["tasks", project, group_by, filters] : null,
+// 		{},
+// 	);
+// 	return query;
+// };
+
+
+export function useFrappePaginatedTasksCall(method, baseParams = {}, pageSize = 20, autoLoad = true) {
+  const { call } = useFrappePostCall(method)
+
+  const [data, setData] = useState([])
+  const [offset, setOffset] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+
+
+
+
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore) return
+
+    setLoading(true)
+
+    try {
+      const res = await call({
+        ...baseParams,
+        limit: pageSize,
+        offset: offset
+      })
+
+      const rows = res?.message || []
+
+      setData(prev => {
+        const map = new Map(prev.map(i => [i.name, i]))
+        rows.forEach(r => map.set(r.name, r))
+        return Array.from(map.values())
+      })
+
+      setOffset(prev => prev + rows.length)
+
+      if (rows.length < pageSize) {
+        setHasMore(false)
+      }
+
+      return rows
+    } finally {
+      setLoading(false)
+    }
+  }, [call, baseParams, offset, loading, hasMore, pageSize])
+
+  const reset = useCallback(() => {
+    setData([])
+    setOffset(0)
+    setHasMore(true)
+  }, [])
+
+
+const hasLoadedRef = useCallback(() => {
+	if (autoLoad && data.length === 0 && !hasLoadedRef.current) {
+		hasLoadedRef.current = true
+		loadMore()
+	}
+}, [autoLoad, data.length, loadMore])
+
+useEffect(() => {
+	hasLoadedRef()
+}, [hasLoadedRef])
+
+  return {
+    data,
+    loading,
+    hasMore,
+    loadMore,
+    reset
+  }
+}
+
+export function useFrappeManualPaginatedCall(method, baseParams = {},page, pageSize = 20) {
+
+	  const { call } = useFrappePostCall(method)
+	  const [data, setData] = useState([])
+	  const [loading, setLoading] = useState(false)
+
+	  const loadPage = useCallback(async (page) => {
+	    setLoading(true)
+
+	    try {
+	      const res = await call({
+	        ...baseParams,
+	        limit: pageSize,
+	        offset: (page - 1) * pageSize
+	      })
+
+	      const rows = res?.message || []
+	      setData(rows)
+	      return rows
+	    } finally {
+	      setLoading(false)
+	    }
+	  }, [call, baseParams, pageSize])
+
+	  useEffect(() => {
+	    loadPage(page)
+	  }, [loadPage, page])
+
+	  return {
+	    data,
+	    loading,
+	    loadPage
+	  }
+	}

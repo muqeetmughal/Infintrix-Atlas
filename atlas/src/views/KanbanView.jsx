@@ -37,21 +37,22 @@ import { TASK_STATUS_COLORS, TASK_STATUS_ICONS } from "../data/constants";
 import PriorityWidget from "../components/widgets/PriorityWidget";
 import { UsersSelectWidget } from "../components/widgets/AssigneeSelectWidget";
 
-const IssueCard = React.forwardRef(
-  (
-    { issue, isDragging, isOverlay, listeners, attributes, style, ...props },
-    ref,
-  ) => {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const [editingSubject, setEditingSubject] = useState(false);
-    const updateMutation = useFrappeUpdateDoc();
-    const assignee_update_mutation = useAssigneeUpdateMutation();
+const IssueCard = React.memo(
+  React.forwardRef(
+    (
+      { issue, isDragging, isOverlay, listeners, attributes, style, ...props },
+      ref,
+    ) => {
+      const [searchParams, setSearchParams] = useSearchParams();
+      const [editingSubject, setEditingSubject] = useState(false);
+      const updateMutation = useFrappeUpdateDoc();
+      const assignee_update_mutation = useAssigneeUpdateMutation();
 
-    return (
-      <div
-        ref={ref}
-        style={style}
-        className={`
+      return (
+        <div
+          ref={ref}
+          style={style}
+          className={`
       group bg-white dark:bg-slate-900 p-4 rounded-lg border shadow-sm mb-3 select-none transition-shadow
       ${
         isDragging
@@ -64,127 +65,127 @@ const IssueCard = React.forwardRef(
           : "cursor-grab"
       }
       `}
-        {...attributes}
-        {...listeners}
-        {...props}
-        onClick={(e) => {
-          // Don't open modal if clicking on interactive elements
-          const el = e.target.closest?.(
-            "button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker",
-          );
-          if (el) return;
-          if (issue.id === "new_item") return;
-          searchParams.set("selected_task", issue.id);
-          setSearchParams(searchParams);
-        }}
-      >
-        <div className="flex items-start justify-between mb-1">
-          <SubjectWidget task={issue} />
+          {...attributes}
+          {...listeners}
+          {...props}
+          onClick={(e) => {
+            // Don't open modal if clicking on interactive elements
+            const el = e.target.closest?.(
+              "button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker",
+            );
+            if (el) return;
+            if (issue.id === "new_item") return;
+            searchParams.set("selected_task", issue.id);
+            setSearchParams(searchParams);
+          }}
+        >
+          <div className="flex items-start justify-between mb-1">
+            <SubjectWidget task={issue} />
 
-          {issue.id !== "new_item" && (
-            <Dropdown
-              trigger={"click"}
-              menu={{
-                items: [
-                  {
-                    label: "Change Status",
-                    key: "change_status",
-                    children: [
-                      {
-                        label: "Open",
-                        key: "Open",
-                      },
-                      {
-                        label: "Completed",
-                        key: "Completed",
-                      },
-                    ],
-                  },
-                  {
-                    label: "Copy Link",
-                    key: "copy_link",
-                  },
-                  {
-                    label: "Copy Key",
-                    key: "copy_key",
-                  },
-                  {
-                    label: "Archive",
-                    key: "archive",
-                  },
-                  {
-                    label: "Delete",
-                    key: "delete",
-                  },
-                ],
-              }}
-            >
-              <Button
-                icon={<Ellipsis size={16} />}
-                size="small"
-                type="text"
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-              />
-            </Dropdown>
-          )}
-        </div>
-
-        <div className="flex justify-between items-center mt-1">
-          <div className="flex items-center gap-2">
-            <Tooltip title={issue.type}>
-              <WorkItemTypeWidget
-                value={issue?.type || "Task"}
-                onChange={(newType) => {
-                  updateMutation
-                    .updateDoc("Task", issue.name, {
-                      type: newType,
-                    })
-                    .then(() => {
-                      // task_details_query.mutate();
-                    });
+            {issue.id !== "new_item" && (
+              <Dropdown
+                trigger={"click"}
+                menu={{
+                  items: [
+                    {
+                      label: "Change Status",
+                      key: "change_status",
+                      children: [
+                        {
+                          label: "Open",
+                          key: "Open",
+                        },
+                        {
+                          label: "Completed",
+                          key: "Completed",
+                        },
+                      ],
+                    },
+                    {
+                      label: "Copy Link",
+                      key: "copy_link",
+                    },
+                    {
+                      label: "Copy Key",
+                      key: "copy_key",
+                    },
+                    {
+                      label: "Archive",
+                      key: "archive",
+                    },
+                    {
+                      label: "Delete",
+                      key: "delete",
+                    },
+                  ],
                 }}
-              />
-            </Tooltip>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold tracking-tight uppercase">
-              {issue.id}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {issue.status === "Completed" && (
-              <Tooltip title={"Done"}>
-                <Check size={14} className="text-green-500" />
-              </Tooltip>
+              >
+                <Button
+                  icon={<Ellipsis size={16} />}
+                  size="small"
+                  type="text"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                />
+              </Dropdown>
             )}
+          </div>
 
-            <div
-              className={`w-7 h-7 rounded-full text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm`}
-            >
-              <UsersSelectWidget
-              mode="assignee"
-                show_label={false}
-                value={issue.assignee}
-                onSelect={(key) => {
-                  assignee_update_mutation.call({
-                    task_name: issue.name,
-                    new_assignee: key,
-                  });
-                }}
-              />
-            
+          <div className="flex justify-between items-center mt-1">
+            <div className="flex items-center gap-2">
+              <Tooltip title={issue.type}>
+                <WorkItemTypeWidget
+                  value={issue?.type || "Task"}
+                  onChange={(newType) => {
+                    updateMutation
+                      .updateDoc("Task", issue.name, {
+                        type: newType,
+                      })
+                      .then(() => {
+                        // task_details_query.mutate();
+                      });
+                  }}
+                />
+              </Tooltip>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold tracking-tight uppercase">
+                {issue.id}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {issue.status === "Completed" && (
+                <Tooltip title={"Done"}>
+                  <Check size={14} className="text-green-500" />
+                </Tooltip>
+              )}
 
-              {/* <PreviewAssignees
+              <div
+                className={`w-7 h-7 rounded-full text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm`}
+              >
+                <UsersSelectWidget
+                  mode="assignee"
+                  show_label={false}
+                  value={issue.assignee}
+                  onSelect={(key) => {
+                    assignee_update_mutation.call({
+                      task_name: issue.name,
+                      new_assignee: key,
+                    });
+                  }}
+                />
+
+                {/* <PreviewAssignees
               assignees={issue.assignees}
               enable_tooltip={false}
             /> */}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    );
-  },
+      );
+    },
+  ),
 );
 
-const SortableIssue = ({ issue }) => {
+const SortableIssue = React.memo(({ issue }) => {
   const {
     attributes,
     listeners,
@@ -215,9 +216,9 @@ const SortableIssue = ({ issue }) => {
       listeners={listeners}
     />
   );
-};
+});
 
-const Column = ({ id, title, tasks_list, createTask }) => {
+const Column = React.memo(({ id, title, tasks_list, createTask }) => {
   const [addNew, setAddNew] = useState(false);
   const qp = useQueryParams();
   const project = qp.get("project") || null;
@@ -236,6 +237,8 @@ const Column = ({ id, title, tasks_list, createTask }) => {
     setCreateItem({ subject: "", status: id });
     setAddNew(false);
   }, [id]);
+
+  const taskIds = useMemo(() => tasks_list.map((t) => t.id), [tasks_list]);
 
   useEffect(() => {
     if (!addNew) return;
@@ -323,10 +326,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
           </button>
         )}
 
-        <SortableContext
-          items={tasks_list.map((i) => i.id)}
-          strategy={verticalListSortingStrategy}
-        >
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {tasks_list.map((issue) => (
             <SortableIssue key={issue.id} issue={issue} />
           ))}
@@ -334,7 +334,7 @@ const Column = ({ id, title, tasks_list, createTask }) => {
       </div>
     </div>
   );
-};
+});
 
 export default function KanbanView() {
   const [activeIssue, setActiveIssue] = useState(null);
@@ -393,29 +393,24 @@ export default function KanbanView() {
     }),
   );
 
-  const findIssue = useCallback(
-    (id) => tasks_list.find((i) => i.id === id),
-    [tasks_list],
-  );
-
-  const handleDragStart = (event) => {
+  const handleDragStart = useCallback((event) => {
     const { active } = event;
     setActiveIssue(findIssue(active.id));
-  };
-  const handleDragOver = (event) => {
+  }, []);
+  const handleDragOver = useCallback((event) => {
     const { active } = event;
     if (!active) return;
 
     // If already set, do nothing
     if (activeIssue && activeIssue.id === active.id) return;
 
-    const task = tasks_list.find((t) => t.id === active.id);
+    const task = tasksById[active.id];
     if (!task) return;
 
     setActiveIssue(task);
-  };
+  });
 
-  const mutateTaskStatus = async (task, newStatus) => {
+  const mutateTaskStatus = useCallback(async (task, newStatus) => {
     // Find the current task to get old status
     const currentTask = tasks_list.find((t) => t.name === task);
     const oldStatus = currentTask?.status;
@@ -463,9 +458,9 @@ export default function KanbanView() {
             });
         }
       });
-  };
+  });
 
-  const createNewTask = async (newTask) => {
+  const createNewTask = useCallback(async (newTask) => {
     await tasks_list_query.mutate(
       async (current) => {
         const newTaskCreated = await createMutation.createDoc("Task", newTask);
@@ -517,23 +512,16 @@ export default function KanbanView() {
         populateCache: true,
       },
     );
-  };
-  // console.log("Tasks:", tasks_list_query);
+  });
 
-  // useEffect(() => {
-  //   if (isAllTasksDone) {
-  //     setShowCelebration(true);
-  //   }
-  // }, [isAllTasksDone]);
-
-  const handleDragEnd = async (event) => {
+  const handleDragEnd = useCallback(async (event) => {
     const { active, over } = event;
     if (!over) return;
 
     const activeId = active.id;
     const overId = over.id;
 
-    const activeTask = tasks_list.find((i) => i.id === activeId);
+    const activeTask = tasksById[activeId];
     if (!activeTask) return;
 
     // If dropped back onto itself, do nothing
@@ -551,7 +539,7 @@ export default function KanbanView() {
     }
 
     // Dropped on another task
-    const overTask = tasks_list.find((i) => i.id === overId);
+    const overTask = tasksById[overId];
     if (overTask) {
       newStatus = overTask.status;
     }
@@ -614,7 +602,7 @@ export default function KanbanView() {
     } finally {
       setActiveIssue(null);
     }
-  };
+  });
 
   const dropAnimation = {
     sideEffects: defaultDropAnimationSideEffects({
@@ -625,6 +613,51 @@ export default function KanbanView() {
       },
     }),
   };
+
+  const { tasksById, tasksByStatus } = useMemo(() => {
+    const tasks = tasks_list || [];
+
+    const byId = {};
+    const byStatus = {};
+
+    for (const task of tasks) {
+      byId[task.id] = task;
+
+      if (!byStatus[task.status]) {
+        byStatus[task.status] = [];
+      }
+
+      byStatus[task.status].push(task.id);
+    }
+
+    return {
+      tasksById: byId,
+      tasksByStatus: byStatus,
+    };
+  }, [tasks_list]);
+  const findIssue = useCallback((id) => tasksById[id], [tasksById]);
+
+  const getSortedTasks = useCallback(
+    (status) => {
+      const ids = tasksByStatus[status] || [];
+
+      return ids
+        .map((id) => tasksById[id])
+        .slice()
+        .sort((a, b) => {
+          const aSort = a.custom_sort_order ?? Number.POSITIVE_INFINITY;
+
+          const bSort = b.custom_sort_order ?? Number.POSITIVE_INFINITY;
+
+          if (aSort !== bSort) return aSort - bSort;
+
+          return String(b.modified || "").localeCompare(
+            String(a.modified || ""),
+          );
+        });
+    },
+    [tasksByStatus, tasksById],
+  );
 
   if (
     tasks_list_query.isLoading &&
@@ -677,30 +710,14 @@ export default function KanbanView() {
           onDragEnd={handleDragEnd}
         >
           {COLUMNS.map((col) => {
+            const columnTasks = getSortedTasks(col.id);
+
             return (
               <Column
                 key={col.id}
                 id={col.id}
                 title={col.title}
-                tasks_list={tasks_list
-                  .filter((i) => i.status === col.id)
-                  .slice()
-                  .sort((a, b) => {
-                    const aSort =
-                      a.custom_sort_order === null ||
-                      a.custom_sort_order === undefined
-                        ? Number.POSITIVE_INFINITY
-                        : Number(a.custom_sort_order);
-                    const bSort =
-                      b.custom_sort_order === null ||
-                      b.custom_sort_order === undefined
-                        ? Number.POSITIVE_INFINITY
-                        : Number(b.custom_sort_order);
-                    if (aSort !== bSort) return aSort - bSort;
-                    return String(b.modified || "").localeCompare(
-                      String(a.modified || ""),
-                    );
-                  })}
+                tasks_list={columnTasks}
                 createTask={createNewTask}
               />
             );

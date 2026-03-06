@@ -263,13 +263,13 @@ def get_assignee_of_task(task_name):
         {
             "reference_type": "Task",
             "reference_name": task_name,
-            "status": ["!=", "Cancelled"],
+            "status": ["=", "Open"],
         },
         "allocated_to",
         
     )
     
-    return assignee or "unassigned"
+    return assignee
         
         
 @frappe.whitelist()
@@ -1481,7 +1481,10 @@ def set_project_mode(project, mode):
 
 
 @frappe.whitelist()
-def list_tasks(project, group_by=None, filters={}):
+def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
+    
+    print(f"Listing tasks for project: {project} with group_by: {group_by} and filters: {filters} and limit: {limit} and offset: {offset}")
+    
 
     project_execution_mode = frappe.db.get_value(
         "Project", project, "custom_execution_mode") or "Kanban"
@@ -1512,7 +1515,7 @@ def list_tasks(project, group_by=None, filters={}):
             Task.modified,
             Task.project,
             fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
-        )
+        ).limit(limit).offset(offset)
         .left_join(ToDo).on(
             (ToDo.reference_name == Task.name)
             & (ToDo.reference_type == "Task")

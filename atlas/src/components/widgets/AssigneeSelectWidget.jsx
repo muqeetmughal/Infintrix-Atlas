@@ -163,7 +163,6 @@ import { UserOutlined } from "@ant-design/icons";
 //   // );
 // };
 export const UsersSelectWidget = (props) => {
-  console.log("UsersSelectWidget props:", props);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value);
 

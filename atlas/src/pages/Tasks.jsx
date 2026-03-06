@@ -22,6 +22,8 @@ import ProjectHealth from "../components/ProjectHealth";
 import ManageProjectPeople from "../modals/ManageProjectPeople";
 import TreeView from "../views/TreeView";
 import InsightsView from "../views/InsightsView/InsightsView";
+import KanbanView2 from "../views/KanbanView2";
+import TestView from "../views/TestView";
 
 const Tasks = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -72,6 +74,7 @@ const Tasks = () => {
     { id: "backlog", label: "Backlog" },
     { id: "tree", label: "Tree" },
     { id: "kanban", label: "Kanban" },
+    { id: "kanban2", label: "Kanban 2" },
   ];
 
   const project_data = project_query?.data || {};
@@ -358,6 +361,7 @@ const Tasks = () => {
           {/* {view === "ai-architect" && <AIArchitect />} */}
           {view === "list" && <TableView />}
           {view === "kanban" && <KanbanView />}
+          {view === "kanban2" && <TestView />}
           {view === "backlog" && <BacklogView />}
           {view === "tree" && <TreeView />}
           {view === "insights" && <InsightsView />}
