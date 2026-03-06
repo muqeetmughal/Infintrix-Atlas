@@ -1,33 +1,30 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Avatar, Spin, theme, Tooltip, Typography } from "antd";
 import PropTypes from "prop-types";
 import { useAvatarQuery } from "../hooks/query";
-import { useFrappeGetDoc } from "frappe-react-sdk";
+import { useFrappeGetCall } from "frappe-react-sdk";
 
-const AvatarGen = ({ name = null, size = 30, enable_tooltip = false }) => {
+const AvatarGen = React.memo(({ name = null, size = 30, enable_tooltip = false }) => {
   const [opened, setOpened] = useState(false);
   const avatar_query = useAvatarQuery(name);
   const { token } = theme.useToken();
-  const shouldFetchUserDetails = name && name !== "unassigned" && name !== "auto";
-  
-  const user_detail_query = useFrappeGetDoc(
-    "User", 
-    name, 
-    shouldFetchUserDetails ? ["current_user_details", name] : null, 
-    {
-      revalidateOnFocus: false,
-      revalidateIfStale: false,
-      revalidateOnReconnect: false,
-    }
-  );
+
+
+  const user_detail_query = useFrappeGetCall("infintrix_atlas.api.v1.user_details", { user: name })
+
 
   if (avatar_query.isLoading && user_detail_query.isLoading) {
     return <Spin />;
   }
 
-  const user_info = user_detail_query?.data || {};
+  const user_info = useMemo(() => {
+    if (user_detail_query.data) {
+      return user_detail_query.data.message;
+    }
+    return null;
+  }, [user_detail_query.data]);
 
-  const TooltipRender = ({ user }) => {
+  const TooltipRender = React.memo(({ user }) => {
     if (!user) {
       return "No data found";
     }
@@ -57,7 +54,7 @@ const AvatarGen = ({ name = null, size = 30, enable_tooltip = false }) => {
         {/* {user?.first_name}{" "}{user?.last_name} */}
       </>
     );
-  };
+  });
 
   if (enable_tooltip) {
     return (
@@ -94,7 +91,7 @@ const AvatarGen = ({ name = null, size = 30, enable_tooltip = false }) => {
       // <img src={avatar_query.data} alt="Avatar" width={size} height={size} />
     );
   }
-};
+});
 AvatarGen.propTypes = {
   name: PropTypes.string,
   size: PropTypes.number,

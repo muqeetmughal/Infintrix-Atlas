@@ -3,6 +3,7 @@ import frappe
 from frappe.query_builder import DocType, functions as fn
 from datetime import datetime, timedelta
 import json
+from frappe.utils import user
 from infintrix_atlas.permissions import project_permission_query, task_permission_query
 from .utils import send_notification
 @frappe.whitelist()
@@ -1582,19 +1583,20 @@ def get_watchers(doctype, docname):
     )
     return watchers
 
-
+def watcher_exists(doctype, docname, user):
+    existing_watcher = frappe.db.sql(
+        """
+        SELECT name FROM `tabWatcher`
+        WHERE parent = %s AND parenttype = %s AND user = %s
+        LIMIT 1
+        """,
+        (docname, doctype, user),
+    )
+    return existing_watcher
 @frappe.whitelist()
 def add_watcher(doctype, docname, user):
     try:
-        # Check if watcher already exists
-        existing_watcher = frappe.db.get_value(
-            "Watcher",
-            {
-            "parent": docname,
-            "parenttype": doctype,
-            "user": user
-            }
-        )
+        existing_watcher = watcher_exists(doctype, docname, user)
         
         if existing_watcher:
             return {"success": False, "message": f"User {user} is already a watcher"}
@@ -1606,7 +1608,7 @@ def add_watcher(doctype, docname, user):
             "parenttype": doctype,
             # "parentfield": "watcher",
             "user": user
-        }).insert()
+        }).insert(ignore_permissions=True)
         
         # If doctype is Task, get the project and add user to project if not already there
         if doctype == "Task":
@@ -1663,16 +1665,7 @@ def remove_watcher(doctype, docname, user):
 @frappe.whitelist()
 def toggle_self_watch(doctype, docname):
     user = frappe.session.user
-
-    existing_watcher = frappe.db.get_value(
-        "Watcher",
-        {
-            "parent": docname,
-            "parenttype": doctype,
-            "user": user
-        }
-    )
-
+    existing_watcher = watcher_exists(doctype, docname, user)
     if existing_watcher:
         # Remove watcher
         return remove_watcher(doctype, docname, user)
@@ -1713,6 +1706,18 @@ def recent_projects_with_activity_of_current_user(limit=5):
         as_dict=True,
     )
     return projects
+
+@frappe.whitelist()
+def user_details(user=None):
+    if not user:
+        return None
+    details = frappe.db.get_value(
+        "User",
+        user,
+        ["full_name", "email", "user_image"],
+        as_dict=True
+    )
+    return details
 # @frappe.whitelist()
 # def list_tasks(project, group_by=None,filters={}):
 

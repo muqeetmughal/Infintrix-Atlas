@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   X,
   Share2,
@@ -50,131 +50,29 @@ import ActivityTimeline from "../components/ActivityTimeline";
 import TaskCopilot from "../components/TaskCopilot";
 import TaskSkeleton from "./TaskSkeleton";
 import WatchersWidget from "../components/WatchersWidget";
-
-const TaskDetail = () => {
-  const [isResizing, setIsResizing] = useState(false);
-  const [fullScreen, setFullScreen] = useState(false);
+const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
   const containerRef = useRef(null);
-  const [position] = useState("modal");
-  const [activeTab, setActiveTab] = useState("comments");
-  const [issueModalOpen, setIssueModalOpen] = useState(false);
-  const [createIssueModalOpen, setCreateIssueModalOpen] = useState(false);
-  const [hasSeenIssueHighlight, setHasSeenIssueHighlight] = useState(false);
-  const [issueForm] = Form.useForm();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [isResizing, setIsResizing] = useState(false);
   const updateMutation = useFrappeUpdateDoc();
-  const { deleteDoc } = useFrappeDeleteDoc();
-  const createIssueMutation = useFrappeCreateDoc();
-  const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+    const assignee_update_mutation = useAssigneeUpdateMutation();
+
   const selectedTask = searchParams.get("selected_task") || null;
-  const copilot = searchParams.get("copilot") === "true";
-  const assignee_update_mutation = useAssigneeUpdateMutation();
-
-  const task_details_query = useFrappeGetDoc(
-    "Task",
-    selectedTask,
-    selectedTask ? ["Task", selectedTask] : null,
-    {
-      // refreshInterval: 5000, // Auto-refresh every 5 seconds
-      refreshWhenHidden: false, // Don't refresh when the modal is hidden
-      refreshWhenOffline: false, // Don't refresh when offline
-      revalidateIfStale: true, // Revalidate if data is stale
-      revalidateOnFocus: false, // Don't revalidate on window focus
-      revalidateOnReconnect: true, // Revalidate when the connection is back
-    },
-  );
-
   const assignee_of_task_query = useAssigneeOfTask(selectedTask);
+  const task_assignee = assignee_of_task_query?.data?.message || null;
 
-  const notifyStatusChange = useFrappePostCall(
-    "infintrix_atlas.api.v1.notify_status_changed",
-  );
 
-  // const assignees_of_task = (assignee_of_task_query?.data || []).map((todo) => {
-  //   return todo.allocated_to;
-  // });
-const task_assignee = assignee_of_task_query?.data?.message || 'unassigned';
-  const task = task_details_query.data || {};
-  const issueName = task.issue || null;
-  const issue_query = useFrappeGetDoc(
-    "Issue",
-    issueName,
-    issueName ? ["Issue", issueName] : null,
-  );
-  const issueDoc = issue_query.data || {};
+  const labels_of_task = useMemo(() => {
+    return ((task?._user_tags || "").split(",") || []).filter(
+      (tag) => tag.trim() !== "",
+    );
+  }, [task?._user_tags]);
 
-  // Issue field options
-  const issueStatusField = useGetDoctypeField("Issue", "status", "options");
-  const issueStatusOptions = issueStatusField.data?.options || [];
 
-  const issuePriorityQuery = useFrappeGetDocList("Issue Priority", {
-    fields: ["name"],
-    limit_page_length: 1000,
-  });
-  const issueTypeQuery = useFrappeGetDocList("Issue Type", {
-    fields: ["name"],
-    limit_page_length: 1000,
-  });
-
-  // Reset the linked-issue highlight whenever the selected task or its issue changes
-  useEffect(() => {
-    if (task.issue) {
-      setHasSeenIssueHighlight(false);
-    }
-  }, [task.name, task.issue]);
-
-  const handleCreateIssue = (values) => {
-    if (!task.name) return;
-
-    createIssueMutation
-      .createDoc("Issue", {
-        subject: values.subject,
-        description: values.description,
-        status: values.status,
-        priority: values.priority,
-        issue_type: values.issue_type,
-        task: task.name,
-      })
-      .then((doc) => {
-        return updateMutation
-          .updateDoc("Task", task.name, { issue: doc.name })
-          .then(() => {
-            issueForm.resetFields();
-            setCreateIssueModalOpen(false);
-            task_details_query.mutate();
-            issue_query.mutate();
-          });
-      })
-      .catch((err) => {
-        console.error("Failed to create issue", err);
-      });
-  };
-
-  const labels_of_task = ((task?._user_tags || "").split(",") || []).filter(
-    (tag) => tag.trim() !== "",
-  );
-
-  const onClose = () => {
+  const onClose = useCallback(() => {
     searchParams.delete("selected_task");
     setSearchParams(searchParams);
-  };
-
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
-
-  const startResizing = useCallback((e) => {
-    setIsResizing(true);
-    e.preventDefault();
-  }, []);
-
-  const stopResizing = useCallback(() => {
-    setIsResizing(false);
-  }, []);
+  });
 
   const resize = useCallback(
     (e) => {
@@ -188,6 +86,15 @@ const task_assignee = assignee_of_task_query?.data?.message || 'unassigned';
     },
     [isResizing],
   );
+
+  const startResizing = useCallback((e) => {
+    setIsResizing(true);
+    e.preventDefault();
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
 
   useEffect(() => {
     if (isResizing) {
@@ -207,15 +114,7 @@ const task_assignee = assignee_of_task_query?.data?.message || 'unassigned';
       window.removeEventListener("mouseup", stopResizing);
     };
   }, [isResizing, resize, stopResizing]);
-
-  if (!selectedTask) return null;
-
-  const tabs = [
-    { id: "comments", label: "Comments" },
-    { id: "history", label: "History" },
-  ];
-
-  const TaskBody = (
+  return (
     <div className="task-body overflow-hidden flex flex-col h-full bg-white dark:bg-slate-900">
       {/* Navigation Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -485,13 +384,12 @@ const task_assignee = assignee_of_task_query?.data?.message || 'unassigned';
                   Assignee
                 </div>
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
-            
                   <UsersSelectWidget
-                  show_label={true}
-                  mode={"assignee"}
-                  value={task_assignee}
+                    show_label={true}
+                    mode={"assignee"}
+                    value={task_assignee}
                     onSelect={(value) => {
-                    //  alert(value);
+                      //  alert(value);
                       assignee_update_mutation
                         .call({
                           task_name: task.name,
@@ -501,7 +399,6 @@ const task_assignee = assignee_of_task_query?.data?.message || 'unassigned';
                           task_details_query.mutate();
                           assignee_of_task_query.mutate();
                         });
-                    
                     }}
                   />
                 </div>
@@ -730,6 +627,116 @@ const task_assignee = assignee_of_task_query?.data?.message || 'unassigned';
       </div>
     </div>
   );
+});
+const TaskDetail = () => {
+  const [fullScreen, setFullScreen] = useState(false);
+  const [position] = useState("modal");
+  const [issueForm] = Form.useForm();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const updateMutation = useFrappeUpdateDoc();
+  const { deleteDoc } = useFrappeDeleteDoc();
+  const createIssueMutation = useFrappeCreateDoc();
+  const queryClient = useQueryClient();
+  const selectedTask = searchParams.get("selected_task") || null;
+  const copilot = searchParams.get("copilot") === "true";
+
+  const task_details_query = useFrappeGetDoc(
+    "Task",
+    selectedTask,
+    selectedTask ? ["Task", selectedTask] : null,
+    {
+      // refreshInterval: 5000, // Auto-refresh every 5 seconds
+      refreshWhenHidden: false, // Don't refresh when the modal is hidden
+      refreshWhenOffline: false, // Don't refresh when offline
+      revalidateIfStale: true, // Revalidate if data is stale
+      revalidateOnFocus: false, // Don't revalidate on window focus
+      revalidateOnReconnect: true, // Revalidate when the connection is back
+    },
+  );
+
+  const notifyStatusChange = useFrappePostCall(
+    "infintrix_atlas.api.v1.notify_status_changed",
+  );
+
+  const task = task_details_query.data || {};
+  const issueName = task.issue || null;
+  const issue_query = useFrappeGetDoc(
+    "Issue",
+    issueName,
+    issueName ? ["Issue", issueName] : null,
+  );
+  const issueDoc = issue_query.data || {};
+
+  // Issue field options
+  const issueStatusField = useGetDoctypeField("Issue", "status", "options");
+  const issueStatusOptions = issueStatusField.data?.options || [];
+
+  const issuePriorityQuery = useFrappeGetDocList("Issue Priority", {
+    fields: ["name"],
+    limit_page_length: 1000,
+  });
+  const issueTypeQuery = useFrappeGetDocList("Issue Type", {
+    fields: ["name"],
+    limit_page_length: 1000,
+  });
+
+  // Reset the linked-issue highlight whenever the selected task or its issue changes
+  useEffect(() => {
+    if (task.issue) {
+      setHasSeenIssueHighlight(false);
+    }
+  }, [task.name, task.issue]);
+
+  const handleCreateIssue = (values) => {
+    if (!task.name) return;
+
+    createIssueMutation
+      .createDoc("Issue", {
+        subject: values.subject,
+        description: values.description,
+        status: values.status,
+        priority: values.priority,
+        issue_type: values.issue_type,
+        task: task.name,
+      })
+      .then((doc) => {
+        return updateMutation
+          .updateDoc("Task", task.name, { issue: doc.name })
+          .then(() => {
+            issueForm.resetFields();
+            setCreateIssueModalOpen(false);
+            task_details_query.mutate();
+            issue_query.mutate();
+          });
+      })
+      .catch((err) => {
+        console.error("Failed to create issue", err);
+      });
+  };
+
+  const labels_of_task = ((task?._user_tags || "").split(",") || []).filter(
+    (tag) => tag.trim() !== "",
+  );
+
+  const onClose = () => {
+    searchParams.delete("selected_task");
+    setSearchParams(searchParams);
+  };
+
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [onClose]);
+
+  if (!selectedTask) return null;
+
+  const tabs = [
+    { id: "comments", label: "Comments" },
+    { id: "history", label: "History" },
+  ];
 
   if (position === "modal") {
     return (
@@ -745,7 +752,11 @@ const task_assignee = assignee_of_task_query?.data?.message || 'unassigned';
             <TaskSkeleton />
           ) : (
             <>
-              {TaskBody}
+              <TaskBody
+                task={task}
+                fullScreen={fullScreen}
+                setFullScreen={setFullScreen}
+              />
               <Drawer
                 open={!!copilot}
                 onClose={() => {

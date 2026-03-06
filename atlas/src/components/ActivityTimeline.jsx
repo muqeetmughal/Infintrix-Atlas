@@ -9,7 +9,7 @@ import { MessageSquare } from "lucide-react";
 
 dayjs.extend(relativeTime);
 
-export default function ActivityTimeline({ task_id }) {
+export default React.memo(function ActivityTimeline({ task_id }) {
   const [commentText, setCommentText] = React.useState("");
   const auth = useAuth();
   const versions_query = useFrappeGetCall(
@@ -236,3 +236,4 @@ export default function ActivityTimeline({ task_id }) {
     </div>
   );
 }
+)

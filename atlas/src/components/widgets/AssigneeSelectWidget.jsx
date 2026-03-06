@@ -11,7 +11,7 @@ import {
   theme,
 } from "antd";
 import { useFrappeGetDocList } from "frappe-react-sdk";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import AvatarGen from "../AvatarGen";
 import { UserOutlined } from "@ant-design/icons";
 // import {
@@ -162,7 +162,7 @@ import { UserOutlined } from "@ant-design/icons";
 //   //   </div>
 //   // );
 // };
-export const UsersSelectWidget = (props) => {
+export const UsersSelectWidget = React.memo((props) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value);
 
@@ -180,15 +180,6 @@ export const UsersSelectWidget = (props) => {
     },
   });
   const { token } = theme.useToken();
-
-  const contentStyle = {
-    backgroundColor: token.colorBgElevated,
-    borderRadius: token.borderRadiusLG,
-    boxShadow: token.boxShadowSecondary,
-  };
-  const menuStyle = {
-    boxShadow: "none",
-  };
 
   if (collegues_list_query.isLoading) return <Spin />;
 
@@ -219,12 +210,17 @@ export const UsersSelectWidget = (props) => {
       };
     });
 
-  const getNameByValue = (value) => {
+  const getNameByValue = useCallback((value) => {
+    if (!collegues_list_query.data || !value) return value;
     const user = collegues_list_query.data.find(
       (colleague) => colleague.name === value,
     );
     return user ? user.full_name : value;
-  };
+  }, [collegues_list_query.data]);
+
+
+
+  
   useEffect(() => {
     setSelected(props.value);
   }, [props.value]);
@@ -252,6 +248,7 @@ export const UsersSelectWidget = (props) => {
             {selected ? (
               <div className="flex items-center gap-2">
                 <AvatarGen name={selected} enable_tooltip={false} />
+
                 {props.show_label && (
                   <span className="text-sm">{getNameByValue(selected)}</span>
                 )}
@@ -273,7 +270,7 @@ export const UsersSelectWidget = (props) => {
       </Dropdown>
     </div>
   );
-};
+});
 export const ShowUserWidget = (props) => {
   const user = props.value;
   return (

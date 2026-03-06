@@ -5,14 +5,14 @@ import {
   useFrappeUpdateDoc,
 } from "frappe-react-sdk";
 import { CheckCircle, CheckSquare, CircleIcon, Plus } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import PriorityWidget from "./widgets/PriorityWidget";
 import { Button } from "antd";
 import { UsersSelectWidget } from "./widgets/AssigneeSelectWidget";
 import { useAssigneeOfTask, useAssigneeUpdateMutation } from "../hooks/query";
-const SubTasks = ({ task }) => {
+const SubTasks = React.memo(({ task }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isAdding, setIsAdding] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -279,6 +279,7 @@ const SubTasks = ({ task }) => {
                   <td className="px-2 py-2 text-slate-600 dark:text-slate-400">
                     <UsersSelectWidget
                       show_label={true}
+                      mode="assignee"
                       value={task_assignee}
                       onSelect={(key) => {
                         assignee_update_mutation
@@ -287,6 +288,7 @@ const SubTasks = ({ task }) => {
                             new_assignee: key,
                           })
                           .then(() => {
+                            subtasks_of_task_query.mutate();
                             assignee_of_task_query.mutate();
                           });
                       }}
@@ -360,6 +362,6 @@ const SubTasks = ({ task }) => {
       </div>
     </section>
   );
-};
+});
 
 export default SubTasks;
