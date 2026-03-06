@@ -41,7 +41,7 @@ import StatusWidget from "../components/widgets/StatusWidget";
 import { Button, Dropdown, Space, Form, Input, Select } from "antd";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
 import SubTasks from "../components/SubTasks";
-import { useAssigneeOfTask, useAssigneeUpdateMutation } from "../hooks/query";
+import { useAssigneeOfTask, useAssigneeUpdateMutation, useTaskDetailsQuery } from "../hooks/query";
 import { useGetDoctypeField } from "../hooks/doctype";
 import SubjectWidget from "../components/widgets/SubjectWidget";
 import FileAttachment from "./FileAttachment";
@@ -51,17 +51,18 @@ import TaskCopilot from "../components/TaskCopilot";
 import TaskSkeleton from "./TaskSkeleton";
 import WatchersWidget from "../components/WatchersWidget";
 const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
-  console.log("Rendering TaskBody for task", task);
   const containerRef = useRef(null);
   const [isResizing, setIsResizing] = useState(false);
   const updateMutation = useFrappeUpdateDoc();
   const [searchParams, setSearchParams] = useSearchParams();
     const assignee_update_mutation = useAssigneeUpdateMutation();
   const { deleteDoc } = useFrappeDeleteDoc();
-
+  
+  
   const selectedTask = searchParams.get("selected_task") || null;
+  const task_details_query = useTaskDetailsQuery(selectedTask);
   const assignee_of_task_query = useAssigneeOfTask(selectedTask);
-  const task_assignee = assignee_of_task_query?.data?.message || null;
+  const task_assignee = useMemo(() => assignee_of_task_query?.data?.message || null, [assignee_of_task_query?.data?.message]);
 
 
   const labels_of_task = useMemo(() => {
@@ -74,48 +75,48 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
   const onClose = useCallback(() => {
     searchParams.delete("selected_task");
     setSearchParams(searchParams);
-  });
+  }, [searchParams, setSearchParams]);
 
-  const resize = useCallback(
-    (e) => {
-      if (isResizing && containerRef.current) {
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const newWidth = e.clientX - containerRect.left;
+  // const resize = useCallback(
+  //   (e) => {
+  //     if (isResizing && containerRef.current) {
+  //       const containerRect = containerRef.current.getBoundingClientRect();
+  //       const newWidth = e.clientX - containerRect.left;
 
-        if (newWidth >= 300 && newWidth <= 900) {
-        }
-      }
-    },
-    [isResizing],
-  );
+  //       if (newWidth >= 300 && newWidth <= 900) {
+  //       }
+  //     }
+  //   },
+  //   [isResizing],
+  // );
 
-  const startResizing = useCallback((e) => {
-    setIsResizing(true);
-    e.preventDefault();
-  }, []);
+  // const startResizing = useCallback((e) => {
+  //   setIsResizing(true);
+  //   e.preventDefault();
+  // }, []);
 
-  const stopResizing = useCallback(() => {
-    setIsResizing(false);
-  }, []);
+  // const stopResizing = useCallback(() => {
+  //   setIsResizing(false);
+  // }, []);
 
-  useEffect(() => {
-    if (isResizing) {
-      window.addEventListener("mousemove", resize);
-      window.addEventListener("mouseup", stopResizing);
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-    } else {
-      window.removeEventListener("mousemove", resize);
-      window.removeEventListener("mouseup", stopResizing);
-      document.body.style.cursor = "default";
-      document.body.style.userSelect = "auto";
-    }
+  // useEffect(() => {
+  //   if (isResizing) {
+  //     window.addEventListener("mousemove", resize);
+  //     window.addEventListener("mouseup", stopResizing);
+  //     document.body.style.cursor = "col-resize";
+  //     document.body.style.userSelect = "none";
+  //   } else {
+  //     window.removeEventListener("mousemove", resize);
+  //     window.removeEventListener("mouseup", stopResizing);
+  //     document.body.style.cursor = "default";
+  //     document.body.style.userSelect = "auto";
+  //   }
 
-    return () => {
-      window.removeEventListener("mousemove", resize);
-      window.removeEventListener("mouseup", stopResizing);
-    };
-  }, [isResizing, resize, stopResizing]);
+  //   return () => {
+  //     window.removeEventListener("mousemove", resize);
+  //     window.removeEventListener("mouseup", stopResizing);
+  //   };
+  // }, [isResizing, resize, stopResizing]);
   return (
     <div className="task-body overflow-hidden flex flex-col h-full bg-white dark:bg-slate-900">
       {/* Navigation Header */}
@@ -299,7 +300,7 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
 
         {/* Resizer Handle */}
         <div
-          onMouseDown={startResizing}
+          // onMouseDown={startResizing}
           className={`
             w-1.5 cursor-col-resize transition-all duration-200 z-10 relative shrink-0
             ${isResizing ? "bg-blue-500 dark:bg-blue-400 w-2" : "bg-slate-200 dark:bg-slate-700 hover:bg-blue-400 dark:hover:bg-blue-500 hover:w-2"}
@@ -624,19 +625,7 @@ const TaskDetail = React.memo(() => {
   const selectedTask = searchParams.get("selected_task") || null;
   const copilot = searchParams.get("copilot") === "true";
 
-  const task_details_query = useFrappeGetDoc(
-    "Task",
-    selectedTask,
-    selectedTask ? ["Task", selectedTask] : null,
-    // {
-    //   // refreshInterval: 5000, // Auto-refresh every 5 seconds
-    //   refreshWhenHidden: false, // Don't refresh when the modal is hidden
-    //   refreshWhenOffline: false, // Don't refresh when offline
-    //   revalidateIfStale: true, // Revalidate if data is stale
-    //   revalidateOnFocus: false, // Don't revalidate on window focus
-    //   revalidateOnReconnect: true, // Revalidate when the connection is back
-    // },
-  );
+  const task_details_query = useTaskDetailsQuery(selectedTask);
 
   const notifyStatusChange = useFrappePostCall(
     "infintrix_atlas.api.v1.notify_status_changed",

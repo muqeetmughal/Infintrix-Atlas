@@ -338,3 +338,19 @@ export function useFrappeManualPaginatedCall(method, baseParams = {},page, pageS
 	    loadPage
 	  }
 	}
+
+export const useTaskDetailsQuery = (task_name) => {
+	return useFrappeGetDoc(
+		"Task",
+		task_name,
+		task_name ? ["Task", task_name] : null,
+		// {
+		//   // refreshInterval: 5000, // Auto-refresh every 5 seconds
+		//   refreshWhenHidden: false, // Don't refresh when the modal is hidden
+		//   refreshWhenOffline: false, // Don't refresh when offline
+		//   revalidateIfStale: true, // Revalidate if data is stale
+		//   revalidateOnFocus: false, // Don't revalidate on window focus
+		//   revalidateOnReconnect: true, // Revalidate when the connection is back
+		// },
+	  );
+};

@@ -1,4 +1,4 @@
-import { Filter, Menu, Plus } from "lucide-react";
+import { Filter, Menu, Plus, RefreshCcw } from "lucide-react";
 import React, { useEffect } from "react";
 import { TASK_PRIORITY_COLORS, TASK_STATUS_COLORS } from "../data/constants";
 import {
@@ -74,7 +74,7 @@ const Tasks = () => {
     { id: "backlog", label: "Backlog" },
     { id: "tree", label: "Tree" },
     { id: "kanban", label: "Kanban" },
-    { id: "kanban2", label: "Kanban 2" },
+    // { id: "kanban2", label: "Kanban 2" },
   ];
 
   const project_data = project_query?.data || {};
@@ -129,6 +129,8 @@ const Tasks = () => {
                 change_mode_mutation.call({
                   mode : value,
                   project :project
+                }).then(() => {
+                  window.location.reload();
                 })
                 // updateMutation
                 //   .updateDoc("Project", project, {
@@ -267,6 +269,17 @@ const Tasks = () => {
             >
               <Button icon={<Menu size={16} />}></Button>
             </Dropdown>
+             <Button
+              onClick={() => {
+
+                // Invalidate tasks query to refetch data
+                
+               
+              }}
+              icon={<RefreshCcw/>}
+            >
+              
+            </Button>
 
             <Button
               type="primary"
@@ -301,7 +314,7 @@ const Tasks = () => {
         </div> */}
 
         {/* Advanced Filters Panel */}
-        {showFilters && (
+        {/* {showFilters && (
           <div
             ref={filtersRef}
             className="flex flex-wrap items-center gap-3 md:gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3"
@@ -354,7 +367,7 @@ const Tasks = () => {
               Clear filters
             </Button>
           </div>
-        )}
+        )} */}
 
         {/* View Content */}
         <div className="overflow-x-auto">

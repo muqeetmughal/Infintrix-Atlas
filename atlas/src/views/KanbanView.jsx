@@ -164,7 +164,7 @@ const IssueCard = React.memo(
                 value={issue.priority}
                 onChange={(newPriority, e) => {
                   e?.stopPropagation?.();
-                  event.stopPropagation();
+
                   updateMutation
                     .updateDoc("Task", issue.name, {
                       priority: newPriority,
@@ -419,23 +419,51 @@ export default function KanbanView() {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+  const { tasksById, tasksByStatus } = useMemo(() => {
+    const tasks = tasks_list || [];
 
-  const handleDragStart = useCallback((event) => {
-    const { active } = event;
-    setActiveIssue(findIssue(active.id));
-  }, []);
-  const handleDragOver = useCallback((event) => {
-    const { active } = event;
-    if (!active) return;
+    const byId = {};
+    const byStatus = {};
 
-    // If already set, do nothing
-    if (activeIssue && activeIssue.id === active.id) return;
+    for (const task of tasks) {
+      byId[task.id] = task;
 
-    const task = tasksById[active.id];
-    if (!task) return;
+      if (!byStatus[task.status]) {
+        byStatus[task.status] = [];
+      }
 
-    setActiveIssue(task);
-  });
+      byStatus[task.status].push(task.id);
+    }
+
+    return {
+      tasksById: byId,
+      tasksByStatus: byStatus,
+    };
+  }, [tasks_list]);
+  const findIssue = useCallback((id) => tasksById[id], [tasksById]);
+
+  const handleDragStart = useCallback(
+    (event) => {
+      const { active } = event;
+      setActiveIssue(findIssue(active.id));
+    },
+    [findIssue],
+  );
+  const handleDragOver = useCallback(
+    (event) => {
+      const { active } = event;
+      if (!active) return;
+
+      // If already set, do nothing
+      if (activeIssue && activeIssue.id === active.id) return;
+
+      const task = tasksById[active.id];
+      if (!task) return;
+
+      setActiveIssue(task);
+    },
+    [activeIssue, tasksById],
+  );
 
   const mutateTaskStatus = useCallback(async (task, newStatus) => {
     // Find the current task to get old status
@@ -640,29 +668,6 @@ export default function KanbanView() {
       },
     }),
   };
-
-  const { tasksById, tasksByStatus } = useMemo(() => {
-    const tasks = tasks_list || [];
-
-    const byId = {};
-    const byStatus = {};
-
-    for (const task of tasks) {
-      byId[task.id] = task;
-
-      if (!byStatus[task.status]) {
-        byStatus[task.status] = [];
-      }
-
-      byStatus[task.status].push(task.id);
-    }
-
-    return {
-      tasksById: byId,
-      tasksByStatus: byStatus,
-    };
-  }, [tasks_list]);
-  const findIssue = useCallback((id) => tasksById[id], [tasksById]);
 
   const getSortedTasks = useCallback(
     (status) => {
