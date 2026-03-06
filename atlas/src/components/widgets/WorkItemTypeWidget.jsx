@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useFrappeGetDocList } from "frappe-react-sdk";
 import { TASK_TYPE_ICONS } from "../../data/constants";
 
-const WorkItemTypeWidget = (props) => {
+const WorkItemTypeWidget = React.memo((props) => {
   const { show_icon = true, show_label = true } = props;
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value || null);
@@ -102,6 +102,6 @@ const WorkItemTypeWidget = (props) => {
       )}
     </>
   );
-};
+});
 
 export default WorkItemTypeWidget;

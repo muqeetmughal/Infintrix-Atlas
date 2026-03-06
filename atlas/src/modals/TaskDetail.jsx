@@ -51,11 +51,13 @@ import TaskCopilot from "../components/TaskCopilot";
 import TaskSkeleton from "./TaskSkeleton";
 import WatchersWidget from "../components/WatchersWidget";
 const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
+  console.log("Rendering TaskBody for task", task);
   const containerRef = useRef(null);
   const [isResizing, setIsResizing] = useState(false);
   const updateMutation = useFrappeUpdateDoc();
   const [searchParams, setSearchParams] = useSearchParams();
     const assignee_update_mutation = useAssigneeUpdateMutation();
+  const { deleteDoc } = useFrappeDeleteDoc();
 
   const selectedTask = searchParams.get("selected_task") || null;
   const assignee_of_task_query = useAssigneeOfTask(selectedTask);
@@ -187,9 +189,6 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
                         try {
                           if (!task.name) return;
                           await deleteDoc("Task", task.name);
-                          queryClient.invalidateQueries({
-                            queryKey: ["tasks"],
-                          });
                           onClose();
                         } catch (err) {
                           console.error("Failed to delete task", err);
@@ -331,20 +330,7 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
                     .then(() => {
                       task_details_query.mutate();
                       // Notify assigned users about status change
-                      if (oldStatus !== newStatus) {
-                        notifyStatusChange
-                          .call({
-                            task_name: task.name,
-                            old_status: oldStatus,
-                            new_status: newStatus,
-                          })
-                          .catch((err) => {
-                            console.error(
-                              "Failed to send status change notification:",
-                              err,
-                            );
-                          });
-                      }
+                     
                     });
                 }}
               />
@@ -628,15 +614,13 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
     </div>
   );
 });
-const TaskDetail = () => {
+const TaskDetail = React.memo(() => {
   const [fullScreen, setFullScreen] = useState(false);
   const [position] = useState("modal");
   const [issueForm] = Form.useForm();
   const [searchParams, setSearchParams] = useSearchParams();
   const updateMutation = useFrappeUpdateDoc();
-  const { deleteDoc } = useFrappeDeleteDoc();
   const createIssueMutation = useFrappeCreateDoc();
-  const queryClient = useQueryClient();
   const selectedTask = searchParams.get("selected_task") || null;
   const copilot = searchParams.get("copilot") === "true";
 
@@ -644,19 +628,20 @@ const TaskDetail = () => {
     "Task",
     selectedTask,
     selectedTask ? ["Task", selectedTask] : null,
-    {
-      // refreshInterval: 5000, // Auto-refresh every 5 seconds
-      refreshWhenHidden: false, // Don't refresh when the modal is hidden
-      refreshWhenOffline: false, // Don't refresh when offline
-      revalidateIfStale: true, // Revalidate if data is stale
-      revalidateOnFocus: false, // Don't revalidate on window focus
-      revalidateOnReconnect: true, // Revalidate when the connection is back
-    },
+    // {
+    //   // refreshInterval: 5000, // Auto-refresh every 5 seconds
+    //   refreshWhenHidden: false, // Don't refresh when the modal is hidden
+    //   refreshWhenOffline: false, // Don't refresh when offline
+    //   revalidateIfStale: true, // Revalidate if data is stale
+    //   revalidateOnFocus: false, // Don't revalidate on window focus
+    //   revalidateOnReconnect: true, // Revalidate when the connection is back
+    // },
   );
 
   const notifyStatusChange = useFrappePostCall(
     "infintrix_atlas.api.v1.notify_status_changed",
   );
+  console.log("Task details query", task_details_query);
 
   const task = task_details_query.data || {};
   const issueName = task.issue || null;
@@ -787,6 +772,6 @@ const TaskDetail = () => {
         : TaskBody}
     </div>
   );
-};
+});
 
 export default TaskDetail;

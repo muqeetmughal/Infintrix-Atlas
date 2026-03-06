@@ -361,7 +361,7 @@ const Tasks = () => {
           {/* {view === "ai-architect" && <AIArchitect />} */}
           {view === "list" && <TableView />}
           {view === "kanban" && <KanbanView />}
-          {view === "kanban2" && <TestView />}
+          {view === "kanban2" && <KanbanView2 />}
           {view === "backlog" && <BacklogView />}
           {view === "tree" && <TreeView />}
           {view === "insights" && <InsightsView />}

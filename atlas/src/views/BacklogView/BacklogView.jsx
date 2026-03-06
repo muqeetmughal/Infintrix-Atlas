@@ -593,10 +593,7 @@ const BacklogView = () => {
 
                 {isBacklogExpanded && (
                   <div className="grid grid-cols-1 md:grid-cols-1 gap-4 animate-in fade-in duration-200">
-                    {backlogTasks.map((t) => (
-                      <TaskCard key={t.id} task={t} />
-                    ))}
-                    {showBacklogCreator ? (
+                       {showBacklogCreator ? (
                       <InlineTaskCreator
                         project_id={project_id}
                         onCreated={() => {
@@ -616,6 +613,11 @@ const BacklogView = () => {
                         </span>
                       </button>
                     )}
+                    
+                    {backlogTasks.map((t) => (
+                      <TaskCard key={t.id} task={t} />
+                    ))}
+                 
                   </div>
                 )}
               </DroppableZone>

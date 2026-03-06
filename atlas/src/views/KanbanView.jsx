@@ -70,17 +70,28 @@ const IssueCard = React.memo(
           {...attributes}
           {...listeners}
           {...props}
-          onClick={(e) => {
-            // Don't open modal if clicking on interactive elements
-            const el = e.target.closest?.(
-              "button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker",
-            );
-            if (el) return;
-            if (issue.id === "new_item") return;
-            searchParams.set("selected_task", issue.id);
-            setSearchParams(searchParams);
-          }}
+          // onClick={(e) => {
+          //   // Don't open modal if clicking on interactive elements
+          //   const el = e.target.closest(
+          //     "button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker",
+          //   );
+          //   if (el) return;
+          //   if (issue.id === "new_item") return;
+          //   searchParams.set("selected_task", issue.id);
+          //   setSearchParams(searchParams);
+          // }}
         >
+          <span
+            onClick={(e) => {
+              if (issue.id === "new_item") return;
+              searchParams.set("selected_task", issue.id);
+              setSearchParams(searchParams);
+            }}
+            className="cursor-pointer text-[11px] text-slate-500 dark:text-slate-400 font-bold tracking-tight uppercase"
+            onC
+          >
+            {issue.id}
+          </span>
           <div className="flex items-start justify-between mb-1">
             <SubjectWidget task={issue} />
 
@@ -136,6 +147,7 @@ const IssueCard = React.memo(
             <div className="flex items-center gap-2">
               <Tooltip title={issue.type}>
                 <WorkItemTypeWidget
+                  show_label={true}
                   value={issue?.type || "Task"}
                   onChange={(newType) => {
                     updateMutation
@@ -148,9 +160,18 @@ const IssueCard = React.memo(
                   }}
                 />
               </Tooltip>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold tracking-tight uppercase">
-                {issue.id}
-              </span>
+              <PriorityWidget
+                value={issue.priority}
+                onChange={(newPriority, e) => {
+                  e?.stopPropagation?.();
+                  event.stopPropagation();
+                  updateMutation
+                    .updateDoc("Task", issue.name, {
+                      priority: newPriority,
+                    })
+                    .then(() => {});
+                }}
+              />
             </div>
             <div className="flex items-center gap-2">
               {issue.status === "Completed" && (
