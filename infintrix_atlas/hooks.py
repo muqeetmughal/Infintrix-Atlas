@@ -304,7 +304,10 @@ permission_query_conditions = {
     "Project": "infintrix_atlas.permissions.project_permission_query",
     "Task": "infintrix_atlas.permissions.task_permission_query",
 }
-
+# has_permission = {
+#     "Project": "infintrix_atlas.permissions.has_project_permission",
+#     "Task": "infintrix_atlas.permissions.has_task_permission",
+# }
 
 override_doctype_class = {
     "Task": "infintrix_atlas.overrides.task.TaskOverride",

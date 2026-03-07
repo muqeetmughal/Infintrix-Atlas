@@ -1141,7 +1141,69 @@ def set_project_mode(project, mode):
         )
         return {"success": False, "message": str(e)}
 
-from infintrix_atlas.permissions import task_permission_query
+
+@frappe.whitelist()
+def list_projects(filters={}, limit=20, offset=0):
+    Project = DocType("Project")
+    Task = DocType("Task")
+    ToDo = DocType("ToDo")
+    ProjectUser = DocType("Project User")
+    
+    user = frappe.session.user
+    user_roles = frappe.get_roles(user)
+    is_admin = "Administrator" in user_roles
+    is_project_manager = "Project Manager" in user_roles
+    
+    query = (
+        frappe.qb.from_(Project)
+        .select(
+            Project.name,
+            Project.project_name,
+            Project.project_type,
+            Project.status,
+            Project.percent_complete,
+            Project.modified,
+        )
+        .distinct()
+    )
+
+    # Permission-based filtering
+    if is_admin:
+        # Administrators see all projects
+        pass
+    elif is_project_manager:
+        # Project Managers see projects they created OR projects where they're assigned to any task
+        query = query.where(
+            (Project.owner == user) |
+            (Project.name.isin(
+                frappe.qb.from_(Task)
+                .inner_join(ToDo).on(
+                    (ToDo.reference_name == Task.name) &
+                    (ToDo.reference_type == "Task") &
+                    (ToDo.allocated_to == user)
+                )
+                .select(Task.project)
+            ))
+        )
+    else:
+        # Regular users see only projects they're added to in Project User
+        query = query.inner_join(ProjectUser).on(
+            (ProjectUser.parent == Project.name) &
+            (ProjectUser.user == user)
+        )
+
+    # Apply filters
+    for key, value in filters.items():
+        if key == "status":
+            query = query.where(Project.status == value)
+        elif key == "project_type":
+            query = query.where(Project.project_type == value)
+
+    query = query.limit(limit).offset(offset).orderby(
+        Project.modified, order=frappe.qb.desc)
+
+    projects = query.run(as_dict=True)
+    return projects
 @frappe.whitelist()
 def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
     
@@ -1163,6 +1225,8 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
     Task = DocType("Task")
     ToDo = DocType("ToDo")
 
+    ProjectUser = DocType("Project User")
+    
     query = (
         frappe.qb.from_(Task)
         .select(
@@ -1176,13 +1240,38 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
             Task.modified,
             Task.project,
             fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
-        ).limit(limit).offset(offset)
+        )
         .left_join(ToDo).on(
             (ToDo.reference_name == Task.name)
             & (ToDo.reference_type == "Task")
             & (ToDo.status == "Open")
         )
     )
+
+    # Permission-based filtering
+    user = frappe.session.user
+    user_roles = frappe.get_roles(user)
+    is_admin = "Administrator" in user_roles
+    is_project_manager = "Project Manager" in user_roles
+
+    if not is_admin:
+        if is_project_manager:
+            # Project Manager sees only projects they created
+            query = query.inner_join(frappe.qb.DocType("Project")).on(
+                frappe.qb.DocType("Project").name == Task.project
+            ).where(frappe.qb.DocType("Project").owner == user)
+        else:
+            # Project User sees projects they're assigned to
+            query = query.inner_join(ProjectUser).on(
+                (ProjectUser.parent == Task.project)
+                & (ProjectUser.user == user)
+            )
+
+    query = query.limit(limit).offset(offset)
+    query = query.groupby(Task.name).orderby(
+        Task.modified, order=frappe.qb.desc)
+
+    tasks = query.run(as_dict=True)
 
     # Apply filters
     for key, value in filters.items():
@@ -1200,8 +1289,6 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
 
     # Group tasks by specified field
     if group_by:
-
-        print(f"Grouping tasks by", group_by)
         grouped_data = {}
         for task in tasks:
             group_key = task.get(group_by, "Ungrouped")
