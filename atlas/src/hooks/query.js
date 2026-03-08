@@ -61,6 +61,7 @@ export const useListQuery = (doctype, filters, fields, options) => {
 	});
 };
 export const useTasksQuery = (project, group_by = null, filters = {}) => {
+	
 	const query = useFrappeGetCall(
 		"infintrix_atlas.api.v1.list_tasks",
 		{ project: project, group_by: group_by, filters: filters },
@@ -69,6 +70,15 @@ export const useTasksQuery = (project, group_by = null, filters = {}) => {
 	);
 	return query;
 };
+
+export const useSubtasksQuery = (parent_task) => {
+	return useFrappeGetCall(
+		"infintrix_atlas.api.v1.list_subtasks",
+		{ parent_task: parent_task },
+		parent_task ? ["subtasks", parent_task] : null,
+		{},
+	);
+}
 // export const useTasksQuery = (
 // 	cycle_name = undefined,
 // 	fields = [

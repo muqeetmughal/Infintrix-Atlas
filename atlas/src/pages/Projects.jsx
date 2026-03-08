@@ -12,6 +12,7 @@ import { INITIAL_PROJECTS, PROJECT_STATUS_COLORS } from "../data/constants";
 import {
   useFrappeDeleteDoc,
   useFrappeGetDocList,
+  useFrappePostCall,
   useFrappeUpdateDoc,
   useSWRConfig,
 } from "frappe-react-sdk";
@@ -23,6 +24,7 @@ import { Button, Checkbox, Progress } from "antd";
 
 const ProjectCard = ({ project: p }) => {
   const updateMutation = useFrappeUpdateDoc();
+  const archive_toggle_mutation = useFrappePostCall("infintrix_atlas.api.v1.toggle_archive_project");
   const swr = useSWRConfig();
   const is_archived = p.custom_is_archived;
   const navigate = useNavigate();
@@ -57,9 +59,8 @@ const ProjectCard = ({ project: p }) => {
         <Button
           onClick={(e) => {
             e.stopPropagation();
-            if (is_archived) {
-              updateMutation
-                .updateDoc("Project", p.name, { custom_is_archived: 0 })
+            archive_toggle_mutation
+                .call({ project: p.name })
                 .then((resp) => {
                   swr.mutate(
                     (key) =>
@@ -68,19 +69,6 @@ const ProjectCard = ({ project: p }) => {
                     { revalidate: true },
                   );
                 });
-              return;
-            } else {
-              updateMutation
-                .updateDoc("Project", p.name, { custom_is_archived: 1 })
-                .then((resp) => {
-                  swr.mutate(
-                    (key) =>
-                      Array.isArray(key) && key.some((k) => k === "Project"),
-                    undefined,
-                    { revalidate: true },
-                  );
-                });
-            }
           }}
           danger={is_archived ? false : true}
           size="small"

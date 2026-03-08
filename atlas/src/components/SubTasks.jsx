@@ -11,27 +11,27 @@ import { useSearchParams } from "react-router-dom";
 import PriorityWidget from "./widgets/PriorityWidget";
 import { Button } from "antd";
 import { UsersSelectWidget } from "./widgets/AssigneeSelectWidget";
-import { useAssigneeOfTask, useAssigneeUpdateMutation } from "../hooks/query";
+import {
+  useAssigneeOfTask,
+  useAssigneeUpdateMutation,
+  useSubtasksQuery,
+  useTasksQuery,
+} from "../hooks/query";
 const SubTasks = React.memo(({ task }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isAdding, setIsAdding] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef(null);
+  const subtasks_of_task_query = useSubtasksQuery(task);
   const task_detail_query = useFrappeGetDoc("Task", task);
+  const assignee_update_mutation = useAssigneeUpdateMutation();
 
-  const subtasks_of_task_query = useFrappeGetDocList("Task", {
-    filters: [["parent_task", "=", task]],
-    fields: ["*"],
-    orderBy: {
-      field: "modified",
-      order: "asc",
-    },
-  });
+  const subtasks = subtasks_of_task_query?.data?.message || [];
+
 
   const createMutation = useFrappeCreateDoc();
   const updateMutation = useFrappeUpdateDoc();
   const parent_task = task_detail_query.data || {};
-  const subtasks = subtasks_of_task_query.data || [];
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -129,11 +129,6 @@ const SubTasks = React.memo(({ task }) => {
             </thead>
             <tbody>
               {subtasks.map((subtask, index) => {
-                const assignee_of_task_query = useAssigneeOfTask(subtask.name);
-                const assignee_update_mutation = useAssigneeUpdateMutation();
-                const task_assignee =
-                  assignee_of_task_query?.data?.message || "unassigned";
-
                 return (
                   <tr
                     key={`${subtask.id}-${index}`}
@@ -172,7 +167,7 @@ const SubTasks = React.memo(({ task }) => {
                       <UsersSelectWidget
                         show_label={true}
                         mode="assignee"
-                        value={task_assignee}
+                        value={subtask.assignee}
                         onSelect={(key) => {
                           assignee_update_mutation
                             .call({
@@ -181,7 +176,6 @@ const SubTasks = React.memo(({ task }) => {
                             })
                             .then(() => {
                               subtasks_of_task_query.mutate();
-                              assignee_of_task_query.mutate();
                             });
                         }}
                       />

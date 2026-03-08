@@ -1306,6 +1306,41 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
 
     return tasks
 
+
+@frappe.whitelist()
+def list_subtasks(parent_task):
+    Task = DocType("Task")
+    ToDo = DocType("ToDo")
+
+    subtasks = (
+        frappe.qb.from_(Task)
+        .select(
+           Task.name,
+            Task.name.as_("id"),
+            Task.subject,
+            Task.status,
+            Task.type,
+            Task.custom_cycle.as_("cycle"),
+            Task.priority,
+            Task.modified,
+            Task.project,
+            fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+            
+        )
+        .left_join(ToDo).on(
+            (ToDo.reference_name == Task.name)
+            & (ToDo.reference_type == "Task")
+            & (ToDo.status == "Open")
+        )
+        .where(Task.parent_task == parent_task)
+        .groupby(Task.name)
+        .orderby(Task.modified, order=frappe.qb.desc)
+        .run(as_dict=True)
+    )
+
+    return subtasks
+
+
 @frappe.whitelist()
 def get_watchers(doctype, docname):
     Watcher = DocType("Watcher")
@@ -1465,6 +1500,22 @@ def user_details(user=None):
         as_dict=True
     )
     return details
+
+@frappe.whitelist()
+def toggle_archive_project(project):
+    try:
+        # project_doc = frappe.get_doc("Project", project)
+        current_status = frappe.db.get_value("Project", project, "custom_is_archived") or 0
+        new_status = 0 if current_status != 0 else 1
+        frappe.db.sql(
+            "UPDATE `tabProject` SET custom_is_archived = %s WHERE name = %s",
+            (new_status, project)
+        )
+        frappe.db.commit()
+        return {"success": True, "message": f"Project archived status toggled"}
+    except Exception as e:
+        frappe.log_error(f"Error toggling archive status: {e}", "Toggle Archive Error")
+        return {"success": False, "message": str(e)}
 # @frappe.whitelist()
 # def list_tasks(project, group_by=None,filters={}):
 
