@@ -157,11 +157,6 @@ const SubTasks = React.memo(({ task }) => {
                             .then(() => subtasks_of_task_query.mutate());
                         }}
                       />
-                      {/* <span
-                      className={`text-xs px-2 py-1 rounded ${subtask.priority === "High" ? "bg-red-100 text-red-700" : subtask.priority === "Medium" ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"}`}
-                    >
-                      {subtask.priority}
-                    </span> */}
                     </td>
                     <td className="px-2 py-2 text-slate-600 dark:text-slate-400">
                       <UsersSelectWidget
@@ -218,6 +213,17 @@ const SubTasks = React.memo(({ task }) => {
                   </tr>
                 );
               })}
+              {createMutation.loading && (
+                <tr className="border-b border-slate-200 dark:border-slate-700">
+                  <td colSpan="6" className="px-2 py-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="h-4 bg-slate-300 dark:bg-slate-600 rounded animate-pulse w-24"></div>
+                      <div className="h-4 bg-slate-300 dark:bg-slate-600 rounded animate-pulse w-32"></div>
+                      <div className="h-4 bg-slate-300 dark:bg-slate-600 rounded animate-pulse w-20"></div>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         ) : (
@@ -232,16 +238,18 @@ const SubTasks = React.memo(({ task }) => {
             ref={inputRef}
             type="text"
             autoFocus
+            disabled={createMutation.loading}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Enter subtask name..."
-            className="text-sm px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+            className="text-sm px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 disabled:opacity-50"
           />
         ) : (
           <button
             onClick={handleAddTask}
-            className="flex items-center text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 -ml-2 rounded transition-colors"
+            disabled={createMutation.loading}
+            className="flex items-center text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 -ml-2 rounded transition-colors disabled:opacity-50"
           >
             <Plus size={16} className="mr-1" /> Add subtask
           </button>
