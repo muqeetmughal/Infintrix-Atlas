@@ -17,7 +17,7 @@ const GlobalSearch = () => {
     },
   );
 
-  const results = search_query.data?.message || [];
+ 
 
   // Close on outside click
   useEffect(() => {
@@ -49,6 +49,7 @@ const GlobalSearch = () => {
     setQuery("");
     navigate(route);
   }
+   const results = search_query.data?.message || [];
 
   return (
     <div ref={wrapperRef} className="relative w-full max-w-md">

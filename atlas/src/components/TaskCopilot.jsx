@@ -59,7 +59,6 @@ Dependencies:`;
 // const llmInput = toLLMInput(yourTaskJSON);
 // console.log(llmInput);
 const SuggestedSubTask = React.memo(({ subtask, message_id }) => {
-  console.log("Rendering SuggestedSubTask:", subtask);
   const [loading, setLoading] = useState(false);
   const check_task_exists_query = useFrappeGetCall(
     "infintrix_atlas.api.v1.check_subtask_exists",

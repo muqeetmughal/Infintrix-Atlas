@@ -95,7 +95,9 @@ const TaskCard = ({ task, isOverlay = false }) => {
       ref={setNodeRef}
       style={style}
       onClick={(e) => {
-        const el = e.target.closest?.("button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker");
+        const el = e.target.closest?.(
+          "button, a, input, textarea, select, [role='button'], [role='combobox'], [role='menuitem'], .ant-dropdown, .ant-select, .ant-picker",
+        );
         if (el) return;
         if (task.id === "new_item") return;
         searchParams.set("selected_task", task.id);
@@ -132,7 +134,7 @@ const TaskCard = ({ task, isOverlay = false }) => {
                   });
               }}
             />
-         
+
             <h4
               onClick={(e) => {
                 e.stopPropagation();
@@ -229,10 +231,11 @@ const InlineTaskCreator = ({
 };
 
 const BacklogView = () => {
-  //   const [tasks, setTasks] = useState(initialTasks);
+  // const [tasks, setTasks] = useState(initialTasks);
   const params = useParams();
   const qp = useQueryParams();
   const [showBacklogCreator, setShowBacklogCreator] = useState(false);
+  const [setCycleModal] = useState(null);
   const { mutate } = useSWRConfig();
   const project_id = qp.get("project") || null;
   const statusFilter = qp.getArray("status");
@@ -248,47 +251,41 @@ const BacklogView = () => {
   const [isBacklogExpanded, setIsBacklogExpanded] = useState(true);
   const project_query = useProjectDetailsQuery(project_id);
 
-  const cycles_query = useFrappeGetDocList(
-    "Cycle",
+  // const cycles_query2 = useFrappeGetDocList(
+  //   "Cycle",
+  //   {
+  //     filters: { project: project_id },
+  //     fields: ["*"],
+  //     orderBy: {
+  //       field: "status",
+  //       order: "asc", // Sort from newest to oldest
+  //     },
+  //     limit: 1000,
+  //     limit_start: 0,
+  //   },
+  //   project_id ? ["cycles", project_id] : null,
+  //   {
+  //     revalidateOnFocus: false,
+  //   },
+  // );
+  const cycles_query2 = useFrappeGetCall(
+    "infintrix_atlas.api.v1.backlog",
     {
-      filters: { project: project_id },
-      fields: ["*"],
-      orderBy: {
-        field: "status",
-        order: "asc", // Sort from newest to oldest
-      },
-      limit: 1000,
-      limit_start: 0,
+      project: project_id,
     },
-    project_id ? ["cycles", project_id] : null,
-    {
-      revalidateOnFocus: false,
-    },
+    project_id ? ["backlog", project_id] : null,
   );
-  const tasks_query = useTasksQuery(project_id);
+  // const tasks_query = useTasksQuery(project_id);
 
   const project = project_query.data || {};
   const hasActiveCycle = useMemo(
-    () => (cycles_query.data || []).some((cycle) => cycle.status === "Active"),
-    [cycles_query.data],
+    () =>
+      (cycles_query2.data?.message?.cycles || []).some(
+        (cycle) => cycle.status === "Active",
+      ),
+    [cycles_query2.data?.message?.cycles],
   );
   const isScrum = project.custom_execution_mode === "Scrum";
-
-  const tasks = (tasks_query?.data?.message || []).filter((task) => {
-    if (statusFilter.length && !statusFilter.includes(task.status)) {
-      return false;
-    }
-    if (priorityFilter.length && !priorityFilter.includes(task.priority)) {
-      return false;
-    }
-    if (searchText) {
-      const haystack = `${task.subject || ""} ${task.name || ""}`.toLowerCase();
-      if (!haystack.includes(searchText)) {
-        return false;
-      }
-    }
-    return true;
-  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -297,10 +294,12 @@ const BacklogView = () => {
       },
     }),
   );
-  // Derived filters
   const backlogTasks = useMemo(() => {
-    return tasks.filter((t) => (isScrum ? !t.cycle : t.status === "Open"));
-  }, [tasks, isScrum]);
+    return cycles_query2?.data?.message?.backlog || [];
+  }, [cycles_query2.data]);
+  const all_tasks = useMemo(() => {
+    return cycles_query2?.data?.message?.all_tasks || [];
+  }, [cycles_query2.data]);
 
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
@@ -315,17 +314,19 @@ const BacklogView = () => {
     setActiveId(null);
   };
 
-  const handleMoveTask = useCallback((taskId, targetId) => {
-    updateMutation
-      .updateDoc("Task", taskId, {
-        custom_cycle: targetId === "Open" ? null : targetId,
-      })
-      .then(() => {
-        tasks_query.mutate();
-        cycles_query.mutate();
-        project_query.mutate();
-      });
-  }, []);
+  const handleMoveTask = useCallback(
+    (taskId, targetId) => {
+      updateMutation
+        .updateDoc("Task", taskId, {
+          custom_cycle: targetId === "Open" ? null : targetId,
+        })
+        .then(() => {
+          cycles_query2.mutate();
+          project_query.mutate();
+        });
+    },
+    [updateMutation, cycles_query2, project_query],
+  );
 
   const addCycle = () => {
     const nextId = cycles.length + 1;
@@ -339,12 +340,12 @@ const BacklogView = () => {
     setCycles([...cycles, newCycle]);
   };
 
-  const Cycle = ({ cycle, tasks = [] }) => {
+  const Cycle = ({ cycle }) => {
     const [searchParams, setSearchParams] = useSearchParams();
-    // const project = params.project;
     const [isExpanded, setIsExpanded] = useState(false);
-    const cycle_tasks = tasks.filter((t) => t.cycle === cycle.name);
+    const cycle_tasks = cycle?.tasks || [];
     const hasNoWorkItems = cycle_tasks.length === 0;
+    const isActive = cycle.status === "Active";
     return (
       <DroppableZone
         key={cycle.name}
@@ -427,7 +428,7 @@ const BacklogView = () => {
                 danger
                 onClick={() => {
                   deleteMutation.deleteDoc("Cycle", cycle.name).then(() => {
-                    cycles_query.mutate();
+                    cycles_query2.mutate();
                   });
                 }}
               >
@@ -436,7 +437,7 @@ const BacklogView = () => {
             )}
 
             {cycle.status !== "Active" &&
-              cycle.status !== "Completed" &&
+              cycle.status === "Planned" &&
               !hasActiveCycle && (
                 <Button
                   disabled={hasNoWorkItems}
@@ -507,14 +508,18 @@ const BacklogView = () => {
   };
 
   const activeTask = useMemo(
-    () => tasks.find((t) => t.id === activeId),
-    [tasks, activeId],
+    () => all_tasks.find((t) => t.id === activeId),
+    [all_tasks, activeId],
   );
 
-  if (cycles_query.isLoading || tasks_query.isLoading)
-    return <div>Loading...</div>;
+  // if (cycles_query2.isLoading || tasks_query.isLoading)
+  //   return <div>Loading...</div>;
 
-  const cycles = cycles_query.data || [];
+  const cycles = cycles_query2?.data?.message?.cycles || [];
+  const backlogTasks2 = cycles_query2?.data?.message?.backlog || [];
+  // console.log("backlogTasks:", backlogTasks2);
+  // return <>{JSON.stringify(all_tasks)}</>
+
   return (
     <>
       <DndContext
@@ -532,7 +537,7 @@ const BacklogView = () => {
             {isScrum && (
               <div className="lg:col-span-8 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
                 {cycles.map((cycle) => {
-                  return <Cycle key={cycle.name} cycle={cycle} tasks={tasks} />;
+                  return <Cycle key={cycle.name} cycle={cycle} />;
                 })}
               </div>
             )}
@@ -593,12 +598,12 @@ const BacklogView = () => {
 
                 {isBacklogExpanded && (
                   <div className="grid grid-cols-1 md:grid-cols-1 gap-4 animate-in fade-in duration-200">
-                       {showBacklogCreator ? (
+                    {showBacklogCreator ? (
                       <InlineTaskCreator
                         project_id={project_id}
                         onCreated={() => {
                           setShowBacklogCreator(false);
-                          tasks_query.mutate();
+                          cycles_query2.mutate();
                         }}
                         onCancel={() => setShowBacklogCreator(false)}
                       />
@@ -613,11 +618,10 @@ const BacklogView = () => {
                         </span>
                       </button>
                     )}
-                    
+
                     {backlogTasks.map((t) => (
                       <TaskCard key={t.id} task={t} />
                     ))}
-                 
                   </div>
                 )}
               </DroppableZone>

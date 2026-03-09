@@ -73,7 +73,7 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
                 }
                 setLocalFiles([]);
                 message.success("Files uploaded successfully");
-                files_query.refetch?.();
+                files_query.mutate?.();
             } catch (err) {
                 message.error("File upload failed");
             } finally {
@@ -118,7 +118,7 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
                 setFrappeFileIds(prev => { const copy = { ...prev }; delete copy[file.name]; return copy; });
                 await deleteDoc("File", frappeFileId);
                 message.success("File deleted successfully");
-                files_query.refetch?.();
+                files_query.mutate?.();
             } else if (file.originFileObj instanceof File) {
                 setLocalFiles(prev => prev.filter(f => f !== file));
                 message.success("File removed from upload queue");
@@ -126,7 +126,7 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
             return true;
         } catch {
             message.error("Failed to delete file");
-            files_query.refetch?.();
+            files_query.mutate?.();
             return false;
         }
     };

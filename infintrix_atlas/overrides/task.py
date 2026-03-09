@@ -14,7 +14,13 @@ class TaskOverride(Task):
         # self.validate_task_type_hierarchy()
         # self.validate_cycle_lock()
 
-   
+    def before_insert(self):
+        # Inherit project from parent task if not explicitly set
+        if not self.project and self.parent_task:
+            parent = frappe.get_doc("Task", self.parent_task)
+            if parent.project:
+                self.project = parent.project
+
     def validate_task_type_hierarchy(self):
         if not self.parent_task or not self.type:
             return
@@ -111,7 +117,7 @@ class TaskOverride(Task):
 # from erpnext.projects.doctype.task.task import Task
 
 # class TaskOverride(Task):
-    
+
 #     # def validate(self):
 #     #     self.validate_dates()
 #     #     self.validate_progress()
@@ -120,7 +126,6 @@ class TaskOverride(Task):
 #     #     self.validate_dependencies_for_template_task()
 #     #     self.validate_completed_on()
 #     #     self.validate_parent_is_group()
-        
 
 
 #     def has_permission(self, permission_type=None, user=None):

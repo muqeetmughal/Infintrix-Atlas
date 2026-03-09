@@ -1,3 +1,5 @@
+from warnings import filters
+
 from frappe import _
 import frappe
 from frappe.query_builder import DocType, functions as fn
@@ -862,6 +864,8 @@ def tasks_accountability_report(project=None):
 
 @frappe.whitelist()
 def get_task_tree(project=None):
+    
+    fields = ["name", "subject", "status", "priority", "project"]
 
     def get_children(parent):
         filters = {"parent_task": parent}
@@ -871,7 +875,7 @@ def get_task_tree(project=None):
         children = frappe.get_all(
             "Task",
             filters=filters,
-            fields=["name", "subject", "status", "priority"],
+            fields=fields,
         )
 
         for child in children:
@@ -887,7 +891,7 @@ def get_task_tree(project=None):
     roots = frappe.get_all(
         "Task",
         filters=root_filters,
-        fields=["name", "subject", "status", "priority"],
+        fields=fields,
     )
 
     for root in roots:
@@ -1228,6 +1232,7 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
 
     Task = DocType("Task")
     ToDo = DocType("ToDo")
+    Project = DocType("Project")
 
     ProjectUser = DocType("Project User")
 
@@ -1243,8 +1248,9 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
             Task.priority,
             Task.modified,
             Task.project,
+            Project.project_name,
             fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
-        )
+        ).inner_join(Project).on(Project.name == Task.project)
         .left_join(ToDo).on(
             (ToDo.reference_name == Task.name)
             & (ToDo.reference_type == "Task")
@@ -1344,6 +1350,100 @@ def list_subtasks(parent_task):
     )
 
     return subtasks
+
+@frappe.whitelist()
+def backlog(project):
+    project_execution_mode = frappe.db.get_value(
+        "Project", project, "custom_execution_mode") or "Kanban"
+
+    filters = {"project": project}
+    if project_execution_mode == "Scrum":
+        active_cycle = frappe.db.get_value(
+            "Cycle",
+            {"project": project, "status": "Active"},
+            "name"
+        )
+        filters.update({"custom_cycle": active_cycle})
+    
+    Cycle = DocType("Cycle")
+    Task = DocType("Task")
+    ToDo = DocType("ToDo")
+
+    cycles = (
+        frappe.qb.from_(Cycle)
+        .select(
+            Cycle.name,
+            Cycle.cycle_name,
+            Cycle.start_date,
+            Cycle.end_date,
+            Cycle.status,
+        )
+        .where(Cycle.project == project)
+        .orderby(Cycle.start_date, order=frappe.qb.desc)
+        .run(as_dict=True)
+    )
+
+    # Fetch tasks for each cycle
+    for cycle in cycles:
+        tasks = (
+            frappe.qb.from_(Task)
+            .select(
+                Task.name,
+                Task.name.as_("id"),
+                Task.subject,
+                Task.status,
+                Task.priority,
+                Task.modified,
+                fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+            )
+            .left_join(ToDo).on(
+                (ToDo.reference_name == Task.name)
+                & (ToDo.reference_type == "Task")
+                & (ToDo.status == "Open")
+            )
+            .where(
+                (Task.project == project)
+                & (Task.custom_cycle == cycle["name"])
+            )
+            .groupby(Task.name)
+            .orderby(Task.modified, order=frappe.qb.desc)
+            .run(as_dict=True)
+        )
+        cycle["tasks"] = tasks
+        
+    # Fetch open tasks (backlog) not assigned to any cycle
+    open_tasks = (
+        frappe.qb.from_(Task)
+        .select(
+            Task.name,
+            Task.name.as_("id"),
+            Task.subject,
+            Task.status,
+            Task.priority,
+            Task.modified,
+            fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+        )
+        .left_join(ToDo).on(
+            (ToDo.reference_name == Task.name)
+            & (ToDo.reference_type == "Task")
+            & (ToDo.status == "Open")
+        )
+        .where(
+            (Task.project == project)
+            & (Task.custom_cycle.isnull())
+            & (Task.status.isin(["Open", "Working", "Pending Review"]))
+        )
+        .groupby(Task.name)
+        .orderby(Task.modified, order=frappe.qb.desc)
+        .run(as_dict=True)
+    )
+
+    return {
+        "cycles": cycles,
+        "backlog": open_tasks,
+        "all_tasks": [task for cycle in cycles for task in cycle["tasks"]] + open_tasks
+    }
+
 
 
 @frappe.whitelist()

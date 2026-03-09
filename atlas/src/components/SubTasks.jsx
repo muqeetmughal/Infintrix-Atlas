@@ -33,7 +33,6 @@ const SubTasks = React.memo(({ task }) => {
 
   const createMutation = useFrappeCreateDoc();
   const updateMutation = useFrappeUpdateDoc();
-  const parent_task = task_detail_query.data || {};
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -53,6 +52,9 @@ const SubTasks = React.memo(({ task }) => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isAdding, inputValue]);
+
+    const parent_task = task_detail_query.data || {};
+
   const handleAddTask = () => {
     setIsAdding(true);
     setInputValue("");
@@ -88,7 +90,7 @@ const SubTasks = React.memo(({ task }) => {
         .updateDoc("Task", parent_task.name, { is_group: 1 })
         .finally(() => {
           createSubTask();
-          task_detail_query.refetch();
+          task_detail_query.mutate();
         });
 
       setIsAdding(false);

@@ -1,4 +1,4 @@
-import { Filter, Menu, Plus, RefreshCcw } from "lucide-react";
+import { Edit, ExternalLink, Filter, Menu, Plus, RefreshCcw, User } from "lucide-react";
 import React, { useEffect } from "react";
 import { TASK_PRIORITY_COLORS, TASK_STATUS_COLORS } from "../data/constants";
 import {
@@ -41,7 +41,9 @@ const Tasks = () => {
   const navigate = useNavigate();
   const createMutation = useFrappeCreateDoc();
   const updateMutation = useFrappeUpdateDoc();
-  const change_mode_mutation = useFrappePostCall("infintrix_atlas.api.v1.set_project_mode");
+  const change_mode_mutation = useFrappePostCall(
+    "infintrix_atlas.api.v1.set_project_mode",
+  );
 
   const create_cycles_for_project_mutatation = useFrappePostCall(
     "infintrix_atlas.api.v1.create_cycles_for_project",
@@ -126,12 +128,14 @@ const Tasks = () => {
               defaultValue={project_data.custom_execution_mode || "Kanban"}
               value={project_data.custom_execution_mode || "Kanban"}
               onChange={(value) => {
-                change_mode_mutation.call({
-                  mode : value,
-                  project :project
-                }).then(() => {
-                  window.location.reload();
-                })
+                change_mode_mutation
+                  .call({
+                    mode: value,
+                    project: project,
+                  })
+                  .then(() => {
+                    window.location.reload();
+                  });
                 // updateMutation
                 //   .updateDoc("Project", project, {
                 //     custom_execution_mode: value,
@@ -241,10 +245,10 @@ const Tasks = () => {
               trigger={"click"}
               menu={{
                 items: [
-
                   {
                     key: "open_in_desk",
                     label: "Open in Desk",
+                    icon: <ExternalLink size={14} />,
                     onClick: () => {
                       window.open(`/app/project/${project}`, "_blank");
                     },
@@ -252,6 +256,7 @@ const Tasks = () => {
                   {
                     key: "manage_people",
                     label: "Manage People",
+                    icon : <User size={14} />,
                     onClick: () => {
                       qp.set("manage_project_people", "1");
                     },
@@ -259,27 +264,22 @@ const Tasks = () => {
                   {
                     key: "edit_project",
                     label: "Edit Project",
+                    icon : <Edit size={14} />,
                     onClick: () => {
                       qp.set("edit_project", project);
                     },
-                  }
-                 
+                  },
                 ],
               }}
             >
               <Button icon={<Menu size={16} />}></Button>
             </Dropdown>
-             <Button
+            <Button
               onClick={() => {
-
                 // Invalidate tasks query to refetch data
-                
-               
               }}
-              icon={<RefreshCcw/>}
-            >
-              
-            </Button>
+              icon={<RefreshCcw />}
+            ></Button>
 
             <Button
               type="primary"

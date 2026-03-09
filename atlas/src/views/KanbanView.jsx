@@ -38,6 +38,7 @@ import SubjectWidget from "../components/widgets/SubjectWidget";
 import { TASK_STATUS_COLORS, TASK_STATUS_ICONS } from "../data/constants";
 import PriorityWidget from "../components/widgets/PriorityWidget";
 import { UsersSelectWidget } from "../components/widgets/AssigneeSelectWidget";
+import TaskActions from "../components/TaskActions";
 
 const IssueCard = React.memo(
   React.forwardRef(
@@ -84,52 +85,7 @@ const IssueCard = React.memo(
           <div className="flex items-start justify-between mb-1">
             <SubjectWidget task={issue} />
 
-            {issue.id !== "new_item" && (
-              <Dropdown
-                trigger={"click"}
-                menu={{
-                  items: [
-                    {
-                      label: "Change Status",
-                      key: "change_status",
-                      children: [
-                        {
-                          label: "Open",
-                          key: "Open",
-                        },
-                        {
-                          label: "Completed",
-                          key: "Completed",
-                        },
-                      ],
-                    },
-                    {
-                      label: "Copy Link",
-                      key: "copy_link",
-                    },
-                    {
-                      label: "Copy Key",
-                      key: "copy_key",
-                    },
-                    {
-                      label: "Archive",
-                      key: "archive",
-                    },
-                    {
-                      label: "Delete",
-                      key: "delete",
-                    },
-                  ],
-                }}
-              >
-                <Button
-                  icon={<Ellipsis size={16} />}
-                  size="small"
-                  type="text"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                />
-              </Dropdown>
-            )}
+            {issue.id !== "new_item" && <TaskActions task={issue} />}
           </div>
 
           <div className="flex justify-between items-center mt-1">
@@ -290,13 +246,18 @@ const Column = React.memo(({ id, title, tasks_list, createTask }) => {
             {tasks_list.length}
           </span>
         </h3>
-        <button className="text-slate-400 hover:text-slate-600">
-          <MoreHorizontal size={18} />
+        <button
+          onClick={() => {
+            setAddNew(true);
+          }}
+          className="text-slate-400 hover:text-slate-600 cursor-pointer"
+        >
+          <Plus size={18} />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto hide-scrollbar">
-        {addNew ? (
+        {addNew && (
           <div data-create-item>
             <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
               <input
@@ -326,16 +287,6 @@ const Column = React.memo(({ id, title, tasks_list, createTask }) => {
               />
             </div>
           </div>
-        ) : (
-          <button
-            onClick={() => {
-              setAddNew(true);
-            }}
-            className="cursor-pointer w-full py-2 flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Plus size={16} />
-            Create
-          </button>
         )}
 
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>

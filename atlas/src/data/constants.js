@@ -8,16 +8,16 @@ export const PROJECT_STATUS_COLORS = {
 };
 
 export const TASK_STATUS_COLORS = {
-	Backlog: "slate",
-	Open: "blue",
+	// Backlog: "slate",
+	Open: "slate",
 	Working: "amber",
 	"Pending Review": "purple",
 	Completed: "emerald",
 	Cancelled: "red",
 };
 export const TASK_STATUS_ICONS = {
-	Backlog: ClipboardList,
-	Open: Circle,
+	// Backlog: ClipboardList,
+	Open: ClipboardList,
 	Working: Cog,
 	"Pending Review": Clock,
 	Completed: CheckCircle,

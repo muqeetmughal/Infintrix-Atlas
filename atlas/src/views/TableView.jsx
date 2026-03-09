@@ -2,16 +2,21 @@ import { useNavigate } from "react-router-dom";
 import { useFrappeUpdateDoc, useFrappePostCall } from "frappe-react-sdk";
 import PriorityWidget from "../components/widgets/PriorityWidget";
 import StatusWidget from "../components/widgets/StatusWidget";
-import { useTasksQuery } from "../hooks/query";
+import { useAssigneeUpdateMutation, useTasksQuery } from "../hooks/query";
 import { Table } from "antd";
 import { useQueryParams } from "../hooks/useQueryParams";
 import RelativeTime from "../components/RelativeTime";
+import { UsersSelectWidget } from "../components/widgets/AssigneeSelectWidget";
+import TaskActions from "../components/TaskActions";
 
 const TableView = () => {
   const qp = useQueryParams();
   const project = qp.get("project") || null;
+      const assignee_update_mutation = useAssigneeUpdateMutation();
+  
 
   const tasks_list_query = useTasksQuery(project);
+
   const updateMutation = useFrappeUpdateDoc();
   const notifyStatusChange = useFrappePostCall(
     "infintrix_atlas.api.v1.notify_status_changed",
@@ -40,23 +45,21 @@ const TableView = () => {
   if (tasks_list_query.isLoading) {
     return <div className="dark:text-slate-200">Loading...</div>;
   }
-
   return (
     <Table
-    rowSelection={{
-      type: "checkbox",
-      onChange: (selectedRowKeys, selectedRows) => {
-        // const selectedNames = selectedRows.map(row => row.name);
-        // qp.set("selected_tasks", selectedNames);
-      },
-      getCheckboxProps: (record) => ({
-        name: record.name,
-      }),
-    }}
+      rowSelection={{
+        type: "checkbox",
+        onChange: (selectedRowKeys, selectedRows) => {
+          // const selectedNames = selectedRows.map(row => row.name);
+          // qp.set("selected_tasks", selectedNames);
+        },
+        getCheckboxProps: (record) => ({
+          name: record.name,
+        }),
+      }}
       dataSource={tasks}
       rowKey="name"
       className="dark:bg-slate-800"
-  
       columns={[
         {
           title: "Subject",
@@ -75,8 +78,8 @@ const TableView = () => {
         },
         {
           title: "Project",
-          dataIndex: "project",
-          key: "project",
+          dataIndex: "project_name",
+          key: "project_name",
           render: (text) => (
             <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
               {text}
@@ -121,13 +124,18 @@ const TableView = () => {
                     tasks_list_query.mutate();
                     // Notify assigned users about status change
                     if (oldStatus !== v) {
-                      notifyStatusChange.call({
-                        task_name: record.name,
-                        old_status: oldStatus,
-                        new_status: v,
-                      }).catch((err) => {
-                        console.error("Failed to send status change notification:", err);
-                      });
+                      notifyStatusChange
+                        .call({
+                          task_name: record.name,
+                          old_status: oldStatus,
+                          new_status: v,
+                        })
+                        .catch((err) => {
+                          console.error(
+                            "Failed to send status change notification:",
+                            err,
+                          );
+                        });
                     }
                   });
               }}
@@ -136,12 +144,30 @@ const TableView = () => {
         },
         {
           title: "Assignee",
-          dataIndex: "assignees",
-          key: "assignees",
-          render: (assignees, record) => (
-            null
-       
-          ),
+          dataIndex: "assignee",
+          key: "assignee",
+          render: (assignee, record) => {
+            return (
+              <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                <UsersSelectWidget
+                  value={assignee}
+                  show_label={true}
+                  mode={"assignee"}
+                   onSelect={(value) => {
+                      //  alert(value);
+                      assignee_update_mutation
+                        .call({
+                          task_name: record.name,
+                          new_assignee: value,
+                        })
+                        .then(() => {
+                          tasks_list_query.mutate();
+                        });
+                    }}
+                />
+              </div>
+            );
+          },
         },
         {
           title: "Last Modified",
@@ -153,6 +179,15 @@ const TableView = () => {
             </div>
           ),
         },
+        {
+          title: "Actions",
+          key: "actions",
+          render: (_, record) => (
+            <div>
+              <TaskActions task={record} />
+            </div>
+          ),
+        }
       ]}
     />
   );
