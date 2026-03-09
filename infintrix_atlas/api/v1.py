@@ -1781,3 +1781,15 @@ def check_subtask_exists(message_id, subject):
         }
     )
     return bool(existing_subtask)
+
+@frappe.whitelist()
+def remove_task(task_name):
+    try:
+        frappe.delete_doc("Task", task_name)
+        frappe.db.commit()
+        
+        return {"success": True, "message": f"Task {task_name} removed and deleted"}
+    except Exception as e:
+        frappe.log_error(
+            f"Error removing task: {e}", "Remove Task Error")
+        return {"success": False, "message": str(e)}

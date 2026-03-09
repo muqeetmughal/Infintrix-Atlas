@@ -440,18 +440,7 @@ export default function KanbanView() {
       )
       .then(() => {
         mutate(["Project", project]);
-        // Notify assigned users about status change
-        if (oldStatus && oldStatus !== newStatus) {
-          notifyStatusChange
-            .call({
-              task_name: task,
-              old_status: oldStatus,
-              new_status: newStatus,
-            })
-            .catch((err) => {
-              console.error("Failed to send status change notification:", err);
-            });
-        }
+      
       });
   });
 
@@ -551,19 +540,7 @@ export default function KanbanView() {
               status: newStatus,
             });
             mutate(["Project", project]);
-            // Notify assigned users about status change
-            notifyStatusChange
-              .call({
-                task_name: activeTask.name,
-                old_status: oldStatus,
-                new_status: newStatus,
-              })
-              .catch((err) => {
-                console.error(
-                  "Failed to send status change notification:",
-                  err,
-                );
-              });
+          
           }
 
           return {

@@ -18,10 +18,7 @@ const TableView = () => {
   const tasks_list_query = useTasksQuery(project);
 
   const updateMutation = useFrappeUpdateDoc();
-  const notifyStatusChange = useFrappePostCall(
-    "infintrix_atlas.api.v1.notify_status_changed",
-  );
-
+ 
   const statusFilter = qp.getArray("status");
   const priorityFilter = qp.getArray("priority");
   const searchText = (qp.get("search") || "").toLowerCase();
@@ -123,20 +120,7 @@ const TableView = () => {
                   .then(() => {
                     tasks_list_query.mutate();
                     // Notify assigned users about status change
-                    if (oldStatus !== v) {
-                      notifyStatusChange
-                        .call({
-                          task_name: record.name,
-                          old_status: oldStatus,
-                          new_status: v,
-                        })
-                        .catch((err) => {
-                          console.error(
-                            "Failed to send status change notification:",
-                            err,
-                          );
-                        });
-                    }
+                
                   });
               }}
             />

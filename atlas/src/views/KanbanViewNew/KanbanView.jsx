@@ -346,9 +346,7 @@ export default function KanbanView() {
   const updateSortOrderMutation = useFrappePostCall(
     "infintrix_atlas.api.v1.update_task_sort_order",
   );
-  const notifyStatusChange = useFrappePostCall(
-    "infintrix_atlas.api.v1.notify_status_changed",
-  );
+
   const project_query = useFrappeGetDoc("Project", project);
   const columns_query = useGetDoctypeField("Task", "status", "options");
 
@@ -492,17 +490,7 @@ export default function KanbanView() {
       .then(() => {
         mutate(["Project", project]);
         // Notify assigned users about status change
-        if (oldStatus && oldStatus !== newStatus) {
-          notifyStatusChange
-            .call({
-              task_name: task,
-              old_status: oldStatus,
-              new_status: newStatus,
-            })
-            .catch((err) => {
-              console.error("Failed to send status change notification:", err);
-            });
-        }
+       
       });
   };
 
@@ -624,18 +612,7 @@ export default function KanbanView() {
             });
             mutate(["Project", project]);
             // Notify assigned users about status change
-            notifyStatusChange
-              .call({
-                task_name: activeTask.name,
-                old_status: oldStatus,
-                new_status: newStatus,
-              })
-              .catch((err) => {
-                console.error(
-                  "Failed to send status change notification:",
-                  err,
-                );
-              });
+          
           }
 
           // Persist sort order only for affected columns (old + new)

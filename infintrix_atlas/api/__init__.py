@@ -15,11 +15,12 @@ def check_app_permission():
 		allowed_modules = frappe.utils.modules.get_modules_from_all_apps_for_user()
 
 	allowed_modules = [x["module_name"] for x in allowed_modules]
-	if "FCRM" not in allowed_modules:
+ 
+	if "Infintrix Atlas" not in allowed_modules:
 		return False
 
 	roles = frappe.get_roles()
-	if any(role in ["System Manager", "Sales User", "Sales Manager"] for role in roles):
+	if any(role in ["System Manager", "Projects User", "Projects Manager"] for role in roles):
 		return True
 
 	return False
