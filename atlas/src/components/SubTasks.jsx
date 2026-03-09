@@ -2,14 +2,15 @@ import {
   useFrappeCreateDoc,
   useFrappeGetDoc,
   useFrappeGetDocList,
+  useFrappePostCall,
   useFrappeUpdateDoc,
 } from "frappe-react-sdk";
-import { CheckCircle, CheckSquare, CircleIcon, Plus } from "lucide-react";
+import { CheckCircle, CheckSquare, CircleIcon, Plus, Unlink, X } from "lucide-react";
 import React, { useState } from "react";
 import { useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import PriorityWidget from "./widgets/PriorityWidget";
-import { Button } from "antd";
+import { Button, message } from "antd";
 import { UsersSelectWidget } from "./widgets/AssigneeSelectWidget";
 import {
   useAssigneeOfTask,
@@ -25,6 +26,7 @@ const SubTasks = React.memo(({ task }) => {
   const subtasks_of_task_query = useSubtasksQuery(task);
   const task_detail_query = useFrappeGetDoc("Task", task);
   const assignee_update_mutation = useAssigneeUpdateMutation();
+  const remove_subtask_mutation =  useFrappePostCall("infintrix_atlas.api.v1.remove_subtask")
 
   const subtasks = subtasks_of_task_query?.data?.message || [];
 
@@ -61,7 +63,7 @@ const SubTasks = React.memo(({ task }) => {
       updateMutation
         .updateDoc("Task", parent_task.name, { is_group: 1 })
         .then(() => {
-          task_detail_query.refetch();
+          task_detail_query.mutate();
         });
     }
   };
@@ -207,6 +209,25 @@ const SubTasks = React.memo(({ task }) => {
                               <CircleIcon />
                             )
                           }
+                        />
+                         <Button
+                          loading={updateMutation.loading}
+                          color="red"
+                          onClick={() => {
+                           remove_subtask_mutation.call({
+
+                              parent_task : parent_task.name,
+                              subtask : subtask.name
+
+                            }).then((response) => {
+                              if(response?.message?.success){
+                                message.success(response?.message?.message || "Success");
+                              }
+                              subtasks_of_task_query.mutate()
+                            });
+                          }}
+                          type="text"
+                          icon={ <X color="red" /> }
                         />
                       </span>
                     </td>

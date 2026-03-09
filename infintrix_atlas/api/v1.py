@@ -7,6 +7,7 @@ from frappe.utils import user
 from infintrix_atlas.permissions import project_permission_query, task_permission_query
 from .utils import send_notification
 
+
 @frappe.whitelist()
 def update_task_sort_order(payload=None):
 
@@ -126,7 +127,6 @@ def switch_assignee_of_task(task_name, new_assignee):
     # Close all existing open ToDos
     for todo in existing_todos:
         frappe.db.set_value("ToDo", todo["name"], "status", "Closed")
-    
 
         # Notify old assignee
         send_notification(
@@ -165,6 +165,7 @@ def switch_assignee_of_task(task_name, new_assignee):
     frappe.db.commit()
     return {"success": True, "message": "Assignee updated"}
 
+
 @frappe.whitelist()
 def get_assignee_of_task(task_name):
     if not task_name:
@@ -178,11 +179,11 @@ def get_assignee_of_task(task_name):
             "status": ["=", "Open"],
         },
         "allocated_to",
-        
+
     )
-    
+
     return assignee
-        
+
 
 @frappe.whitelist()
 def get_project_flow_metrics(project):
@@ -368,6 +369,7 @@ def complete_cycle(name, move_tasks_to):
     frappe.db.commit()
 
     return {"success": True, "message": f"Cycle {name} completed successfully"}
+
 
 @frappe.whitelist()
 def get_project_user_stats(user=None, activity_limit=5):
@@ -901,14 +903,16 @@ def get_task_activity(task):
         "Version",
         filters={"ref_doctype": "Task", "docname": task},
         fields=["owner", "creation", "data"],
-        order_by="creation desc"
+        order_by="creation desc",
+        limit_page_length=10
     )
 
     comments = frappe.get_all(
         "Comment",
         filters={"reference_doctype": "Task", "reference_name": task},
         fields=["comment_type", "content", "owner", "creation"],
-        order_by="creation desc"
+        order_by="creation desc",
+        limit_page_length=10
     )
 
     return {
@@ -1148,12 +1152,12 @@ def list_projects(filters={}, limit=20, offset=0):
     Task = DocType("Task")
     ToDo = DocType("ToDo")
     ProjectUser = DocType("Project User")
-    
+
     user = frappe.session.user
     user_roles = frappe.get_roles(user)
     is_admin = "Administrator" in user_roles
     is_project_manager = "Project Manager" in user_roles
-    
+
     query = (
         frappe.qb.from_(Project)
         .select(
@@ -1204,10 +1208,10 @@ def list_projects(filters={}, limit=20, offset=0):
 
     projects = query.run(as_dict=True)
     return projects
+
+
 @frappe.whitelist()
 def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
-    
-    
 
     project_execution_mode = frappe.db.get_value(
         "Project", project, "custom_execution_mode") or "Kanban"
@@ -1226,7 +1230,7 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
     ToDo = DocType("ToDo")
 
     ProjectUser = DocType("Project User")
-    
+
     query = (
         frappe.qb.from_(Task)
         .select(
@@ -1315,7 +1319,7 @@ def list_subtasks(parent_task):
     subtasks = (
         frappe.qb.from_(Task)
         .select(
-           Task.name,
+            Task.name,
             Task.name.as_("id"),
             Task.subject,
             Task.status,
@@ -1324,8 +1328,9 @@ def list_subtasks(parent_task):
             Task.priority,
             Task.modified,
             Task.project,
+            Task.parent_task,
             fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
-            
+
         )
         .left_join(ToDo).on(
             (ToDo.reference_name == Task.name)
@@ -1365,6 +1370,7 @@ def get_watchers(doctype, docname):
     )
     return watchers
 
+
 def watcher_exists(doctype, docname, user):
     existing_watcher = frappe.db.sql(
         """
@@ -1375,14 +1381,16 @@ def watcher_exists(doctype, docname, user):
         (docname, doctype, user),
     )
     return existing_watcher
+
+
 @frappe.whitelist()
 def add_watcher(doctype, docname, user):
     try:
         existing_watcher = watcher_exists(doctype, docname, user)
-        
+
         if existing_watcher:
             return {"success": False, "message": f"User {user} is already a watcher"}
-        
+
         # Add watcher directly to child table
         frappe.get_doc({
             "doctype": "Watcher",
@@ -1391,18 +1399,18 @@ def add_watcher(doctype, docname, user):
             # "parentfield": "watcher",
             "user": user
         }).insert(ignore_permissions=True)
-        
+
         # If doctype is Task, get the project and add user to project if not already there
         if doctype == "Task":
             task_doc = frappe.get_doc("Task", docname)
             project = task_doc.project
-            
+
             if project:
                 existing_project_user = frappe.db.get_value(
                     "Project User",
                     {"parent": project, "user": user}
                 )
-                
+
                 if not existing_project_user:
                     frappe.get_doc({
                         "doctype": "Project User",
@@ -1411,9 +1419,9 @@ def add_watcher(doctype, docname, user):
                         "parentfield": "users",
                         "user": user
                     }).insert()
-        
+
         frappe.db.commit()
-        
+
         if user is not frappe.session.user:
             send_notification(
                 user=user,
@@ -1423,11 +1431,13 @@ def add_watcher(doctype, docname, user):
                 document_name=docname,
                 icons='<i class="fa fa-eye"></i>',
             )
-        
+
         return {"success": True, "message": f"User {user} added as watcher to {doctype} {docname}"}
     except Exception as e:
         frappe.log_error(f"Error adding watcher: {e}", "Add Watcher Error")
         return {"success": False, "message": str(e)}
+
+
 @frappe.whitelist()
 def remove_watcher(doctype, docname, user):
     try:
@@ -1436,14 +1446,16 @@ def remove_watcher(doctype, docname, user):
             DELETE FROM `tabWatcher`
             WHERE parent = %s AND parenttype = %s AND user = %s
         """, (docname, doctype, user))
-        
+
         frappe.db.commit()
-        
+
         return {"success": True, "message": f"User {user} removed from watchers of {doctype} {docname}"}
     except Exception as e:
-        frappe.log_error(f"Error removing watcher: {e}", "Remove Watcher Error")
+        frappe.log_error(
+            f"Error removing watcher: {e}", "Remove Watcher Error")
         return {"success": False, "message": str(e)}
-    
+
+
 @frappe.whitelist()
 def toggle_self_watch(doctype, docname):
     user = frappe.session.user
@@ -1454,8 +1466,8 @@ def toggle_self_watch(doctype, docname):
     else:
         # Add watcher
         return add_watcher(doctype, docname, user)
-    
-    
+
+
 @frappe.whitelist()
 def current_user_is_watching(doctype, docname):
     user = frappe.session.user
@@ -1469,7 +1481,8 @@ def current_user_is_watching(doctype, docname):
         }
     )
 
-    return  bool(existing_watcher)
+    return bool(existing_watcher)
+
 
 @frappe.whitelist()
 def recent_projects_with_activity_of_current_user(limit=5):
@@ -1489,6 +1502,7 @@ def recent_projects_with_activity_of_current_user(limit=5):
     )
     return projects
 
+
 @frappe.whitelist()
 def user_details(user=None):
     if not user:
@@ -1501,11 +1515,13 @@ def user_details(user=None):
     )
     return details
 
+
 @frappe.whitelist()
 def toggle_archive_project(project):
     try:
         # project_doc = frappe.get_doc("Project", project)
-        current_status = frappe.db.get_value("Project", project, "custom_is_archived") or 0
+        current_status = frappe.db.get_value(
+            "Project", project, "custom_is_archived") or 0
         new_status = 0 if current_status != 0 else 1
         frappe.db.sql(
             "UPDATE `tabProject` SET custom_is_archived = %s WHERE name = %s",
@@ -1514,64 +1530,26 @@ def toggle_archive_project(project):
         frappe.db.commit()
         return {"success": True, "message": f"Project archived status toggled"}
     except Exception as e:
-        frappe.log_error(f"Error toggling archive status: {e}", "Toggle Archive Error")
+        frappe.log_error(
+            f"Error toggling archive status: {e}", "Toggle Archive Error")
         return {"success": False, "message": str(e)}
-# @frappe.whitelist()
-# def list_tasks(project, group_by=None,filters={}):
-
-#     project_execution_mode = frappe.db.get_value(
-#         "Project", project, "custom_execution_mode") or "Kanban"
-
-#     filters = {"project": project}
-#     filters.update(filters)
-#     if project_execution_mode == "Scrum":
-#         active_cycle = frappe.db.get_value(
-#             "Cycle",
-#             {"project": project, "status": "Active"},
-#             "name"
-#         )
-#         filters.update({"custom_cycle": active_cycle})
 
 
-#     Task = DocType("Task")
-#     ToDo = DocType("ToDo")
+@frappe.whitelist()
+def remove_subtask(parent_task, subtask):
+    try:
+        # Remove entry from Task Depends On child table in parent task
+        frappe.db.sql(
+            "DELETE FROM `tabTask Depends On` WHERE parent = %s AND task = %s",
+            (parent_task, subtask)
+        )
 
-#     query = (
-#         frappe.qb.from_(Task)
-#         .select(
-#             Task.name,
-#             Task.name.as_("id"),
-#             Task.subject,
-#             Task.status,
-#             Task.type,
-#             Task.custom_cycle.as_("cycle"),
-#             # Task.custom_sort_order,
-#             Task.priority,
-#             Task.modified,
-#             Task.project,
-#             fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
-#         )
-#         .left_join(ToDo).on(
-#             (ToDo.reference_name == Task.name)
-#             & (ToDo.reference_type == "Task")
-#             & (ToDo.status == "Open")
-#         )
-#     )
+        # Delete the subtask document
+        frappe.delete_doc("Task", subtask)
 
-#     # Apply filters
-#     for key, value in filters.items():
-#         if key == "project":
-#             query = query.where(Task.project == value)
-#         elif key == "custom_cycle":
-#             query = query.where(Task.custom_cycle == value)
-#         elif key == "status":
-#             query = query.where(Task.status == value)
-#         # Add more filter conditions as needed
-
-#     query = query.groupby(Task.name).orderby(Task.modified, order=frappe.qb.desc)
-
-#     tasks = query.run(as_dict=True)
-
-#     return tasks
-
-
+        frappe.db.commit()
+        return {"success": True, "message": f"Subtask {subtask} removed and deleted"}
+    except Exception as e:
+        frappe.log_error(
+            f"Error removing subtask: {e}", "Remove Subtask Error")
+        return {"success": False, "message": str(e)}
