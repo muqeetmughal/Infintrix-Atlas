@@ -251,31 +251,13 @@ const BacklogView = () => {
   const [isBacklogExpanded, setIsBacklogExpanded] = useState(true);
   const project_query = useProjectDetailsQuery(project_id);
 
-  // const cycles_query2 = useFrappeGetDocList(
-  //   "Cycle",
-  //   {
-  //     filters: { project: project_id },
-  //     fields: ["*"],
-  //     orderBy: {
-  //       field: "status",
-  //       order: "asc", // Sort from newest to oldest
-  //     },
-  //     limit: 1000,
-  //     limit_start: 0,
-  //   },
-  //   project_id ? ["cycles", project_id] : null,
-  //   {
-  //     revalidateOnFocus: false,
-  //   },
-  // );
   const cycles_query2 = useFrappeGetCall(
     "infintrix_atlas.api.v1.backlog",
     {
       project: project_id,
     },
-    project_id ? ["backlog", project_id] : null,
+    project_id ? ["cycles", project_id] : null,
   );
-  // const tasks_query = useTasksQuery(project_id);
 
   const project = project_query.data || {};
   const hasActiveCycle = useMemo(
@@ -299,6 +281,10 @@ const BacklogView = () => {
   }, [cycles_query2.data]);
   const all_tasks = useMemo(() => {
     return cycles_query2?.data?.message?.all_tasks || [];
+  }, [cycles_query2.data]);
+  const cycles = useMemo(() => {
+    return cycles_query2?.data?.message?.cycles || [];
+    
   }, [cycles_query2.data]);
 
   const handleDragStart = (event) => {
@@ -512,13 +498,9 @@ const BacklogView = () => {
     [all_tasks, activeId],
   );
 
-  // if (cycles_query2.isLoading || tasks_query.isLoading)
-  //   return <div>Loading...</div>;
+  if (cycles_query2.isLoading)
+    return <div>Loading...</div>;
 
-  const cycles = cycles_query2?.data?.message?.cycles || [];
-  const backlogTasks2 = cycles_query2?.data?.message?.backlog || [];
-  // console.log("backlogTasks:", backlogTasks2);
-  // return <>{JSON.stringify(all_tasks)}</>
 
   return (
     <>
