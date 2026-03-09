@@ -6,7 +6,7 @@ import json
 from frappe.utils import user
 from infintrix_atlas.permissions import project_permission_query, task_permission_query
 from .utils import send_notification
-
+from frappe.desk.doctype.tag.tag import add_tag, remove_tag
 
 @frappe.whitelist()
 def update_task_sort_order(payload=None):
@@ -1553,3 +1553,131 @@ def remove_subtask(parent_task, subtask):
         frappe.log_error(
             f"Error removing subtask: {e}", "Remove Subtask Error")
         return {"success": False, "message": str(e)}
+    
+def subtask_to_quill_html(data: dict) -> str:
+    def list_to_html(items):
+        if not items:
+            return "<p>None</p>"
+        return "<ul>" + "".join(f"<li>{item}</li>" for item in items) + "</ul>"
+
+    html = f"""
+
+    <p>{data.get("description","")}</p>
+
+    <h3>Task Details</h3>
+    <ul>
+        <li><strong>Task Type:</strong> {data.get("task_type","")}</li>
+        <li><strong>Priority:</strong> {data.get("priority","")}</li>
+        <li><strong>Complexity:</strong> {data.get("complexity","")}</li>
+        <li><strong>Estimated Effort:</strong> {data.get("estimated_effort","")}</li>
+        <li><strong>Estimated Hours:</strong> {data.get("estimated_hours","")}</li>
+        <li><strong>Execution Order:</strong> {data.get("execution_order","")}</li>
+        <li><strong>Suggested Role:</strong> {data.get("suggested_role","")}</li>
+        <li><strong>Risk Level:</strong> {data.get("risk_level","")}</li>
+        <li><strong>Automatable:</strong> {"Yes" if data.get("automatable") else "No"}</li>
+    </ul>
+
+    <h3>Reason</h3>
+    <p>{data.get("reason","")}</p>
+
+    <h3>Required Skills</h3>
+    {list_to_html(data.get("required_skills", []))}
+
+    <h3>Dependencies</h3>
+    {list_to_html(data.get("depends_on", []))}
+
+    <h3>Deliverables</h3>
+    {list_to_html(data.get("deliverables", []))}
+
+    <h3>Acceptance Criteria</h3>
+    {list_to_html(data.get("acceptance_criteria", []))}
+
+    <h3>Tags</h3>
+    {list_to_html(data.get("tags", []))}
+    """
+
+    return html.strip()
+@frappe.whitelist()
+def create_subtask_from_ai_session(subtask, message_id):
+    if not subtask or not message_id:
+        return {"success": False, "message": "Subtask and message_id are required"}
+    message_doc = frappe.get_doc("Copilot Message", message_id)
+    session_id = message_doc.session
+    
+    session = frappe.get_doc("Copilot Session", session_id)
+    
+    reference_doctype = session.reference_doctype
+    reference_name = session.reference_name
+    
+    if reference_doctype != "Task":
+        return {"success": False, "message": "Subtasks can only be created for Tasks"}
+    task_doc = frappe.get_doc("Task", reference_name)
+    
+    
+    # Check if subtask with same subject already exists
+    existing_subtask = frappe.db.get_value(
+        "Task",
+        {
+            "subject": subtask.get("subject", "Subtask for " + task_doc.subject),
+            "parent_task": task_doc.name,
+        }
+    )
+    
+    if existing_subtask:
+        return {
+            "success": False,
+            "message": f"Subtask with this subject already exists under Task '{task_doc.subject}'"
+        }
+    
+    new_subtask = frappe.get_doc({
+        "doctype": "Task",
+        "subject": subtask.get("subject", "Subtask for " + task_doc.subject),
+        "description": subtask_to_quill_html(subtask),
+        "project": task_doc.project,
+        "parent_task": task_doc.name,
+        "priority": subtask.get("priority", "Medium"),
+    })
+    
+    # new_subtask.tags = ",".join(subtask.get("tags", []))
+    new_subtask.insert(ignore_permissions=True)
+    
+    
+    
+    
+    
+    frappe.db.commit()
+    for tag in subtask.get("tags", []):
+
+        add_tag(
+            dt="Task",
+            dn=new_subtask.name,
+            tag=tag)
+
+    return {
+        "success": True,
+        "message": f"Subtask '{new_subtask.subject}' created under Task '{task_doc.subject}'",
+        "subtask_id": new_subtask.name
+    }
+    
+@frappe.whitelist()
+def check_subtask_exists(message_id, subject):
+    message_doc = frappe.get_doc("Copilot Message", message_id)
+    session_id = message_doc.session
+    
+    session = frappe.get_doc("Copilot Session", session_id)
+    
+    reference_doctype = session.reference_doctype
+    reference_name = session.reference_name
+    
+    if reference_doctype != "Task":
+        return False
+    
+    existing_subtask = frappe.db.get_value(
+        "Task",
+        {
+            "subject": subject,
+            "parent_task": reference_name,
+            # "docstatus": ["!=", 2]
+        }
+    )
+    return bool(existing_subtask)

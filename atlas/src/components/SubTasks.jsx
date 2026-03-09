@@ -10,7 +10,7 @@ import React, { useState } from "react";
 import { useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import PriorityWidget from "./widgets/PriorityWidget";
-import { Button, message } from "antd";
+import { Button, message, Space } from "antd";
 import { UsersSelectWidget } from "./widgets/AssigneeSelectWidget";
 import {
   useAssigneeOfTask,
@@ -185,7 +185,7 @@ const SubTasks = React.memo(({ task }) => {
                       </span>
                     </td>
                     <td className="px-2 py-2">
-                      <span>
+                      <Space>
                         <Button
                           loading={updateMutation.loading}
                           color="red"
@@ -229,7 +229,7 @@ const SubTasks = React.memo(({ task }) => {
                           type="text"
                           icon={ <X color="red" /> }
                         />
-                      </span>
+                      </Space>
                     </td>
                   </tr>
                 );

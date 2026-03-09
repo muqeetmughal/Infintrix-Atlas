@@ -152,15 +152,15 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
           <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
             <Share2 size={18} />
           </button>
-          <button
+          <Button
             onClick={() => {
               searchParams.set("copilot", "true");
               setSearchParams(searchParams);
             }}
-            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+            // className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
           >
-            <MessageCircle size={18} />
-          </button>
+            <MessageCircle size={16} />
+          </Button>
           <Dropdown
             trigger={"click"}
             menu={{

@@ -4,11 +4,14 @@ import {
   useFrappeGetCall,
   useFrappeGetDoc,
   useFrappeGetDocList,
+  useFrappePostCall,
 } from "frappe-react-sdk";
-import { Send, Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Send, Plus, Check } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import Markdown from 'react-markdown'
+import Markdown from "react-markdown";
+import { Button, Radio } from "antd";
+import { useQueryParams } from "../hooks/useQueryParams";
 
 function toLLMInput(task) {
   if (!task) return "";
@@ -21,13 +24,15 @@ function toLLMInput(task) {
     type: task.type,
     status: task.status,
     priority: task.priority,
-    description: task.description ? task.description.replace(/<[^>]*>/g, "").trim() : "",
+    description: task.description
+      ? task.description.replace(/<[^>]*>/g, "").trim()
+      : "",
   };
 
   // Extract dependencies in readable form
-  const dependencies = (task.depends_on || []).map(dep => ({
+  const dependencies = (task.depends_on || []).map((dep) => ({
     id: dep.task,
-    subject: dep.subject
+    subject: dep.subject,
   }));
 
   // Build LLM-friendly string
@@ -40,7 +45,7 @@ Description: ${mainTask.description}
 Dependencies:`;
 
   if (dependencies.length) {
-    dependencies.forEach(d => {
+    dependencies.forEach((d) => {
       llmText += `\n  - ${d.subject} (ID: ${d.id})`;
     });
   } else {
@@ -53,7 +58,109 @@ Dependencies:`;
 // Example usage
 // const llmInput = toLLMInput(yourTaskJSON);
 // console.log(llmInput);
-const Message = ({ msg }) => {
+const SuggestedSubTask = React.memo(({ subtask, message_id }) => {
+  console.log("Rendering SuggestedSubTask:", subtask);
+  const [loading, setLoading] = useState(false);
+  const check_task_exists_query = useFrappeGetCall(
+    "infintrix_atlas.api.v1.check_subtask_exists",
+    {
+      message_id: message_id,
+      subject: subtask.subject,
+    },
+  );
+
+  const create_subtask_from_ai_session = useFrappePostCall(
+    "infintrix_atlas.api.v1.create_subtask_from_ai_session",
+  );
+
+  const task_already_exists = check_task_exists_query?.data?.message || false;
+
+  return (
+    <div
+      key={subtask.id}
+      className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl shadow-sm hover:border-indigo-400 dark:hover:border-indigo-500 transition-all group"
+    >
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex gap-2 items-center">
+          <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
+            {subtask.task_type}
+          </span>
+          {subtask.priority && (
+            <span className={`text-[10px] font-bold px-2 py-1 rounded ${
+              subtask.priority === "High" 
+                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                : subtask.priority === "Medium"
+                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                  : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+            }`}>
+              {subtask.priority}
+            </span>
+          )}
+        </div>
+        <Button
+          icon={task_already_exists ? <Check size={14} /> : <Plus size={14} />}
+          loading={loading}
+          disabled={task_already_exists}
+          size="small"
+          onClick={() => {
+            setLoading(true);
+            create_subtask_from_ai_session
+              .call({
+                subtask: subtask,
+                message_id: message_id,
+              })
+              .then(() => {
+                check_task_exists_query.mutate();
+                setLoading(false);
+              });
+          }}
+        />
+      </div>
+      <h5 className="font-black text-slate-900 dark:text-white text-xs mb-1">
+        {subtask.subject}
+      </h5>
+      <p className="text-[12px] text-slate-400 dark:text-slate-500 font-medium mb-2">
+        {subtask.description}
+      </p>
+      
+      <div className="grid grid-cols-2 gap-2 text-[10px] mb-2">
+        {subtask.estimated_hours && (
+          <div><span className="font-bold text-slate-600 dark:text-slate-300">Effort:</span> {subtask.estimated_hours}h</div>
+        )}
+        {subtask.complexity && (
+          <div><span className="font-bold text-slate-600 dark:text-slate-300">Complexity:</span> {subtask.complexity}</div>
+        )}
+        {subtask.suggested_role && (
+          <div><span className="font-bold text-slate-600 dark:text-slate-300">Role:</span> {subtask.suggested_role}</div>
+        )}
+        {subtask.execution_order && (
+          <div><span className="font-bold text-slate-600 dark:text-slate-300">Order:</span> #{subtask.execution_order}</div>
+        )}
+      </div>
+
+      {subtask.required_skills && subtask.required_skills.length > 0 && (
+        <div className="mb-2">
+          <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Skills:</span>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {subtask.required_skills.map((skill, i) => (
+              <span key={i} className="text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded">
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-[10px] text-slate-400 dark:text-slate-500 italic font-medium">
+        "{subtask.reason}"
+      </p>
+    </div>
+  );
+});
+const Message = React.memo(({ msg }) => {
+  const qp = useQueryParams();
+
+  const selected_task = qp.get("selected_task") || null;
   if (!msg) return null;
   let message_type = "plain_text";
 
@@ -66,10 +173,8 @@ const Message = ({ msg }) => {
     parsedContent = msg.content;
     message_type = "plain_text";
   }
-  console.log("Parsed Content:", parsedContent);
-  // if (parsedContent == json) {
-  //   msg.content = parsedContent;
-  // }
+
+  // console.log("Parsed message content:", parsedContent);
 
   return (
     <div
@@ -79,12 +184,14 @@ const Message = ({ msg }) => {
         <div
           className={`p-4 rounded-3xl text-sm font-medium leading-relaxed ${msg.role === "user" ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100 dark:shadow-indigo-900/30" : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"}`}
         >
-          {message_type === "plain_text"
-            ? parsedContent
-            : <Markdown>{parsedContent?.message}</Markdown>}
+          {message_type === "plain_text" ? (
+            parsedContent
+          ) : (
+            <Markdown>{parsedContent?.message}</Markdown>
+          )}
         </div>
 
-        {
+        {/* {
           parsedContent?.suggested_tasks && (
             <div className="grid gap-3">
               {parsedContent.suggested_tasks.map((task, j) => (
@@ -96,7 +203,6 @@ const Message = ({ msg }) => {
                     <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
                       {task.task_type}
                     </span>
-                    {/* Add button or actions for the suggested task */}
                   </div>
                   <h5 className="font-black text-slate-900 dark:text-white text-xs mb-1">
                     {task.subject}
@@ -108,34 +214,13 @@ const Message = ({ msg }) => {
               ))}
             </div>
           )
-        }
+        } */}
 
         {/* Breakdown Mode */}
         {parsedContent?.suggested_subtasks && (
           <div className="grid gap-3">
             {parsedContent.suggested_subtasks.map((sub, j) => (
-              <div
-                key={j}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl shadow-sm hover:border-indigo-400 dark:hover:border-indigo-500 transition-all group"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
-                    {sub.task_type}
-                  </span>
-                  <button
-                    onClick={() => onAddSubtask(sub)}
-                    className="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-indigo-600 hover:text-white"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-                <h5 className="font-black text-slate-900 dark:text-white text-xs mb-1">
-                  {sub.subject}
-                </h5>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 italic font-medium">
-                  "{sub.reason}"
-                </p>
-              </div>
+              <SuggestedSubTask key={j} subtask={sub} message_id={msg.name} />
             ))}
           </div>
         )}
@@ -219,21 +304,15 @@ const Message = ({ msg }) => {
       </div>
     </div>
   );
-};
-const TaskCopilot = ({ onAddSubtask }) => {
-  const [mode, setMode] = useState("general");
+});
+const TaskCopilot = React.memo(() => {
+  const [mode, setMode] = useState("breakdown");
   const [input, setInput] = useState("");
   const [searchParams] = useSearchParams();
   const selectedTask = searchParams.get("selected_task") || null;
   const task_details_query = useFrappeGetDoc("Task", selectedTask || "");
   const task = task_details_query.data || {};
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content: `Hello! I'm your Task Copilot. I understand this is a **${task.type}**. How can I assist you with "${task.subject}"?`,
-      structured: null,
-    },
-  ]);
+ 
   const createMutation = useFrappeCreateDoc();
   const get_session_query = useFrappeGetCall(
     "infintrix_atlas.api.copilot.get_or_create_session",
@@ -254,7 +333,6 @@ const TaskCopilot = ({ onAddSubtask }) => {
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef(null);
 
-  console.log("task:", task);
   useFrappeEventListener(session_id || null, (data) => {
     console.log("Received event for session:", session_id, data);
 
@@ -282,139 +360,12 @@ const TaskCopilot = ({ onAddSubtask }) => {
     }
   });
   const session_messages = session_messages_query?.data || [];
-  const demo_session_messages = [
-    {
-      name: "hmpjtkqid2",
-      owner: "Administrator",
-      creation: "2026-02-23 08:18:45.777467",
-      modified: "2026-02-23 08:18:45.777467",
-      modified_by: "Administrator",
-      docstatus: 0,
-      idx: 0,
-      session: "kec8jkgo2a",
-      role: "user",
-      content: "HI",
-      mode: "breakdown",
-      sequence: 1,
-      doctype: "Copilot Message",
-    },
-    {
-      content: [
-        [
-          "suggested_subtasks",
-          [
-            [
-              ["subject", "Define project scope"],
-              ["task_type", "Task"],
-              [
-                "reason",
-                "To establish clear boundaries and deliverables for the project.",
-              ],
-            ],
-            [
-              ["subject", "Identify stakeholders"],
-              ["task_type", "Task"],
-              [
-                "reason",
-                "To ensure all relevant parties are involved and informed throughout the project.",
-              ],
-            ],
-            [
-              ["subject", "Create a project timeline"],
-              ["task_type", "Task"],
-              [
-                "reason",
-                "To outline key milestones and deadlines for project completion.",
-              ],
-            ],
-            [
-              ["subject", "Allocate resources"],
-              ["task_type", "Sub-Task"],
-              [
-                "reason",
-                "To ensure that all necessary resources (human, financial, material) are available for the project.",
-              ],
-            ],
-            [
-              ["subject", "Develop a risk management plan"],
-              ["task_type", "Task"],
-              [
-                "reason",
-                "To identify potential risks and create strategies to mitigate them.",
-              ],
-            ],
-            [
-              ["subject", "Set up communication plan"],
-              ["task_type", "Task"],
-              [
-                "reason",
-                "To establish how information will be shared among stakeholders.",
-              ],
-            ],
-            [
-              ["subject", "Conduct a kickoff meeting"],
-              ["task_type", "Task"],
-              [
-                "reason",
-                "To officially start the project and align all team members on objectives.",
-              ],
-            ],
-            [
-              ["subject", "Monitor project progress"],
-              ["task_type", "Sub-Task"],
-              [
-                "reason",
-                "To track the project's advancement and make adjustments as needed.",
-              ],
-            ],
-            [
-              ["subject", "Prepare final project report"],
-              ["task_type", "Sub-Task"],
-              [
-                "reason",
-                "To document outcomes, lessons learned, and recommendations for future projects.",
-              ],
-            ],
-            [
-              ["subject", "Conduct project closure meeting"],
-              ["task_type", "Task"],
-              [
-                "reason",
-                "To formally close the project and gather feedback from stakeholders.",
-              ],
-            ],
-          ],
-        ],
-      ],
-      creation: "2026-02-23 08:18:51.335234",
-      docstatus: 0,
-      doctype: "Copilot Message",
-      idx: 0,
-      mode: "breakdown",
-      modified: "2026-02-23 08:18:51.335234",
-      modified_by: "Administrator",
-      name: "hoid2gujbr",
-      owner: "Administrator",
-      role: "assistant",
-      sequence: 2,
-      session: "kec8jkgo2a",
-    },
-  ];
-  console.log("Session Messages:", session_messages);
+
   useEffect(() => {
     if (scrollRef.current)
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [session_messages_query?.data]);
 
-  const DescriptionRender = ({ text }) => {
-    return (
-      <div
-        dangerouslySetInnerHTML={{
-          __html: text,
-        }}
-      />
-    );
-  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -453,99 +404,6 @@ const TaskCopilot = ({ onAddSubtask }) => {
     setInput("");
     setIsTyping(true);
 
-    // setMessages((prev) => [...prev, userMessage]);
-
-    // setInput("");
-    // createMutation.createDoc("Copilot Message", userMessage).then((res) => {
-    //     // session_messages_query.mutate();
-    // });
-
-    // setTimeout(() => {
-    //   let aiResponse = {
-    //     role: "assistant",
-    //     content: "",
-    //     structured: null,
-    //   };
-
-    //   if (mode === "breakdown") {
-    //     aiResponse.content =
-    //       "Based on the task requirements, I recommend the following subtasks to ensure structural integrity.";
-    //     aiResponse.structured = {
-    //       suggested_subtasks: [
-    //         {
-    //           subject: `Validate ${task.subject} Requirements`,
-    //           task_type: "Sub-Task",
-    //           reason: "Ensures baseline alignment before execution.",
-    //         },
-    //         {
-    //           subject: `Draft Technical Architecture for ${task.id}`,
-    //           task_type: "Sub-Task",
-    //           reason: "Required for technical review.",
-    //         },
-    //       ],
-    //     };
-    //   } else if (mode === "improve") {
-    //     aiResponse.content =
-    //       "Here's an improved version of your task description:";
-    //     aiResponse.structured = {
-    //       suggestions: [
-    //         {
-    //           original: task.subject,
-    //           improved: `${task.subject} - with clear acceptance criteria`,
-    //           reason: "More specific and measurable.",
-    //         },
-    //         {
-    //           original: (
-    //             <DescriptionRender
-    //               text={task.description || "No description"}
-    //             />
-    //           ),
-    //           improved: "Add detailed steps and expected outcomes",
-    //           reason: "Improves clarity for team members.",
-    //         },
-    //       ],
-    //     };
-    //   } else if (mode === "risk") {
-    //     aiResponse.content =
-    //       "Here are the potential risks identified for this task:";
-    //     aiResponse.structured = {
-    //       risks: [
-    //         {
-    //           risk: "Scope Creep",
-    //           severity: "Medium",
-    //           mitigation: "Define clear acceptance criteria upfront.",
-    //         },
-    //         {
-    //           risk: "Resource Constraints",
-    //           severity: "High",
-    //           mitigation: "Allocate buffer time and validate availability.",
-    //         },
-    //         {
-    //           risk: "Technical Complexity",
-    //           severity: "Medium",
-    //           mitigation: "Conduct architecture review with team.",
-    //         },
-    //       ],
-    //     };
-    //   } else if (mode === "effort") {
-    //     aiResponse.content =
-    //       "Based on the task complexity, here's my effort estimation:";
-    //     aiResponse.structured = {
-    //       estimate: {
-    //         estimated_hours: "8-16 hours",
-    //         complexity: "Medium",
-    //         breakdown: [
-    //           { phase: "Planning & Design", hours: "2-4" },
-    //           { phase: "Implementation", hours: "4-8" },
-    //           { phase: "Testing & Review", hours: "2-4" },
-    //         ],
-    //       },
-    //     };
-    //   }
-
-    //   setMessages((prev) => [...prev, aiResponse]);
-    //   setIsLoading(false);
-    // }, 1500);
   };
 
   return (
@@ -557,7 +415,7 @@ const TaskCopilot = ({ onAddSubtask }) => {
           ref={scrollRef}
         >
           {session_messages.map((msg, i) => (
-            <Message key={i} msg={msg} />
+            <Message key={i} msg={msg} session_id={session_id} />
           ))}
           {isTyping && (
             <div className="flex justify-start">
@@ -572,22 +430,38 @@ const TaskCopilot = ({ onAddSubtask }) => {
 
         {/* Input Area */}
         <div className="shrink-0 p-6 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <select
-              value={mode}
-              onChange={(e) => setMode(e.target.value)}
-              className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
-            >
-              <option value="general">General</option>
-              <option value="create">Create Tasks</option>
-              <option value="breakdown">Suggest Breakdown</option>
-              <option value="improve">Improve Description</option>
-              <option value="risk">Analyze Risk</option>
-              <option value="effort">Estimate Effort</option>
-            </select>
-            <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase italic">
-              / Context: {task.task_type}
+          <div className="flex items-center gap-4 mb-4">
+            <span className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+              Mode:
             </span>
+                   <Radio.Group value={mode} onChange={(e) => setMode(e.target.value)}>
+                <div className="flex gap-3 flex-wrap">
+            {[
+              "general",
+              "create",
+              "breakdown",
+              "improve",
+              "risk",
+              "effort",
+            ].map((option) => (
+              <Radio key={option} value={option}>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 capitalize">
+                  {option === "general"
+              ? "General"
+              : option === "create"
+                ? "Create Tasks"
+                : option === "breakdown"
+                  ? "Suggest Breakdown"
+                  : option === "improve"
+                    ? "Improve Description"
+                    : option === "risk"
+                ? "Analyze Risk"
+                : "Estimate Effort"}
+                </span>
+              </Radio>
+            ))}
+                </div>
+              </Radio.Group>
           </div>
 
           <div className="relative">
@@ -611,5 +485,5 @@ const TaskCopilot = ({ onAddSubtask }) => {
       </div>
     </div>
   );
-};
+});
 export default TaskCopilot;
