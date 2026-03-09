@@ -55,7 +55,7 @@ class SuggestedSubtask(BaseModel):
 
     automatable: bool  # Indicates whether this task could potentially be automated or assisted by AI/tools
 class BreakdownResponse(BaseModel):
-    message: str
+    message: str | None = None
     suggested_subtasks: List[SuggestedSubtask]
 
 
