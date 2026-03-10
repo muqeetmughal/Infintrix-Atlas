@@ -13,10 +13,10 @@ export const TASK_STATUS_COLORS = {
 	Working: "amber",
 	"Pending Review": "purple",
 	Completed: "emerald",
+	Blocked : 'orange',
 	Cancelled: "red",
 };
 export const TASK_STATUS_ICONS = {
-	// Backlog: ClipboardList,
 	Open: ClipboardList,
 	Working: Cog,
 	"Pending Review": Clock,

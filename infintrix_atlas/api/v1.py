@@ -227,7 +227,8 @@ def get_project_flow_metrics(project):
 
         if status in ("Working", "Pending Review"):
             in_progress_count += 1
-
+        elif status == "Backlog":
+            backlog_tasks.append(t)
         elif status == "Open":
             open_tasks.append(t)
 
@@ -350,7 +351,7 @@ def complete_cycle(name, move_tasks_to):
         "Task",
         filters={
             "custom_cycle": name,
-            "status": ["in", ["Open", "Working", "Pending Review"]],
+            "status": ["in", ["Open", "Working", "Pending Review", "Blocked"]],
         },
         fields=["name"],
     )
@@ -1130,24 +1131,22 @@ def get_customer_portal_data(project=None):
     }
     return data
 
+
 def is_project_manager():
     user = frappe.session.user
     user_roles = frappe.get_roles(user)
-    
+
     if "Administrator" in user_roles or "Projects Manager" in user_roles:
         return True
     return False
-    
-@frappe.whitelist()
 
+
+@frappe.whitelist()
 def set_project_mode(project, mode):
-    
-    
-    
+
     if not is_project_manager():
         return {"success": False, "message": "Unauthorized"}
-    
-    
+
     if mode not in ("Kanban", "Scrum"):
         return {"success": False, "message": "Invalid mode"}
 
@@ -1382,8 +1381,10 @@ def backlog(project):
     project_execution_mode = frappe.db.get_value(
         "Project", project, "custom_execution_mode") or "Kanban"
 
+    isScrum = project_execution_mode == "Scrum"
+
     filters = {"project": project}
-    if project_execution_mode == "Scrum":
+    if isScrum:
         active_cycle = frappe.db.get_value(
             "Cycle",
             {"project": project, "status": "Active"},
@@ -1395,23 +1396,57 @@ def backlog(project):
     Task = DocType("Task")
     ToDo = DocType("ToDo")
 
-    cycles = (
-        frappe.qb.from_(Cycle)
-        .select(
-            Cycle.name,
-            Cycle.cycle_name,
-            Cycle.start_date,
-            Cycle.end_date,
-            Cycle.status,
+    if isScrum:
+        cycles = (
+            frappe.qb.from_(Cycle)
+            .select(
+                Cycle.name,
+                Cycle.cycle_name,
+                Cycle.start_date,
+                Cycle.end_date,
+                Cycle.status,
+            )
+            .where(Cycle.project == project)
+            .orderby(Cycle.start_date, order=frappe.qb.desc)
+            .run(as_dict=True)
         )
-        .where(Cycle.project == project)
-        .orderby(Cycle.start_date, order=frappe.qb.desc)
-        .run(as_dict=True)
-    )
 
-    # Fetch tasks for each cycle
-    for cycle in cycles:
-        tasks = (
+        # Fetch tasks for each cycle
+        for cycle in cycles:
+            tasks = (
+                frappe.qb.from_(Task)
+                .select(
+                    Task.name,
+                    Task.name.as_("id"),
+                    Task.subject,
+                    Task.status,
+                    Task.priority,
+                    Task.modified,
+                    Task.type,
+                    fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+                )
+                .left_join(ToDo).on(
+                    (ToDo.reference_name == Task.name)
+                    & (ToDo.reference_type == "Task")
+                    & (ToDo.status == "Open")
+                )
+                .where(
+                    (Task.project == project)
+                    & (Task.custom_cycle == cycle["name"])
+                )
+                .groupby(Task.name)
+                .orderby(Task.modified, order=frappe.qb.desc)
+                # Only return parent tasks (exclude subtasks)
+                .where((Task.parent_task.isnull()))
+                .run(as_dict=True)
+            )
+            cycle["tasks"] = tasks
+    else:
+        cycles = None
+
+    # Fetch open tasks (backlog) not assigned to any cycle
+    if isScrum:
+        open_tasks = (
             frappe.qb.from_(Task)
             .select(
                 Task.name,
@@ -1430,7 +1465,8 @@ def backlog(project):
             )
             .where(
                 (Task.project == project)
-                & (Task.custom_cycle == cycle["name"])
+                & (Task.custom_cycle.isnull())
+                & (Task.status.isin(["Open"]))
             )
             .groupby(Task.name)
             .orderby(Task.modified, order=frappe.qb.desc)
@@ -1438,37 +1474,34 @@ def backlog(project):
             .where((Task.parent_task.isnull()))
             .run(as_dict=True)
         )
-        cycle["tasks"] = tasks
-
-    # Fetch open tasks (backlog) not assigned to any cycle
-    open_tasks = (
-        frappe.qb.from_(Task)
-        .select(
-            Task.name,
-            Task.name.as_("id"),
-            Task.subject,
-            Task.status,
-            Task.priority,
-            Task.modified,
-            Task.type,
-            fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+    else:
+        open_tasks = (
+            frappe.qb.from_(Task)
+            .select(
+                Task.name,
+                Task.name.as_("id"),
+                Task.subject,
+                Task.status,
+                Task.priority,
+                Task.modified,
+                Task.type,
+                fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+            )
+            .left_join(ToDo).on(
+                (ToDo.reference_name == Task.name)
+                & (ToDo.reference_type == "Task")
+                & (ToDo.status == "Open")
+            )
+            .where(
+                (Task.project == project)
+                & (Task.status == "Open")
+            )
+            .groupby(Task.name)
+            .orderby(Task.modified, order=frappe.qb.desc)
+            # Only return parent tasks (exclude subtasks)
+            .where(Task.parent_task.isnull())
+            .run(as_dict=True)
         )
-        .left_join(ToDo).on(
-            (ToDo.reference_name == Task.name)
-            & (ToDo.reference_type == "Task")
-            & (ToDo.status == "Open")
-        )
-        .where(
-            (Task.project == project)
-            & (Task.custom_cycle.isnull())
-            & (Task.status.isin(["Open"]))
-        )
-        .groupby(Task.name)
-        .orderby(Task.modified, order=frappe.qb.desc)
-        # Only return parent tasks (exclude subtasks)
-        .where((Task.parent_task.isnull()))
-        .run(as_dict=True)
-    )
 
     all_tasks = (
         frappe.qb.from_(Task)
@@ -1499,12 +1532,12 @@ def backlog(project):
         "cycles": cycles,
         "backlog": open_tasks,
         "all_tasks": all_tasks,
-        "is_scrum": project_execution_mode == "Scrum",
+        "is_scrum": isScrum,
         "active_cycle_name": frappe.db.get_value(
             "Cycle",
             {"project": project, "status": "Active"},
             "name"
-        ) if project_execution_mode == "Scrum" else None,
+        ) if isScrum else None,
     }
 
 
@@ -1866,7 +1899,6 @@ def set_cycle_for_task(task_name, cycle_name):
             cycle_doc = frappe.get_doc("Cycle", cycle_name)
         else:
             cycle_doc = None
-        
 
         # Validate project is in Scrum mode
         if project_doc.custom_execution_mode != "Scrum":
@@ -1882,30 +1914,25 @@ def set_cycle_for_task(task_name, cycle_name):
             {"project": project_doc.name, "status": "Active"},
             "name"
         )
-        
-        
 
         if active_cycle and task_doc.custom_cycle == active_cycle and cycle_name != active_cycle:
             return {"success": False, "message": f"Cannot move tasks out of active cycle '{active_cycle}'. Please complete it first."}
-
 
         if task_doc.custom_cycle:
             current_cycle = frappe.get_doc("Cycle", task_doc.custom_cycle)
             if current_cycle.status == "Completed":
                 return {"success": False, "message": f"Cannot move tasks out of completed cycle '{current_cycle.cycle_name}'."}
         # Validate cycle belongs to the same project
-        
+
         if cycle_doc:
-        
+
             if cycle_doc.project != project_doc.name:
                 return {"success": False, "message": f"Cycle '{cycle_doc.cycle_name}' does not belong to project '{project_doc.project_name}'"}
 
             # Check if moving into or out of completed cycle
             if cycle_doc.status == "Completed":
                 return {"success": False, "message": f"Cannot move tasks into completed cycle '{cycle_doc.cycle_name}'."}
-        
-            
-            
+
         # Update and save
         task_doc.custom_cycle = cycle_name
         task_doc.save()
@@ -1915,4 +1942,21 @@ def set_cycle_for_task(task_name, cycle_name):
     except Exception as e:
         frappe.log_error(
             f"Error setting cycle for task: {e}", "Set Cycle Error")
+        return {"success": False, "message": str(e)}
+    
+def set_task_status(task_name, new_status):
+    try:
+        task_doc = frappe.get_doc("Task", task_name)
+        old_status = task_doc.status
+        if old_status == new_status:
+            return {"success": False, "message": f"Task '{task_doc.subject}' is already in status '{new_status}'"}
+
+        task_doc.status = new_status
+        task_doc.save()
+        frappe.db.commit()
+
+        return {"success": True, "message": f"Task '{task_doc.subject}' status changed from '{old_status}' to '{new_status}'"}
+    except Exception as e:
+        frappe.log_error(
+            f"Error setting task status: {e}", "Set Task Status Error")
         return {"success": False, "message": str(e)}

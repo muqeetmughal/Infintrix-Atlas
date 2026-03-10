@@ -232,10 +232,10 @@ const Column = React.memo(({ id, title, tasks_list, createTask }) => {
           <div>
             <div className="flex justify-start items-center">
               <span>
-                {React.createElement(TASK_STATUS_ICONS[title], {
+                {/* {React.createElement(TASK_STATUS_ICONS[title], {
                   size: 18,
                   className: `text-${TASK_STATUS_COLORS[title]}-600 mr-1`,
-                })}
+                })} */}
               </span>
               <span className={`text-${TASK_STATUS_COLORS[title]}-600`}>
                 {title}
@@ -319,7 +319,7 @@ export default function KanbanView() {
   );
   const project_query = useFrappeGetDoc("Project", project);
    const tasks_list_query = useTasksQuery(project);
-  const columns_query = useGetDoctypeField("Task", "status", "options");
+  // const columns_query = useGetDoctypeField("Task", "status", "options");
 
   const active_cycle_query = useFrappeGetDocList("Cycle", {
     filters: { project: project, status: "Active" },
@@ -331,7 +331,16 @@ export default function KanbanView() {
   const isScrum = project_data.custom_execution_mode === "Scrum";
 
  
-  const { options } = columns_query.data || [];
+  // const { options } = columns_query.data || [];
+  const options = [
+    "Open",
+    "Working",
+    "Pending Review",
+    "Blocked",
+    "Completed",
+    "Cancelled",
+    // "Template"
+]
 
   const tasks_list = useMemo(() => {
     return tasks_list_query?.data?.message || [];
@@ -622,10 +631,9 @@ export default function KanbanView() {
 
   if (
     tasks_list_query.isLoading &&
-    columns_query.isLoading &&
     project_query.isLoading &&
-    active_cycle_query.isLoading &&
-    (!isScrum || (isScrum && !cycle_name))
+    active_cycle_query.isLoading
+    //  &&(!isScrum || (isScrum && !cycle_name))
   ) {
     return <div>Loading...</div>;
   }
