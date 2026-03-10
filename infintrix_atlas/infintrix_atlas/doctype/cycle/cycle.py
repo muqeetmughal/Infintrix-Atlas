@@ -43,6 +43,7 @@ class Cycle(Document):
 				frappe.throw(f"Project already has an active cycle: {active_cycle}")
 		if self.project:
 			project = frappe.get_doc("Project", self.project)
+			print("Project execution mode:", project.custom_execution_mode)
 			if project.custom_execution_mode != "Scrum":
 				frappe.throw("Cycles can only be created for projects with Scrum execution mode")
 

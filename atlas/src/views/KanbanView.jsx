@@ -336,8 +336,8 @@ export default function KanbanView() {
     "Open",
     "Working",
     "Pending Review",
-    "Blocked",
     "Completed",
+    "Blocked",
     "Cancelled",
     // "Template"
 ]
@@ -645,7 +645,7 @@ export default function KanbanView() {
           <div className="flex justify-center mb-6">
             <div className="w-35 h-35 bg-blue-50 rounded-full flex items-center justify-center">
               <img
-                src="/images/agile.svg"
+                src={"/assets/infintrix_atlas/atlas/images/agile.svg"}
                 alt="No cycle"
                 className="w-25 h-25"
               />
