@@ -1938,7 +1938,10 @@ def set_cycle_for_task(task_name, cycle_name):
         task_doc.save()
         frappe.db.commit()
 
-        return {"success": True, "message": f"Task '{task_doc.subject}' moved to '{cycle_name or "Backlog"}'"}
+        return {
+                "success": True,
+                "message": f"Task '{task_doc.subject}' moved to '{cycle_name or 'Backlog'}'"
+            }
     except Exception as e:
         frappe.log_error(
             f"Error setting cycle for task: {e}", "Set Cycle Error")
