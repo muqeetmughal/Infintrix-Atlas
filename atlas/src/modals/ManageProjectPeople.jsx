@@ -20,8 +20,10 @@ const ManageProjectPeople = () => {
 
 
   const onClose = () => {
+    form.resetFields();
     qp.clear("manage_project_people");
     users_project_query.mutate();
+
   };
 
   const handleSubmit = (values) => {

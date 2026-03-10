@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   X,
   Share2,
@@ -41,7 +47,11 @@ import StatusWidget from "../components/widgets/StatusWidget";
 import { Button, Dropdown, Space, Form, Input, Select } from "antd";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
 import SubTasks from "../components/SubTasks";
-import { useAssigneeOfTask, useAssigneeUpdateMutation, useTaskDetailsQuery } from "../hooks/query";
+import {
+  useAssigneeOfTask,
+  useAssigneeUpdateMutation,
+  useTaskDetailsQuery,
+} from "../hooks/query";
 import { useGetDoctypeField } from "../hooks/doctype";
 import SubjectWidget from "../components/widgets/SubjectWidget";
 import FileAttachment from "./FileAttachment";
@@ -55,22 +65,22 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
   const [isResizing, setIsResizing] = useState(false);
   const updateMutation = useFrappeUpdateDoc();
   const [searchParams, setSearchParams] = useSearchParams();
-    const assignee_update_mutation = useAssigneeUpdateMutation();
+  const assignee_update_mutation = useAssigneeUpdateMutation();
   const { deleteDoc } = useFrappeDeleteDoc();
-  
-  
+
   const selectedTask = searchParams.get("selected_task") || null;
   const task_details_query = useTaskDetailsQuery(selectedTask);
   const assignee_of_task_query = useAssigneeOfTask(selectedTask);
-  const task_assignee = useMemo(() => assignee_of_task_query?.data?.message || null, [assignee_of_task_query?.data?.message]);
-
+  const task_assignee = useMemo(
+    () => assignee_of_task_query?.data?.message || null,
+    [assignee_of_task_query?.data?.message],
+  );
 
   const labels_of_task = useMemo(() => {
     return ((task?._user_tags || "").split(",") || []).filter(
       (tag) => tag.trim() !== "",
     );
   }, [task?._user_tags]);
-
 
   const onClose = useCallback(() => {
     searchParams.delete("selected_task");
@@ -117,6 +127,7 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
   //     window.removeEventListener("mouseup", stopResizing);
   //   };
   // }, [isResizing, resize, stopResizing]);
+  
   return (
     <div className="task-body overflow-hidden flex flex-col h-full bg-white dark:bg-slate-900">
       {/* Navigation Header */}
@@ -331,7 +342,6 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
                     .then(() => {
                       task_details_query.mutate();
                       // Notify assigned users about status change
-                     
                     });
                 }}
               />
@@ -421,48 +431,7 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
                   />
                 </div>
               </>
-              {/* <>
-                <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
-                  Issues
-                </div>
-                <div className="flex items-center space-x-2 py-1">
-                  {task.issue ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIssueModalOpen(true);
-                        setHasSeenIssueHighlight(true);
-                      }}
-                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-700 bg-indigo-50/80 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-semibold transition-colors ${
-                        hasSeenIssueHighlight
-                          ? ""
-                          : "animate-pulse shadow-md shadow-indigo-200/80 ring-2 ring-indigo-300/60"
-                      }`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-300" />
-                      <span className="text-[10px] font-mono font-bold">
-                        {issueDoc.name || task.issue}
-                      </span>
-                      {issueDoc.status && (
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[9px] font-semibold">
-                          {issueDoc.status}
-                        </span>
-                      )}
-                    </button>
-                  ) : (
-                    <Button
-                      size="small"
-                      type="primary"
-                      onClick={() => {
-                        issueForm.resetFields();
-                        setCreateIssueModalOpen(true);
-                      }}
-                    >
-                      Create Issue
-                    </Button>
-                  )}
-                </div>
-              </> */}
+
               <>
                 <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
                   Reporter
@@ -495,121 +464,6 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
               </span>
             </p>
           </div>
-          {/* 
-          <AntdModal
-            open={issueModalOpen}
-            onCancel={() => setIssueModalOpen(false)}
-            footer={null}
-            title={task.issue ? `Issue: ${task.issue}` : "Issue"}
-          >
-            {!task.issue ? (
-              <div>No linked issue for this task.</div>
-            ) : issue_query.isLoading ? (
-              <div>Loading issue...</div>
-            ) : !issue_query.data ? (
-              <div>Issue record not found.</div>
-            ) : (
-              <div className="space-y-3 text-sm">
-                <p>
-                  <span className="font-semibold">Subject:</span>{" "}
-                  {issueDoc.subject}
-                </p>
-                <p>
-                  <span className="font-semibold">Status:</span>{" "}
-                  {issueDoc.status}
-                </p>
-                <p>
-                  <span className="font-semibold">Priority:</span>{" "}
-                  {issueDoc.priority}
-                </p>
-                <p>
-                  <span className="font-semibold">Raised By:</span>{" "}
-                  {issueDoc.raised_by}
-                </p>
-                <p>
-                  <span className="font-semibold">Opening Date:</span>{" "}
-                  {issueDoc.opening_date}
-                </p>
-                {issueDoc.description && (
-                  <>
-                    <p className="font-semibold">Description:</p>
-                    <div
-                      className="text-slate-600 dark:text-slate-300 prose dark:prose-invert max-w-none"
-                      dangerouslySetInnerHTML={{ __html: issueDoc.description }}
-                    />
-                  </>
-                )}
-              </div>
-            )}
-          </AntdModal>
-
-          <AntdModal
-            open={createIssueModalOpen}
-            onCancel={() => {
-              setCreateIssueModalOpen(false);
-              issueForm.resetFields();
-            }}
-            title="Create Issue"
-            okText="Create"
-            onOk={() => issueForm.submit()}
-            confirmLoading={createIssueMutation.loading}
-          >
-            <Form
-              form={issueForm}
-              layout="vertical"
-              onFinish={handleCreateIssue}
-            >
-              <Form.Item
-                label="Subject"
-                name="subject"
-                rules={[{ required: true, message: "Please enter subject" }]}
-              >
-                <Input className="bg-white dark:bg-slate-800" />
-              </Form.Item>
-              <Form.Item
-                label="Status"
-                name="status"
-                rules={[{ required: true, message: "Please select status" }]}
-              >
-                <Select
-                  loading={issueStatusField.isLoading}
-                  options={issueStatusOptions.map((s) => ({
-                    label: s,
-                    value: s,
-                  }))}
-                  placeholder="Select status"
-                />
-              </Form.Item>
-              <Form.Item label="Priority" name="priority">
-                <Select
-                  showSearch
-                  loading={issuePriorityQuery.isLoading}
-                  options={(issuePriorityQuery.data || []).map((p) => ({
-                    label: p.name,
-                    value: p.name,
-                  }))}
-                  placeholder="Select priority"
-                />
-              </Form.Item>
-              <Form.Item label="Issue Type" name="issue_type">
-                <Select
-                  showSearch
-                  loading={issueTypeQuery.isLoading}
-                  options={(issueTypeQuery.data || []).map((t) => ({
-                    label: t.name,
-                    value: t.name,
-                  }))}
-                  placeholder="Select issue type"
-                />
-              </Form.Item>
-              <Form.Item label="Description" name="description">
-                <Input.TextArea
-                  rows={4}
-                  className="bg-white dark:bg-slate-800"
-                />
-              </Form.Item>
-            </Form>
-          </AntdModal> */}
         </aside>
       </div>
     </div>
@@ -624,17 +478,7 @@ const TaskDetail = React.memo(() => {
 
   const task_details_query = useTaskDetailsQuery(selectedTask);
 
-
   const task = task_details_query.data || {};
-
-  // Reset the linked-issue highlight whenever the selected task or its issue changes
-  useEffect(() => {
-    if (task.issue) {
-      setHasSeenIssueHighlight(false);
-    }
-  }, [task.name, task.issue]);
-
-
 
   const onClose = () => {
     searchParams.delete("selected_task");
@@ -649,57 +493,45 @@ const TaskDetail = React.memo(() => {
     return () => window.removeEventListener("keydown", handleEsc);
   }, [onClose]);
 
-  if (!selectedTask) return <></>
-
-
-
-  if (position === "modal") {
-    return (
-      <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 flex items-center justify-center animate-in fade-in duration-200">
-        <div
-          className={`bg-white dark:bg-slate-900 overflow-hidden transition-all duration-300 ease-in-out ${
-            fullScreen
-              ? "w-full h-screen max-w-none rounded-none shadow-none"
-              : "w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl"
-          }`}
-        >
-          {task_details_query.isLoading ? (
-            <TaskSkeleton />
-          ) : (
-            <>
-              <TaskBody
-                task={task}
-                fullScreen={fullScreen}
-                setFullScreen={setFullScreen}
-              />
-              <Drawer
-                open={!!copilot}
-                onClose={() => {
-                  searchParams.set("copilot", "false");
-                  setSearchParams(searchParams);
-                }}
-                size={"large"}
-                styles={{
-                  body: { padding: 0 },
-                }}
-                // bodyStyle={{ padding: 0 }}
-                // headerStyle={{ display: "none" }}
-                closable={false}
-              >
-                <TaskCopilot />
-              </Drawer>
-            </>
-          )}{" "}
-        </div>
-      </div>
-    );
-  }
+  if (!selectedTask) return null;
 
   return (
-    <div className="fixed top-0 right-0 h-full bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-hidden">
-      {task_details_query.isLoading || assignee_of_task_query.isLoading
-        ? "Loading..."
-        : TaskBody}
+    <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 flex items-center justify-center animate-in fade-in duration-200">
+      <div
+        className={`bg-white dark:bg-slate-900 overflow-hidden transition-all duration-300 ease-in-out ${
+          fullScreen
+            ? "w-full h-screen max-w-none rounded-none shadow-none"
+            : "w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl"
+        }`}
+      >
+        {task_details_query.isLoading ? (
+          <TaskSkeleton />
+        ) : (
+          <>
+            <TaskBody
+              task={task}
+              fullScreen={fullScreen}
+              setFullScreen={setFullScreen}
+            />
+            <Drawer
+              open={!!copilot}
+              onClose={() => {
+                searchParams.set("copilot", "false");
+                setSearchParams(searchParams);
+              }}
+              size={"large"}
+              styles={{
+                body: { padding: 0 },
+              }}
+              // bodyStyle={{ padding: 0 }}
+              // headerStyle={{ display: "none" }}
+              closable={false}
+            >
+              <TaskCopilot />
+            </Drawer>
+          </>
+        )}{" "}
+      </div>
     </div>
   );
 });

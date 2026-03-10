@@ -1130,9 +1130,24 @@ def get_customer_portal_data(project=None):
     }
     return data
 
-
+def is_project_manager():
+    user = frappe.session.user
+    user_roles = frappe.get_roles(user)
+    
+    if "Administrator" in user_roles or "Projects Manager" in user_roles:
+        return True
+    return False
+    
 @frappe.whitelist()
+
 def set_project_mode(project, mode):
+    
+    
+    
+    if not is_project_manager():
+        return {"success": False, "message": "Unauthorized"}
+    
+    
     if mode not in ("Kanban", "Scrum"):
         return {"success": False, "message": "Invalid mode"}
 

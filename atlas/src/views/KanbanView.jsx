@@ -337,7 +337,6 @@ export default function KanbanView() {
     return tasks_list_query?.data?.message || [];
   }, [tasks_list_query?.data?.message]);
 
-  console.log("Tasks List:", tasks_list);
 
   const COLUMNS = useMemo(() => {
     if (!options) {

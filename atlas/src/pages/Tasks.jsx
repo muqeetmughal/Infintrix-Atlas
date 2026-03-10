@@ -13,7 +13,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import TaskDetail from "../modals/TaskDetail";
 import TableView from "../views/TableView";
 import KanbanView from "../views/KanbanView";
-import { Button, Dropdown, Input, Select } from "antd";
+import { Button, Dropdown, Input, Select, message } from "antd";
 import BacklogView from "../views/BacklogView/BacklogView";
 import CycleModal from "../components/custom/CycleModal";
 import CompleteCycleModal from "../components/custom/CompleteCycleModal";
@@ -24,7 +24,6 @@ import TreeView from "../views/TreeView";
 import InsightsView from "../views/InsightsView/InsightsView";
 import KanbanView2 from "../views/KanbanView2";
 import TestView from "../views/TestView";
-
 const Tasks = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
@@ -133,8 +132,14 @@ const Tasks = () => {
                     mode: value,
                     project: project,
                   })
-                  .then(() => {
-                    window.location.reload();
+                  .then((response) => {
+                     if (response?.message?.success) {
+                      window.location.reload()
+                      message.success("Project mode updated successfully")
+                    }else{
+                      message.error(response?.message?.message)
+                    }
+                    
                   });
                 // updateMutation
                 //   .updateDoc("Project", project, {

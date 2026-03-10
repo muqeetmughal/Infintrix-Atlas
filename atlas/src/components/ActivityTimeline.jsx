@@ -11,12 +11,19 @@ dayjs.extend(relativeTime);
 
 export default React.memo(function ActivityTimeline({ task_id }) {
   const [commentText, setCommentText] = React.useState("");
+    const [inputHeight, setInputHeight] = React.useState(40);
+
   const auth = useAuth();
+    const createMutation = useFrappeCreateDoc();
+
   const versions_query = useFrappeGetCall(
     "infintrix_atlas.api.v1.get_task_activity",
     { task: task_id },
   );
-  const createMutation = useFrappeCreateDoc();
+  
+  const data = versions_query?.data?.message || {};
+  const timeline = React.useMemo(() => formatTaskActivity(data), [data]);
+
 
   function formatTaskActivity({ versions = [], comments = [] }) {
     const items = [];
@@ -112,11 +119,8 @@ export default React.memo(function ActivityTimeline({ task_id }) {
     }
   };
 
-  const data = versions_query?.data?.message || {};
 
-  const timeline = React.useMemo(() => formatTaskActivity(data), [data]);
 
-  const [inputHeight, setInputHeight] = React.useState(40);
 
   const handleInputChange = (e) => {
     setCommentText(e.target.value);
@@ -132,6 +136,7 @@ export default React.memo(function ActivityTimeline({ task_id }) {
       handleAddComment(commentText);
     }
   };
+  
 
   return (
     <div>
