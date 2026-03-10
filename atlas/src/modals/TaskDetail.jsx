@@ -60,6 +60,7 @@ import ActivityTimeline from "../components/ActivityTimeline";
 import TaskCopilot from "../components/TaskCopilot";
 import TaskSkeleton from "./TaskSkeleton";
 import WatchersWidget from "../components/WatchersWidget";
+import RelativeTime from "../components/RelativeTime";
 const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
   const containerRef = useRef(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -127,7 +128,7 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
   //     window.removeEventListener("mouseup", stopResizing);
   //   };
   // }, [isResizing, resize, stopResizing]);
-  
+
   return (
     <div className="task-body overflow-hidden flex flex-col h-full bg-white dark:bg-slate-900">
       {/* Navigation Header */}
@@ -454,13 +455,13 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
             <p className="flex justify-between">
               <span>Created</span>
               <span className="text-slate-500 dark:text-slate-400">
-                {dayjs(task.creation).format("MMMM D, YYYY, h:mm A")}
+                <RelativeTime date={task.creation} />
               </span>
             </p>
             <p className="flex justify-between">
               <span>Updated</span>
               <span className="text-slate-500 dark:text-slate-400">
-                {dayjs(task.modified).format("MMMM D, YYYY, h:mm A")}
+                <RelativeTime date={task.modified} />
               </span>
             </p>
           </div>

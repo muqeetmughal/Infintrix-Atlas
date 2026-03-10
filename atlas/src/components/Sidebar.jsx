@@ -107,7 +107,7 @@ const Sidebar = () => {
                 {(projectsQuery?.data?.message || []).length}
               </span>
             </h4>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+            <div className="space-y-2 ">
               {projectsQuery.isLoading && (
                 <p className="text-xs text-slate-400">Loading projects...</p>
               )}
