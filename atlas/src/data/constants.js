@@ -9,7 +9,7 @@ export const PROJECT_STATUS_COLORS = {
 
 export const TASK_STATUS_COLORS = {
 	// Backlog: "slate",
-	Open: "slate",
+	Open: "blue",
 	Working: "amber",
 	"Pending Review": "purple",
 	Completed: "emerald",

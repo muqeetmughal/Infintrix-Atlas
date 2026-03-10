@@ -22,7 +22,8 @@ import ProjectHealth from "../components/ProjectHealth";
 import ManageProjectPeople from "../modals/ManageProjectPeople";
 import TreeView from "../views/TreeView";
 import InsightsView from "../views/InsightsView/InsightsView";
-import KanbanView2 from "../views/KanbanView2";
+
+// import KanbanView2 from "../views/KanbanView2";
 import TestView from "../views/TestView";
 const Tasks = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -384,6 +385,7 @@ const Tasks = () => {
           {view === "backlog" && <BacklogView />}
           {view === "tree" && <TreeView />}
           {view === "insights" && <InsightsView />}
+           {view === "dashboard" && <ProjectDetail />}
         </div>
       </div>
       <CompleteCycleModal />

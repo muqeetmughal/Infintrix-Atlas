@@ -14,11 +14,11 @@ const TaskActions = React.memo(({ task }) => {
       Object.keys(TASK_STATUS_COLORS).map((status) => {
         return {
           label: (
-            <div className="flex justify-start items-center">
-              {React.createElement(TASK_STATUS_ICONS[status], {
+            <div className={`flex justify-start items-center text-${TASK_STATUS_COLORS[status]}-600`}>
+              {/* {React.createElement(TASK_STATUS_ICONS[status], {
                 size: 14,
                 className: `text-${TASK_STATUS_COLORS[status]}-600 mr-1`,
-              })}{" "}
+              })}{" "} */}
               {status}
             </div>
           ),
