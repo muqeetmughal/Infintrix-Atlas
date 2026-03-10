@@ -641,31 +641,31 @@ export default function KanbanView() {
   if (isScrum && !cycle_name) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
-        <div className="text-center space-y-4">
-          <div className="flex justify-center mb-6">
-            <div className="w-35 h-35 bg-blue-50 rounded-full flex items-center justify-center">
-              <img
-                src={"/assets/infintrix_atlas/atlas/images/agile.svg"}
-                alt="No cycle"
-                className="w-25 h-25"
-              />
-            </div>
-          </div>
-          <div>
-            <p className="text-xl font-bold text-slate-900 mb-2">
-              No Active Sprint
-            </p>
-            <p className="text-sm text-slate-500 max-w-xs mx-auto">
-              Create or select an active sprint to start organizing your tasks
-            </p>
-          </div>
-          <Link
-            to={`/tasks/backlog?project=${project}`}
-            className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
-          >
-            Go to Backlog
-          </Link>
+      <div className="text-center space-y-4">
+        <div className="flex justify-center mb-6">
+        <div className="w-35 h-35 bg-blue-50 dark:bg-blue-950 rounded-full flex items-center justify-center">
+          <img
+          src={"/assets/infintrix_atlas/atlas/images/agile.svg"}
+          alt="No cycle"
+          className="w-25 h-25"
+          />
         </div>
+        </div>
+        <div>
+        <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+          No Active Sprint
+        </p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+          Create or select an active sprint to start organizing your tasks
+        </p>
+        </div>
+        <Link
+        to={`/tasks/backlog?project=${project}`}
+        className="mt-6 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg font-medium text-sm hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+        >
+        Go to Backlog
+        </Link>
+      </div>
       </div>
     );
   }
