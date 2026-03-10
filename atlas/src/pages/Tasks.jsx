@@ -190,15 +190,7 @@ const Tasks = () => {
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            <Button
-              className="relative p-2 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
-              onClick={() => setShowFilters((prev) => !prev)}
-            >
-              <Filter size={18} className="md:w-5 md:h-5" />
-              {hasActiveFilters && (
-                <span className="absolute -top-0.5 -right-0.5 inline-block w-2 h-2 rounded-full bg-green-500 ring-2 ring-white dark:ring-slate-800" />
-              )}
-            </Button>
+            
             {project_data.custom_execution_mode === "Scrum" && (
               <>
                 <Button
@@ -240,6 +232,15 @@ const Tasks = () => {
                 )}
               </>
             )}
+            <Button
+              className="relative p-2 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
+              onClick={() => setShowFilters((prev) => !prev)}
+            >
+              <Filter size={16} />
+              {hasActiveFilters && (
+                <span className="absolute -top-0.5 -right-0.5 inline-block w-2 h-2 rounded-full bg-green-500 ring-2 ring-white dark:ring-slate-800" />
+              )}
+            </Button>
 
             <Dropdown
               trigger={"click"}
@@ -278,7 +279,7 @@ const Tasks = () => {
               onClick={() => {
                 // Invalidate tasks query to refetch data
               }}
-              icon={<RefreshCcw />}
+              icon={<RefreshCcw size={16} />}
             ></Button>
 
             <Button
@@ -289,7 +290,7 @@ const Tasks = () => {
                 setSearchParams(searchParams);
               }}
             >
-              <Plus size={18} className="md:w-5 md:h-5" />
+              <Plus size={16} className="md:w-5 md:h-5" />
               <span className="text-sm md:text-base">Create Task</span>
             </Button>
           </div>

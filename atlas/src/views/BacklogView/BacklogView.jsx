@@ -50,7 +50,7 @@ import {
 } from "frappe-react-sdk";
 import dayjs from "dayjs";
 import { useParams, useSearchParams } from "react-router-dom";
-import { Button, Dropdown, Input, Space, Spin } from "antd";
+import { Button, Dropdown, Input, message, Space, Spin } from "antd";
 import BacklogHealth from "../../components/ProjectHealth";
 import FormRender from "../../components/form/FormRender";
 import { useQueryParams } from "../../hooks/useQueryParams";
@@ -242,6 +242,9 @@ const BacklogView = () => {
   const priorityFilter = qp.getArray("priority");
   const searchText = (qp.get("search") || "").toLowerCase();
   const updateMutation = useFrappeUpdateDoc();
+  const set_cycle_mutation = useFrappePostCall(
+    "infintrix_atlas.api.v1.set_cycle_for_task",
+  );
   const createMutation = useFrappeCreateDoc();
   const deleteMutation = useFrappeDeleteDoc();
   const complete_cycle_mutation = useFrappePostCall(
@@ -260,14 +263,17 @@ const BacklogView = () => {
   );
 
   const project = project_query.data || {};
-  const hasActiveCycle = useMemo(
-    () =>
-      (cycles_query2.data?.message?.cycles || []).some(
-        (cycle) => cycle.status === "Active",
-      ),
-    [cycles_query2.data?.message?.cycles],
+  const hasActiveCycle = useMemo(() => {
+    return cycles_query2.data?.message?.active_cycle_name ? true : false;
+  }, [cycles_query2.data]);
+
+  const active_cycle_name = useMemo(
+    () => cycles_query2.data?.message?.active_cycle_name || null,
+    [cycles_query2.data],
   );
-  const isScrum = project.custom_execution_mode === "Scrum";
+  const isScrum = useMemo(() => {
+    return cycles_query2.data?.message?.is_scrum || false;
+  }, [cycles_query2.data]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -284,10 +290,10 @@ const BacklogView = () => {
   }, [cycles_query2.data]);
   const cycles = useMemo(() => {
     return cycles_query2?.data?.message?.cycles || [];
-    
   }, [cycles_query2.data]);
 
   const handleDragStart = (event) => {
+    console.log("Drag started:", event);
     setActiveId(event.active.id);
   };
 
@@ -302,16 +308,38 @@ const BacklogView = () => {
 
   const handleMoveTask = useCallback(
     (taskId, targetId) => {
-      updateMutation
-        .updateDoc("Task", taskId, {
-          custom_cycle: targetId === "Open" ? null : targetId,
+      console.log("Moving task", taskId, "to", targetId);
+      // if (isScrum && hasActiveCycle && targetId === active_cycle_name) {
+      //   message.error(
+      //     "Cannot move task to active cycle. Please complete the active cycle before moving tasks into it.",
+      //   );
+      //   return;
+      // }
+
+      set_cycle_mutation
+        .call({
+          task_name: taskId,
+          cycle_name: targetId === "Open" ? null : targetId,
         })
-        .then(() => {
-          cycles_query2.mutate();
-          project_query.mutate();
+        .then((response) => {
+          console.log("Set cycle response:", response);
+          if (response?.message?.success) {
+            message.success(response?.message?.message);
+            cycles_query2.mutate();
+            project_query.mutate();
+          } else {
+            message.error(response?.message?.message);
+          }
         });
     },
-    [updateMutation, cycles_query2, project_query],
+    [
+      updateMutation,
+      cycles_query2,
+      project_query,
+      isScrum,
+      hasActiveCycle,
+      active_cycle_name,
+    ],
   );
 
   const addCycle = () => {
@@ -406,21 +434,23 @@ const BacklogView = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {isExpanded && cycle.status == "Planned" && (
-              <Button
-                type="text"
-                size="small"
-                icon={<Trash size={16} />}
-                danger
-                onClick={() => {
-                  deleteMutation.deleteDoc("Cycle", cycle.name).then(() => {
-                    cycles_query2.mutate();
-                  });
-                }}
-              >
-                Delete
-              </Button>
-            )}
+            {isExpanded &&
+              cycle.status == "Planned" &&
+              cycle_tasks.length === 0 && (
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<Trash size={16} />}
+                  danger
+                  onClick={() => {
+                    deleteMutation.deleteDoc("Cycle", cycle.name).then(() => {
+                      cycles_query2.mutate();
+                    });
+                  }}
+                >
+                  Delete
+                </Button>
+              )}
 
             {cycle.status !== "Active" &&
               cycle.status === "Planned" &&
@@ -498,9 +528,7 @@ const BacklogView = () => {
     [all_tasks, activeId],
   );
 
-  if (cycles_query2.isLoading)
-    return <div>Loading...</div>;
-
+  if (cycles_query2.isLoading) return <div>Loading...</div>;
 
   return (
     <>

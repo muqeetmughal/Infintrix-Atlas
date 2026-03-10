@@ -5,10 +5,11 @@ import frappe
 from frappe.query_builder import DocType, functions as fn
 from datetime import datetime, timedelta
 import json
-from frappe.utils import user
+from frappe.utils import now, user
 from infintrix_atlas.permissions import project_permission_query, task_permission_query
 from .utils import send_notification
 from frappe.desk.doctype.tag.tag import add_tag, remove_tag
+
 
 @frappe.whitelist()
 def update_task_sort_order(payload=None):
@@ -864,7 +865,7 @@ def tasks_accountability_report(project=None):
 
 @frappe.whitelist()
 def get_task_tree(project=None):
-    
+
     fields = ["name", "subject", "status", "priority", "project"]
 
     def get_children(parent):
@@ -1140,6 +1141,11 @@ def set_project_mode(project, mode):
             "UPDATE `tabProject` SET custom_execution_mode = %s WHERE name = %s",
             (mode, project)
         )
+        # if mode == "Kanban":
+        #     frappe.db.sql(
+        #         "UPDATE `tabTask` SET custom_cycle = NULL WHERE project = %s",
+        #         (project,)
+        #     )
         frappe.db.commit()
         return {"success": True, "message": f"Project mode set to {mode}"}
     except Exception as e:
@@ -1280,8 +1286,9 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
     query = query.limit(limit).offset(offset)
     query = query.groupby(Task.name).orderby(
         Task.modified, order=frappe.qb.desc)
-
-    tasks = query.run(as_dict=True)
+    # Only return parent tasks (exclude subtasks)
+    # query = query.where((Task.parent_task.isnull()) | (Task.parent_task == ""))
+    # tasks = query.run(as_dict=True)
 
     # Apply filters
     for key, value in filters.items():
@@ -1294,6 +1301,9 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
 
     query = query.groupby(Task.name).orderby(
         Task.modified, order=frappe.qb.desc)
+
+    # Only return parent tasks (exclude subtasks)
+    query = query.where((Task.parent_task.isnull()))
 
     tasks = query.run(as_dict=True)
 
@@ -1351,6 +1361,7 @@ def list_subtasks(parent_task):
 
     return subtasks
 
+
 @frappe.whitelist()
 def backlog(project):
     project_execution_mode = frappe.db.get_value(
@@ -1364,7 +1375,7 @@ def backlog(project):
             "name"
         )
         filters.update({"custom_cycle": active_cycle})
-    
+
     Cycle = DocType("Cycle")
     Task = DocType("Task")
     ToDo = DocType("ToDo")
@@ -1394,6 +1405,7 @@ def backlog(project):
                 Task.status,
                 Task.priority,
                 Task.modified,
+                Task.type,
                 fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
             )
             .left_join(ToDo).on(
@@ -1407,10 +1419,12 @@ def backlog(project):
             )
             .groupby(Task.name)
             .orderby(Task.modified, order=frappe.qb.desc)
+            # Only return parent tasks (exclude subtasks)
+            .where((Task.parent_task.isnull()))
             .run(as_dict=True)
         )
         cycle["tasks"] = tasks
-        
+
     # Fetch open tasks (backlog) not assigned to any cycle
     open_tasks = (
         frappe.qb.from_(Task)
@@ -1421,6 +1435,7 @@ def backlog(project):
             Task.status,
             Task.priority,
             Task.modified,
+            Task.type,
             fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
         )
         .left_join(ToDo).on(
@@ -1431,7 +1446,34 @@ def backlog(project):
         .where(
             (Task.project == project)
             & (Task.custom_cycle.isnull())
-            & (Task.status.isin(["Open", "Working", "Pending Review"]))
+            & (Task.status.isin(["Open"]))
+        )
+        .groupby(Task.name)
+        .orderby(Task.modified, order=frappe.qb.desc)
+        # Only return parent tasks (exclude subtasks)
+        .where((Task.parent_task.isnull()))
+        .run(as_dict=True)
+    )
+
+    all_tasks = (
+        frappe.qb.from_(Task)
+        .select(
+            Task.name,
+            Task.name.as_("id"),
+            Task.subject,
+            Task.status,
+            Task.priority,
+            Task.modified,
+            Task.type,
+            fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+        )
+        .left_join(ToDo).on(
+            (ToDo.reference_name == Task.name)
+            & (ToDo.reference_type == "Task")
+            & (ToDo.status == "Open")
+        )
+        .where(
+            (Task.project == project)
         )
         .groupby(Task.name)
         .orderby(Task.modified, order=frappe.qb.desc)
@@ -1441,9 +1483,14 @@ def backlog(project):
     return {
         "cycles": cycles,
         "backlog": open_tasks,
-        "all_tasks": [task for cycle in cycles for task in cycle["tasks"]] + open_tasks
+        "all_tasks": all_tasks,
+        "is_scrum": project_execution_mode == "Scrum",
+        "active_cycle_name": frappe.db.get_value(
+            "Cycle",
+            {"project": project, "status": "Active"},
+            "name"
+        ) if project_execution_mode == "Scrum" else None,
     }
-
 
 
 @frappe.whitelist()
@@ -1653,7 +1700,8 @@ def remove_subtask(parent_task, subtask):
         frappe.log_error(
             f"Error removing subtask: {e}", "Remove Subtask Error")
         return {"success": False, "message": str(e)}
-    
+
+
 def subtask_to_quill_html(data: dict) -> str:
     def list_to_html(items):
         if not items:
@@ -1662,23 +1710,23 @@ def subtask_to_quill_html(data: dict) -> str:
 
     html = f"""
 
-    <p>{data.get("description","")}</p>
+    <p>{data.get("description", "")}</p>
 
     <h3>Task Details</h3>
     <ul>
-        <li><strong>Task Type:</strong> {data.get("task_type","")}</li>
-        <li><strong>Priority:</strong> {data.get("priority","")}</li>
-        <li><strong>Complexity:</strong> {data.get("complexity","")}</li>
-        <li><strong>Estimated Effort:</strong> {data.get("estimated_effort","")}</li>
-        <li><strong>Estimated Hours:</strong> {data.get("estimated_hours","")}</li>
-        <li><strong>Execution Order:</strong> {data.get("execution_order","")}</li>
-        <li><strong>Suggested Role:</strong> {data.get("suggested_role","")}</li>
-        <li><strong>Risk Level:</strong> {data.get("risk_level","")}</li>
+        <li><strong>Task Type:</strong> {data.get("task_type", "")}</li>
+        <li><strong>Priority:</strong> {data.get("priority", "")}</li>
+        <li><strong>Complexity:</strong> {data.get("complexity", "")}</li>
+        <li><strong>Estimated Effort:</strong> {data.get("estimated_effort", "")}</li>
+        <li><strong>Estimated Hours:</strong> {data.get("estimated_hours", "")}</li>
+        <li><strong>Execution Order:</strong> {data.get("execution_order", "")}</li>
+        <li><strong>Suggested Role:</strong> {data.get("suggested_role", "")}</li>
+        <li><strong>Risk Level:</strong> {data.get("risk_level", "")}</li>
         <li><strong>Automatable:</strong> {"Yes" if data.get("automatable") else "No"}</li>
     </ul>
 
     <h3>Reason</h3>
-    <p>{data.get("reason","")}</p>
+    <p>{data.get("reason", "")}</p>
 
     <h3>Required Skills</h3>
     {list_to_html(data.get("required_skills", []))}
@@ -1697,23 +1745,24 @@ def subtask_to_quill_html(data: dict) -> str:
     """
 
     return html.strip()
+
+
 @frappe.whitelist()
 def create_subtask_from_ai_session(subtask, message_id):
     if not subtask or not message_id:
         return {"success": False, "message": "Subtask and message_id are required"}
     message_doc = frappe.get_doc("Copilot Message", message_id)
     session_id = message_doc.session
-    
+
     session = frappe.get_doc("Copilot Session", session_id)
-    
+
     reference_doctype = session.reference_doctype
     reference_name = session.reference_name
-    
+
     if reference_doctype != "Task":
         return {"success": False, "message": "Subtasks can only be created for Tasks"}
     task_doc = frappe.get_doc("Task", reference_name)
-    
-    
+
     # Check if subtask with same subject already exists
     existing_subtask = frappe.db.get_value(
         "Task",
@@ -1722,13 +1771,13 @@ def create_subtask_from_ai_session(subtask, message_id):
             "parent_task": task_doc.name,
         }
     )
-    
+
     if existing_subtask:
         return {
             "success": False,
             "message": f"Subtask with this subject already exists under Task '{task_doc.subject}'"
         }
-    
+
     new_subtask = frappe.get_doc({
         "doctype": "Task",
         "subject": subtask.get("subject", "Subtask for " + task_doc.subject),
@@ -1737,14 +1786,10 @@ def create_subtask_from_ai_session(subtask, message_id):
         "parent_task": task_doc.name,
         "priority": subtask.get("priority", "Medium"),
     })
-    
+
     # new_subtask.tags = ",".join(subtask.get("tags", []))
     new_subtask.insert(ignore_permissions=True)
-    
-    
-    
-    
-    
+
     frappe.db.commit()
     for tag in subtask.get("tags", []):
 
@@ -1758,20 +1803,21 @@ def create_subtask_from_ai_session(subtask, message_id):
         "message": f"Subtask '{new_subtask.subject}' created under Task '{task_doc.subject}'",
         "subtask_id": new_subtask.name
     }
-    
+
+
 @frappe.whitelist()
 def check_subtask_exists(message_id, subject):
     message_doc = frappe.get_doc("Copilot Message", message_id)
     session_id = message_doc.session
-    
+
     session = frappe.get_doc("Copilot Session", session_id)
-    
+
     reference_doctype = session.reference_doctype
     reference_name = session.reference_name
-    
+
     if reference_doctype != "Task":
         return False
-    
+
     existing_subtask = frappe.db.get_value(
         "Task",
         {
@@ -1782,14 +1828,76 @@ def check_subtask_exists(message_id, subject):
     )
     return bool(existing_subtask)
 
+
 @frappe.whitelist()
 def remove_task(task_name):
     try:
         frappe.delete_doc("Task", task_name)
         frappe.db.commit()
-        
+
         return {"success": True, "message": f"Task {task_name} removed and deleted"}
     except Exception as e:
         frappe.log_error(
             f"Error removing task: {e}", "Remove Task Error")
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def set_cycle_for_task(task_name, cycle_name):
+    try:
+        task_doc = frappe.get_doc("Task", task_name)
+        project_doc = frappe.get_doc("Project", task_doc.project)
+        if cycle_name:
+            cycle_doc = frappe.get_doc("Cycle", cycle_name)
+        else:
+            cycle_doc = None
+        
+
+        # Validate project is in Scrum mode
+        if project_doc.custom_execution_mode != "Scrum":
+            return {"success": False, "message": f"Project '{project_doc.project_name}' is not in Scrum mode"}
+
+        # Task already in target cycle
+        if task_doc.custom_cycle == cycle_name:
+            return {"success": False, "message": f"Task '{task_doc.subject}' is already in cycle '{cycle_name}'"}
+
+        # Check if moving out of active cycle
+        active_cycle = frappe.db.get_value(
+            "Cycle",
+            {"project": project_doc.name, "status": "Active"},
+            "name"
+        )
+        
+        
+
+        if active_cycle and task_doc.custom_cycle == active_cycle and cycle_name != active_cycle:
+            return {"success": False, "message": f"Cannot move tasks out of active cycle '{active_cycle}'. Please complete it first."}
+
+
+        if task_doc.custom_cycle:
+            current_cycle = frappe.get_doc("Cycle", task_doc.custom_cycle)
+            if current_cycle.status == "Completed":
+                return {"success": False, "message": f"Cannot move tasks out of completed cycle '{current_cycle.cycle_name}'."}
+        # Validate cycle belongs to the same project
+        
+        if cycle_doc:
+        
+            if cycle_doc.project != project_doc.name:
+                return {"success": False, "message": f"Cycle '{cycle_doc.cycle_name}' does not belong to project '{project_doc.project_name}'"}
+
+            # Check if moving into or out of completed cycle
+            if cycle_doc.status == "Completed":
+                return {"success": False, "message": f"Cannot move tasks into completed cycle '{cycle_doc.cycle_name}'."}
+        
+            
+            
+        # Update and save
+        task_doc.custom_cycle = cycle_name
+        task_doc.save()
+        frappe.db.commit()
+
+        return {"success": True, "message": f"Task '{task_doc.subject}' moved to '{cycle_name or "Backlog"}'"}
+    except Exception as e:
+        frappe.log_error(
+            f"Error setting cycle for task: {e}", "Set Cycle Error")
         return {"success": False, "message": str(e)}

@@ -318,6 +318,7 @@ export default function KanbanView() {
     "infintrix_atlas.api.v1.notify_status_changed",
   );
   const project_query = useFrappeGetDoc("Project", project);
+   const tasks_list_query = useTasksQuery(project);
   const columns_query = useGetDoctypeField("Task", "status", "options");
 
   const active_cycle_query = useFrappeGetDocList("Cycle", {
@@ -329,12 +330,14 @@ export default function KanbanView() {
   const project_data = project_query.data || {};
   const isScrum = project_data.custom_execution_mode === "Scrum";
 
-  const tasks_list_query = useTasksQuery(project);
+ 
   const { options } = columns_query.data || [];
 
   const tasks_list = useMemo(() => {
     return tasks_list_query?.data?.message || [];
   }, [tasks_list_query?.data?.message]);
+
+  console.log("Tasks List:", tasks_list);
 
   const COLUMNS = useMemo(() => {
     if (!options) {
