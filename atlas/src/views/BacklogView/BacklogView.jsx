@@ -565,7 +565,7 @@ const BacklogView = () => {
     <>
       <PhasesHeader phases={phases} />
 
-      {phases.length === 0 ? null : (
+      {(phases.length !== 0 && selectedPhase) && (
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
