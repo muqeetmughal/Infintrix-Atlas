@@ -1,3 +1,4 @@
+from cmath import phase
 from warnings import filters
 
 from frappe import _
@@ -677,7 +678,6 @@ def global_search(query: str, limit: int = 10):
         )
 
         for task in tasks:
-            print(f"Checking permissions for task '{task.project}'")
             if frappe.has_permission("Task", "read", task.name):
                 results.append(
                     {
@@ -752,7 +752,6 @@ def global_search(query: str, limit: int = 10):
     print(f"Found {len(projects)} projects matching query '{query}'")
 
     for project in projects:
-        print(f"Checking permissions for project '{project.project_name}'")
         if frappe.has_permission("Project", "read", project.name):
             results.append(
                 {
@@ -1235,26 +1234,35 @@ def list_projects(filters={}, limit=20, offset=0):
 
 
 @frappe.whitelist()
-def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
+def list_tasks(project, group_by=None, filters=None, limit=None, offset=0):
 
     project_execution_mode = frappe.db.get_value(
         "Project", project, "custom_execution_mode") or "Kanban"
+    isScrum = project_execution_mode == "Scrum"
 
-    filters = {"project": project}
+    filters = json.loads(filters) or {}
+    print("filters received:", filters, type(filters))
+
+    filters.update({"project": project})
     filters.update(filters)
-    if project_execution_mode == "Scrum":
-        active_cycle = frappe.db.get_value(
-            "Cycle",
-            {"project": project, "status": "Active"},
-            "name"
-        )
-        filters.update({"custom_cycle": active_cycle})
+    # if isScrum:
+    #     active_cycle = frappe.db.get_value(
+    #         "Cycle",
+    #         {"project": project, "status": "Active"},
+    #         "name"
+    #     )
+    #     filters.update({"custom_cycle": active_cycle})
+    # else:
+    #     # For Kanban mode, don't filter by cycle
+    #     pass
 
     Task = DocType("Task")
     ToDo = DocType("ToDo")
     Project = DocType("Project")
 
     ProjectUser = DocType("Project User")
+
+    ProjectPhase = DocType("Project Phase")
 
     query = (
         frappe.qb.from_(Task)
@@ -1269,14 +1277,19 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
             Task.modified,
             Task.project,
             Project.project_name,
+            Task.custom_phase,
+            ProjectPhase.title.as_("phase_name"),
             fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
         ).inner_join(Project).on(Project.name == Task.project)
+        .left_join(ProjectPhase).on(ProjectPhase.name == Task.custom_phase)
         .left_join(ToDo).on(
             (ToDo.reference_name == Task.name)
             & (ToDo.reference_type == "Task")
             & (ToDo.status == "Open")
         )
     )
+
+    print(f"check1", query)
 
     # Permission-based filtering
     user = frappe.session.user
@@ -1297,7 +1310,9 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
                 & (ProjectUser.user == user)
             )
 
-    query = query.limit(limit).offset(offset)
+    if limit:
+        query = query.limit(limit).offset(offset)
+
     query = query.groupby(Task.name).orderby(
         Task.modified, order=frappe.qb.desc)
     # Only return parent tasks (exclude subtasks)
@@ -1306,9 +1321,18 @@ def list_tasks(project, group_by=None, filters={}, limit=20, offset=0):
 
     # Apply filters
     for key, value in filters.items():
+        if key == "subject":
+            query = query.where(Task.subject.like(f"%{value}%"))
         if key == "project":
             query = query.where(Task.project == value)
+        elif key == "priority":
+            query = query.where(Task.priority == value)
+        elif key == "type":
+            query = query.where(Task.type == value)
+        elif key == "custom_phase":
+            query = query.where(Task.custom_phase == value)
         elif key == "custom_cycle":
+
             query = query.where(Task.custom_cycle == value)
         elif key == "status":
             query = query.where(Task.status == value)
@@ -1377,7 +1401,140 @@ def list_subtasks(parent_task):
 
 
 @frappe.whitelist()
-def backlog(project):
+def backlog_with_phases(project=None):
+    if not project:
+        return {"error": "Project parameter is required"}
+    isScrum = frappe.db.get_value("Project", project, "custom_execution_mode") == "Scrum"
+    filters = {"project": project}
+    Task = DocType("Task")
+    ToDo = DocType("ToDo")
+    active_phase = frappe.db.get_value(
+        "Project Phase",
+        {"project": project, "status": "Active"},
+        ["name", "title", "start_date", "end_date", "status"],
+        as_dict=True,
+    )
+    phases = frappe.qb.from_(DocType("Project Phase")).select(
+        DocType("Project Phase").name,
+        DocType("Project Phase").title,
+        DocType("Project Phase").start_date,
+        DocType("Project Phase").end_date,
+        DocType("Project Phase").status,
+        DocType("Project Phase").sequence,
+    ).where(DocType("Project Phase").project == project).orderby(DocType("Project Phase").sequence, order=frappe.qb.asc).run(as_dict=True)
+
+    # Calculate phase_progress for each phase
+    for phase in phases:
+        total_tasks = frappe.db.count(
+            "Task",
+            filters={"custom_phase": phase["name"], "project": project}
+        )
+        completed_tasks = frappe.db.count(
+            "Task",
+            filters={"custom_phase": phase["name"], "project": project, "status": "Completed"}
+        )
+        phase["phase_progress"] = round((completed_tasks / total_tasks * 100)) if total_tasks > 0 else 0
+
+    all_tasks = frappe.qb.from_(Task).select(
+        Task.name.as_("id"),
+        Task.name,
+        Task.subject,
+        Task.status,
+        Task.type,
+        Task.custom_cycle.as_("cycle"),
+        Task.priority,
+        Task.modified,
+        Task.project,
+        Task.custom_phase,
+        fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+    ).left_join(ToDo).on(
+        (ToDo.reference_name == Task.name)
+        & (ToDo.reference_type == "Task")
+        & (ToDo.status == "Open")
+    ).where(Task.project == project).groupby(Task.name).orderby(Task.modified, order=frappe.qb
+                                                                .desc).run(as_dict=True)
+
+    tasks_by_phases = {}
+    cycles_by_phase = {}
+    for phase in phases:
+        phase_tasks = frappe.qb.from_(Task).select(
+            Task.name.as_("id"),
+            Task.name,
+            Task.subject,
+            Task.status,
+            Task.type,
+            Task.custom_cycle.as_("cycle"),
+            Task.priority,
+            Task.modified,
+            Task.project,
+            Task.custom_phase,
+            fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+        ).left_join(ToDo).on(
+            (ToDo.reference_name == Task.name)
+            & (ToDo.reference_type == "Task")
+            & (ToDo.status == "Open")
+        ).where(
+            (Task.project == project) &
+            (Task.custom_phase == phase["name"])
+        ).groupby(Task.name).orderby(Task.modified, order=frappe.qb.desc).run(as_dict=True)
+        phase_cycles = frappe.qb.from_(DocType("Cycle")).select(
+            DocType("Cycle").name,
+            DocType("Cycle").cycle_name,
+            DocType("Cycle").start_date,
+            DocType("Cycle").end_date,
+            DocType("Cycle").status,
+        ).where(
+            (DocType("Cycle").project == project) &
+            (DocType("Cycle").phase == phase["name"])
+        ).orderby(DocType("Cycle").start_date, order=frappe.qb.asc).run(as_dict=True)
+        cycles_by_phase[phase["name"]] = phase_cycles
+        tasks_by_phases[phase["name"]] = {
+            "phase": phase,
+            "tasks": phase_tasks
+        }
+    
+    cycles = frappe.qb.from_(DocType("Cycle")).select(
+        DocType("Cycle").name,
+        DocType("Cycle").cycle_name,
+        DocType("Cycle").start_date,
+        DocType("Cycle").end_date,
+        DocType("Cycle").status,
+    ).where(DocType("Cycle").project == project).orderby(DocType("Cycle").start_date, order=frappe.qb.asc).run(as_dict=True)
+    active_cycle = next((c for c in cycles if c["status"] == "Active"), None)
+    
+    cycles_by_tasks = {}
+    for task in all_tasks:
+        cycle = task.get("cycle")
+        if cycle:
+            if cycle not in cycles_by_tasks:
+                cycles_by_tasks[cycle] = []
+            cycles_by_tasks[cycle].append(task)
+    return {
+        "is_scrum": isScrum,
+        "active_phase": active_phase,
+        "phases": phases,
+        "tasks_by_phases": tasks_by_phases,
+        "cycles_by_phase": cycles_by_phase,
+        "all_tasks": all_tasks,
+        "cycles": cycles,
+        "active_cycle_name" : active_cycle["cycle_name"] if active_cycle else None,
+        "cycles_by_tasks": cycles_by_tasks,
+        "backlog_by_phase": {
+            phase["name"]: [t for t in tasks_by_phases[phase["name"]]["tasks"] if not t["cycle"]]
+            for phase in phases
+        }
+
+    }
+    # open_tasks =
+
+
+@frappe.whitelist()
+def backlog(project=None):
+    user = frappe.session.user
+    user_roles = frappe.get_roles(user)
+    is_admin = "Administrator" in user_roles
+    is_project_manager = "Project Manager" in user_roles
+
     project_execution_mode = frappe.db.get_value(
         "Project", project, "custom_execution_mode") or "Kanban"
 
@@ -1395,6 +1552,7 @@ def backlog(project):
     Cycle = DocType("Cycle")
     Task = DocType("Task")
     ToDo = DocType("ToDo")
+    ProjectUser = DocType("Project User")
 
     if isScrum:
         cycles = (
@@ -1939,14 +2097,15 @@ def set_cycle_for_task(task_name, cycle_name):
         frappe.db.commit()
 
         return {
-                "success": True,
-                "message": f"Task '{task_doc.subject}' moved to '{cycle_name or 'Backlog'}'"
-            }
+            "success": True,
+            "message": f"Task '{task_doc.subject}' moved to '{cycle_name or 'Backlog'}'"
+        }
     except Exception as e:
         frappe.log_error(
             f"Error setting cycle for task: {e}", "Set Cycle Error")
         return {"success": False, "message": str(e)}
-    
+
+
 def set_task_status(task_name, new_status):
     try:
         task_doc = frappe.get_doc("Task", task_name)
@@ -1962,4 +2121,34 @@ def set_task_status(task_name, new_status):
     except Exception as e:
         frappe.log_error(
             f"Error setting task status: {e}", "Set Task Status Error")
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def create_phases_for_project(project_name, phase_template_name):
+    try:
+        project_doc = frappe.get_doc("Project", project_name)
+        if project_doc.custom_execution_mode != "Scrum":
+            return {"success": False, "message": f"Project '{project_doc.project_name}' is not in Scrum mode"}
+
+        template_doc = frappe.get_doc("Phase Template", phase_template_name)
+        if not template_doc:
+            return {"success": False, "message": f"Phase Template '{phase_template_name}' not found"}
+
+        for phase in template_doc.phases:
+            new_cycle = frappe.get_doc({
+                "doctype": "Cycle",
+                "cycle_name": phase.phase_name,
+                "project": project_name,
+                "start_date": phase.start_date,
+                "end_date": phase.end_date,
+                "status": "Planned"
+            })
+            new_cycle.insert()
+
+        frappe.db.commit()
+        return {"success": True, "message": f"Phases from template '{phase_template_name}' created for project '{project_doc.project_name}'"}
+    except Exception as e:
+        frappe.log_error(
+            f"Error creating phases from template: {e}", "Create Phases Error")
         return {"success": False, "message": str(e)}

@@ -6,23 +6,23 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "cycles"
+  "phases"
  ],
  "fields": [
   {
-   "fieldname": "cycles",
+   "fieldname": "phases",
    "fieldtype": "Table",
-   "label": "Cycles",
-   "options": "Cycles Template"
+   "label": "Phases",
+   "options": "Phase Template CT"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-27 18:51:53.024834",
+ "modified": "2026-03-12 00:50:56.674831",
  "modified_by": "Administrator",
  "module": "Infintrix Atlas",
- "name": "Cycle Template",
+ "name": "Phase Template",
  "naming_rule": "Set by user",
  "owner": "Administrator",
  "permissions": [

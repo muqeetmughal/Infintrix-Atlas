@@ -15,7 +15,9 @@ const TableView = () => {
       const assignee_update_mutation = useAssigneeUpdateMutation();
   
 
-  const tasks_list_query = useTasksQuery(project);
+  const tasks_list_query = useTasksQuery( project, null, {
+    // custom_phase : "4t41rj9c84"
+  });
 
   const updateMutation = useFrappeUpdateDoc();
  
@@ -74,14 +76,9 @@ const TableView = () => {
           ),
         },
         {
-          title: "Project",
-          dataIndex: "project_name",
-          key: "project_name",
-          render: (text) => (
-            <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
-              {text}
-            </div>
-          ),
+          title : "Phase",
+          dataIndex : "phase_name",
+          key : "custom_phase"
         },
         {
           title: "Priority",

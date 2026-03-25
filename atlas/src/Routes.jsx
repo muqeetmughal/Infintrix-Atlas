@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { lazy } from "react";
+import ClientPage from "./pages/client/ClientPage";
 
 const MainLayout = lazy(() => import("./layouts/MainLayout"));
 const NotFound = lazy(() => import("./components/NotFound"));
@@ -65,18 +66,18 @@ export const router = createBrowserRouter(
           element: <Tasks />,
         },
         {
-            path : "profile",
-            element : <Profile/>
+          path: "profile",
+          element: <Profile />,
         },
         {
-            path : "team",
-            element : <Team/>
+          path: "team",
+          element: <Team />,
         },
         {
-            path : "team/:id",
-            element : <TeamDetail/>
+          path: "team/:id",
+          element: <TeamDetail />,
         },
-     
+
         {
           path: "*",
           element: <NotFound />,
@@ -84,10 +85,20 @@ export const router = createBrowserRouter(
       ],
     },
     {
-        path: "login",
-        errorElement: <ErrorBoundary />,
-        element: <Login />,
-    }
+      path: "/client",
+      errorElement: <ErrorBoundary />,
+      children: [
+        {
+          path: "dashboard",
+          element: <ClientPage />,
+        },
+      ],
+    },
+    {
+      path: "login",
+      errorElement: <ErrorBoundary />,
+      element: <Login />,
+    },
   ],
   {
     basename: `/${import.meta.env.VITE_BASE_NAME}`,

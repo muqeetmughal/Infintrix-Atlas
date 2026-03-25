@@ -197,39 +197,39 @@ const ApprovalWorkflow = ({ actions }) => {
       {contextHolder}
       <Card
         title={
-          <span className="text-sm font-black uppercase tracking-widest text-orange-600">
+          <span className="text-sm font-black uppercase tracking-widest text-orange-600 dark:text-orange-400">
             Action Required From You
           </span>
         }
-        className="mb-8 border-t-4 border-t-orange-400 shadow-sm"
+        className="mb-8 border-t-4 border-t-orange-400 shadow-sm dark:bg-slate-800 dark:border-t-orange-500"
         extra={<Tag color="orange">{actions.length} Pending</Tag>}
       >
         <div className="space-y-4">
           {actions.map((action) => (
             <div
               key={action.id}
-              className="flex flex-col md:flex-row md:items-center justify-between p-5 bg-white border border-gray-100 rounded-2xl gap-4 hover:shadow-sm transition-shadow group"
+              className="flex flex-col md:flex-row md:items-center justify-between p-5 bg-white dark:bg-slate-700 border border-gray-100 dark:border-slate-600 rounded-2xl gap-4 hover:shadow-sm dark:hover:shadow-slate-900/50 transition-shadow group"
             >
               <div className="flex items-start gap-4">
                 <div
-                  className={`p-3 rounded-xl ${action.priority === "High" ? "bg-orange-50 text-orange-600" : "bg-blue-50 text-blue-600"}`}
+                  className={`p-3 rounded-xl ${action.priority === "High" ? "bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"}`}
                 >
                   <ExclamationCircleOutlined className="text-xl" />
                 </div>
                 <div>
-                  <div className="font-black text-gray-800 text-base">
+                  <div className="font-black text-gray-800 dark:text-gray-100 text-base">
                     {action.title}
                   </div>
                   <div className="flex gap-4 mt-1">
                     <Text
                       type="secondary"
-                      className="text-[10px] font-bold uppercase tracking-tight"
+                      className="text-[10px] font-bold uppercase tracking-tight dark:text-gray-400"
                     >
                       Type: {action.type}
                     </Text>
                     <Text
                       type="danger"
-                      className="text-[10px] font-bold flex items-center gap-1"
+                      className="text-[10px] font-bold flex items-center gap-1 dark:text-red-400"
                     >
                       <ClockCircleOutlined /> Due: {action.due_date}
                     </Text>
@@ -239,7 +239,7 @@ const ApprovalWorkflow = ({ actions }) => {
               <Button
                 type="primary"
                 size="large"
-                className="bg-gray-900 border-none hover:bg-indigo-600 rounded-xl font-bold px-8"
+                className="bg-gray-900 dark:bg-indigo-600 border-none hover:bg-indigo-600 dark:hover:bg-indigo-500 rounded-xl font-bold px-8"
                 onClick={() => handleAction(action)}
               >
                 {action.type === "Approval"

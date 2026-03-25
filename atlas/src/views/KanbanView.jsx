@@ -190,6 +190,7 @@ const Column = React.memo(({ id, title, tasks_list, createTask }) => {
   const [addNew, setAddNew] = useState(false);
   const qp = useQueryParams();
   const project = qp.get("project") || null;
+  const phase = qp.get("custom_phase") || null;
   const [createItem, setCreateItem] = useState({
     subject: "",
     status: id,
@@ -274,6 +275,7 @@ const Column = React.memo(({ id, title, tasks_list, createTask }) => {
                       ...createItem,
                       subject: e.target.value,
                       project: project,
+                      custom_phase : phase,
                     };
                     createTask(newTaskItem);
                     setCreateItem({ subject: "", status: id });
@@ -311,12 +313,7 @@ export default function KanbanView() {
   const createMutation = useFrappeCreateDoc();
 
   const updateTaskMutation = useFrappeUpdateDoc();
-  const updateSortOrderMutation = useFrappePostCall(
-    "infintrix_atlas.api.v1.update_task_sort_order",
-  );
-  const notifyStatusChange = useFrappePostCall(
-    "infintrix_atlas.api.v1.notify_status_changed",
-  );
+
   const project_query = useFrappeGetDoc("Project", project);
    const tasks_list_query = useTasksQuery(project);
   // const columns_query = useGetDoctypeField("Task", "status", "options");

@@ -60,7 +60,11 @@ export const useListQuery = (doctype, filters, fields, options) => {
 		...options,
 	});
 };
-export const useTasksQuery = (project, group_by = null, filters = {}) => {
+export const useTasksQuery = (project, group_by = null) => {
+
+	const qp = useQueryParams();
+	const {project:p, ...filters} = qp.all;
+
 	
 	const query = useFrappeGetCall(
 		"infintrix_atlas.api.v1.list_tasks",

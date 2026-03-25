@@ -25,6 +25,10 @@ import InsightsView from "../views/InsightsView/InsightsView";
 
 // import KanbanView2 from "../views/KanbanView2";
 import TestView from "../views/TestView";
+import ProjectDetail from "../views/ProjectDetail";
+import Phases from "../views/Phases";
+import Filters from "../components/Filters";
+import TaskFilters from "../components/TaskFilters";
 const Tasks = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
@@ -34,6 +38,7 @@ const Tasks = () => {
 
   const view = params.view || "table";
   const project = qp.get("project") || null;
+  const custom_phase = qp.get("custom_phase") || null;
   const statusFilter = qp.getArray("status");
   const priorityFilter = qp.getArray("priority");
   const { mutate } = useSWRConfig();
@@ -62,7 +67,7 @@ const Tasks = () => {
     limit_page_length: 100,
   });
 
-  const cycles_template_options_query = useFrappeGetDocList("Cycle Template", {
+  const cycles_template_options_query = useFrappeGetDocList("Phase Template", {
     fields: ["name as value", "name as label"],
     limit_page_length: 100,
   });
@@ -71,10 +76,12 @@ const Tasks = () => {
 
   const tabs = [
     // { id: "ai-architect", label: "AI Architect" },
+    { id: "dashboard", label: "Dashboard" },
     { id: "insights", label: "Insights" },
+    
     { id: "list", label: "List" },
     { id: "backlog", label: "Backlog" },
-    { id: "tree", label: "Tree" },
+    // { id: "tree", label: "Tree" },
     { id: "kanban", label: "Kanban" },
     // { id: "kanban2", label: "Kanban 2" },
   ];
@@ -196,7 +203,22 @@ const Tasks = () => {
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            
+            <Button
+                  onClick={() => {
+                    createMutation
+                      .createDoc("Project Phase", {
+                        project: project,
+                      })
+                      .then((response) => {
+                        console.log("Create Phase response:", response);
+                        qp.set("custom_phase", response?.name);
+                        mutate(["backlog_with_phases", project]);
+                      });
+                  }}
+                >
+                  Create Phase
+                </Button>
+
             {project_data.custom_execution_mode === "Scrum" && (
               <>
                 <Button
@@ -204,15 +226,16 @@ const Tasks = () => {
                     createMutation
                       .createDoc("Cycle", {
                         project: project,
+                        phase : custom_phase
                       })
                       .then(() => {
-                        mutate(["cycles", project]);
+                        mutate(["backlog_with_phases", project]);
                       });
                   }}
                 >
                   Create Cycle
                 </Button>
-
+                
                 <Select
                   placeholder="Create Cycle From Template"
                   style={{ width: 200 }}
@@ -238,15 +261,8 @@ const Tasks = () => {
                 )}
               </>
             )}
-            <Button
-              className="relative p-2 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
-              onClick={() => setShowFilters((prev) => !prev)}
-            >
-              <Filter size={16} />
-              {hasActiveFilters && (
-                <span className="absolute -top-0.5 -right-0.5 inline-block w-2 h-2 rounded-full bg-green-500 ring-2 ring-white dark:ring-slate-800" />
-              )}
-            </Button>
+         
+            <TaskFilters/>
 
             <Dropdown
               trigger={"click"}
@@ -381,9 +397,8 @@ const Tasks = () => {
           {/* {view === "ai-architect" && <AIArchitect />} */}
           {view === "list" && <TableView />}
           {view === "kanban" && <KanbanView />}
-          {view === "kanban2" && <KanbanView2 />}
           {view === "backlog" && <BacklogView />}
-          {view === "tree" && <TreeView />}
+          {/* {view === "tree" && <TreeView />} */}
           {view === "insights" && <InsightsView />}
            {view === "dashboard" && <ProjectDetail />}
         </div>
@@ -393,7 +408,7 @@ const Tasks = () => {
       <ManageProjectPeople />
       <TaskDetail />
 
-      <ProjectHealth project_id={project} collapsible={true} />
+      {/* <ProjectHealth project_id={project} collapsible={true} /> */}
     </>
   );
 };

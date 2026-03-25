@@ -37,6 +37,9 @@ import {
   Delete,
   Trash,
   MenuIcon,
+  ArrowUpRight,
+  X,
+  TrendingUp,
 } from "lucide-react";
 import {
   useFrappeCreateDoc,
@@ -50,13 +53,14 @@ import {
 } from "frappe-react-sdk";
 import dayjs from "dayjs";
 import { useParams, useSearchParams } from "react-router-dom";
-import { Button, Dropdown, Input, message, Space, Spin } from "antd";
+import { Button, Dropdown, Input, message, Select, Space, Spin } from "antd";
 import BacklogHealth from "../../components/ProjectHealth";
 import FormRender from "../../components/form/FormRender";
 import { useQueryParams } from "../../hooks/useQueryParams";
 import { useProjectDetailsQuery, useTasksQuery } from "../../hooks/query";
 import WorkItemTypeWidget from "../../components/widgets/WorkItemTypeWidget";
 import StatusWidget from "../../components/widgets/StatusWidget";
+import PhasesHeader from "./PhasesHeader";
 // --- Constants ---
 
 const TASK_STATUS_COLORS = {
@@ -176,6 +180,7 @@ const DroppableZone = ({ id, children, className, isOverColor }) => {
 
 const InlineTaskCreator = ({
   project_id,
+  phase_id,
   cycle = null,
   onCreated,
   onCancel,
@@ -198,6 +203,7 @@ const InlineTaskCreator = ({
       const doc = await createMutation.createDoc("Task", {
         subject: value,
         project: project_id,
+        custom_phase: phase_id,
         custom_cycle: cycle ? cycle : undefined,
         status: "Open",
       });
@@ -234,6 +240,8 @@ const BacklogView = () => {
   // const [tasks, setTasks] = useState(initialTasks);
   const params = useParams();
   const qp = useQueryParams();
+  const custom_phase = qp.get("custom_phase") || null;
+  // const [selectedPhase, setSelectedPhase] = useState(null);
   const [showBacklogCreator, setShowBacklogCreator] = useState(false);
   const [setCycleModal] = useState(null);
   const { mutate } = useSWRConfig();
@@ -254,26 +262,26 @@ const BacklogView = () => {
   const [isBacklogExpanded, setIsBacklogExpanded] = useState(true);
   const project_query = useProjectDetailsQuery(project_id);
 
-  const cycles_query2 = useFrappeGetCall(
-    "infintrix_atlas.api.v1.backlog",
+  const cycles_query3 = useFrappeGetCall(
+    "infintrix_atlas.api.v1.backlog_with_phases",
     {
       project: project_id,
     },
-    project_id ? ["cycles", project_id] : null,
+    project_id ? ["backlog_with_phases", project_id] : null,
   );
 
   const project = project_query.data || {};
   const hasActiveCycle = useMemo(() => {
-    return cycles_query2.data?.message?.active_cycle_name ? true : false;
-  }, [cycles_query2.data]);
+    return cycles_query3.data?.message?.active_cycle_name ? true : false;
+  }, [cycles_query3.data]);
 
   const active_cycle_name = useMemo(
-    () => cycles_query2.data?.message?.active_cycle_name || null,
-    [cycles_query2.data],
+    () => cycles_query3.data?.message?.active_cycle_name || null,
+    [cycles_query3.data],
   );
   const isScrum = useMemo(() => {
-    return cycles_query2.data?.message?.is_scrum || false;
-  }, [cycles_query2.data]);
+    return cycles_query3.data?.message?.is_scrum || false;
+  }, [cycles_query3.data]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -282,20 +290,40 @@ const BacklogView = () => {
       },
     }),
   );
-  const backlogTasks = useMemo(() => {
-    return cycles_query2?.data?.message?.backlog || [];
-  }, [cycles_query2.data]);
+  // const backlogTasks = useMemo(() => {
+  //   return cycles_query3?.data?.message?.backlog || [];
+  // }, [cycles_query3.data]);
+  const activePhase = useMemo(() => {
+    return cycles_query3?.data?.message?.active_phase || null;
+  }, [cycles_query3.data]);
+
   const all_tasks = useMemo(() => {
-    return cycles_query2?.data?.message?.all_tasks || [];
-  }, [cycles_query2.data]);
+    return cycles_query3?.data?.message?.all_tasks || [];
+  }, [cycles_query3.data]);
   const cycles = useMemo(() => {
-    return cycles_query2?.data?.message?.cycles || [];
-  }, [cycles_query2.data]);
+    return (
+      cycles_query3?.data?.message?.cycles_by_phase[
+        custom_phase || activePhase?.name
+      ] || []
+    );
+  }, [cycles_query3.data, custom_phase, activePhase]);
+
+  const phases = useMemo(() => {
+    return cycles_query3?.data?.message?.phases || [];
+  }, [cycles_query3.data, custom_phase, activePhase]);
 
   const handleDragStart = (event) => {
     console.log("Drag started:", event);
     setActiveId(event.active.id);
   };
+
+  const backlogTasks = useMemo(() => {
+    return (
+      cycles_query3?.data?.message?.backlog_by_phase[
+        custom_phase || activePhase?.name
+      ] || []
+    );
+  }, [cycles_query3.data, custom_phase, activePhase]);
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -325,7 +353,7 @@ const BacklogView = () => {
           console.log("Set cycle response:", response);
           if (response?.message?.success) {
             message.success(response?.message?.message);
-            cycles_query2.mutate();
+            cycles_query3.mutate();
             project_query.mutate();
           } else {
             message.error(response?.message?.message);
@@ -334,7 +362,7 @@ const BacklogView = () => {
     },
     [
       updateMutation,
-      cycles_query2,
+      cycles_query3,
       project_query,
       isScrum,
       hasActiveCycle,
@@ -444,7 +472,7 @@ const BacklogView = () => {
                   danger
                   onClick={() => {
                     deleteMutation.deleteDoc("Cycle", cycle.name).then(() => {
-                      cycles_query2.mutate();
+                      cycles_query3.mutate();
                     });
                   }}
                 >
@@ -527,124 +555,252 @@ const BacklogView = () => {
     () => all_tasks.find((t) => t.id === activeId),
     [all_tasks, activeId],
   );
+  const selectedPhase = useMemo(() => {
+    return phases.find((p) => p.name === custom_phase) || activePhase;
+  }, [phases, custom_phase, activePhase]);
 
-  if (cycles_query2.isLoading) return <div>Loading...</div>;
+  if (cycles_query3.isLoading) return <div>Loading...</div>;
 
   return (
     <>
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="max-w-8xl mx-auto space-y-8 animate-in fade-in duration-500 pb-32">
-          {/* Main Viewport */}
-          <div
-            className={`grid gap-8 ${
-              isScrum ? "grid-cols-1 lg:grid-cols-1" : "max-w-2xl mx-auto"
-            }`}
-          >
-            {isScrum && (
-              <div className="lg:col-span-8 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
-                {cycles.map((cycle) => {
-                  return <Cycle key={cycle.name} cycle={cycle} />;
-                })}
-              </div>
-            )}
+      <PhasesHeader phases={phases} />
 
-            <div className="lg:col-span-8 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
-              <DroppableZone
-                // key={cycle.name}
-                id="Open"
-                isOverColor="bg-indigo-50 dark:bg-indigo-900/20 ring-2 ring-indigo-400 dark:ring-indigo-500"
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 shadow-sm group hover:border-indigo-200 dark:hover:border-indigo-600 transition-all"
-              >
-                <div className="flex items-center justify-between cursor-pointer">
-                  <div className="flex items-center gap-2 flex-1 space-y-1">
-                    <div className="flex items-center gap-4">
-                      <ChevronRight
-                        onClick={() => setIsBacklogExpanded(!isBacklogExpanded)}
-                        size={20}
-                        className={`text-slate-400 dark:text-slate-500 transition-transform ${
-                          isBacklogExpanded ? "rotate-90" : ""
-                        }`}
-                      />
-                    </div>
-                    <div
-                      className={`p-2 rounded-xl bg-indigo-600 dark:bg-indigo-700 text-white shadow-lg`}
+      {phases.length === 0 ? null : (
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex flex-col lg:flex-row gap-6 p-4 sm:p-6 h-full">
+            {/* Left Panel - Phase Details */}
+            <div className="w-full lg:w-80 shrink-0">
+              <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40">
+                  <div className="min-w-0">
+                    <Badge
+                      variant={
+                        selectedPhase?.status === "Completed"
+                          ? "success"
+                          : selectedPhase?.status === "Active"
+                            ? "info"
+                            : "neutral"
+                      }
                     >
-                      <Package size={20} />
-                    </div>
-                    <div className="flex items-center">
-                      <h3 className="font-semibold text-slate-900 dark:text-slate-100 leading-none">
-                        Backlog{" "}
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
-                          {/* {cycle.start_date} — {cycle.end_date} */}
-                        </span>
-                        <small className="text-xs font-light">
-                          ({backlogTasks.length} Work Items)
-                        </small>
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge
-                          className={
-                            "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800"
-                          }
-                        >
-                          Backlog
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <ChevronRight
-                      size={20}
-                      className={`text-slate-400 dark:text-slate-500 transition-transform ${
-                        isBacklogExpanded ? "rotate-90" : ""
-                      }`}
-                    />
+                      Phase {selectedPhase?.sequence}
+                    </Badge>
+                    <h3 className="text-lg sm:text-xl font-black tracking-tight mt-2 truncate">
+                      {selectedPhase?.title}
+                    </h3>
                   </div>
                 </div>
 
-                {isBacklogExpanded && (
-                  <div className="grid grid-cols-1 md:grid-cols-1 gap-4 animate-in fade-in duration-200">
-                    {showBacklogCreator ? (
-                      <InlineTaskCreator
-                        project_id={project_id}
-                        onCreated={() => {
-                          setShowBacklogCreator(false);
-                          cycles_query2.mutate();
-                        }}
-                        onCancel={() => setShowBacklogCreator(false)}
-                      />
-                    ) : (
-                      <button
-                        onClick={() => setShowBacklogCreator(true)}
-                        className="border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 hover:border-indigo-100 dark:hover:border-indigo-800 transition-all"
-                      >
-                        <Plus size={16} />
-                        <span className="text-[10px] font-black uppercase">
-                          Plan Task
-                        </span>
-                      </button>
-                    )}
+                <div className="p-4 sm:p-6 space-y-4">
+                  <Space size={8} className="w-full">
+                    <Button
+                      type="text"
+                      size="small"
+                      onClick={() => {
+                        window.open(
+                          `/app/project-phase/${selectedPhase.name}`,
+                          "_blank",
+                        );
+                      }}
+                    >
+                      <ArrowUpRight size={16} />
+                    </Button>
+                    <Button
+                      disabled={
+                        deleteMutation.loading ||
+                        backlogTasks.length > 0 ||
+                        cycles.length > 0
+                      }
+                      type="text"
+                      size="small"
+                      danger
+                      icon={<Trash size={16} />}
+                      onClick={() => {
+                        // const currentPhase = selectedPhase;
+                        const previousPhase = phases.find(
+                          (p) =>
+                            phases.indexOf(p) ===
+                            phases.indexOf(selectedPhase) - 1,
+                        );
+                        console.log(" previousPhase:", previousPhase);
 
-                    {backlogTasks.map((t) => (
-                      <TaskCard key={t.id} task={t} />
+                        deleteMutation
+                          .deleteDoc("Project Phase", selectedPhase.name)
+                          .then(() => {
+                            cycles_query3.mutate().then(() => {
+                              if (previousPhase) {
+                                qp.set("custom_phase", previousPhase.name);
+                              }
+                            });
+                          });
+                      }}
+                    >
+                      Delete
+                    </Button>
+                    <Select
+                      disabled={backlogTasks.length > 0 || cycles.length > 0}
+                      value={selectedPhase?.status || "Planned"}
+                      variant="borderless"
+                      size="small"
+                      popupMatchSelectWidth={false}
+                      style={{ width: "100%" }}
+                      options={[
+                        { value: "Planned", label: "Planned" },
+                        { value: "Active", label: "Active" },
+                        { value: "Completed", label: "Completed" },
+                      ]}
+                      onChange={(value) => {
+                        updateMutation
+                          .updateDoc("Project Phase", selectedPhase.name, {
+                            status: value,
+                          })
+                          .then(() => {
+                            cycles_query3.mutate();
+                          });
+                      }}
+                    />
+                  </Space>
+
+                  {/* Phase Progress */}
+                  <div className="bg-slate-900 dark:bg-slate-800 rounded-2xl p-4 text-white relative overflow-hidden">
+                    <div className="relative">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2">
+                        Phase Progress
+                      </div>
+                      <div className="flex items-end justify-between mb-3 gap-2">
+                        <span className="text-3xl sm:text-4xl font-black tracking-tighter">
+                          {0}%
+                        </span>
+                        <span className="text-xs font-bold text-slate-400 mb-1">
+                          {0} Tasks
+                        </span>
+                      </div>
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-indigo-500 transition-all duration-1000"
+                          style={{ width: `${0}%` }}
+                        />
+                      </div>
+                    </div>
+                    <TrendingUp
+                      className="absolute -right-2 -bottom-2 text-white/5"
+                      size={80}
+                    />
+                  </div>
+
+                  {/* Dates Grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">
+                        Start Date
+                      </div>
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                        {selectedPhase?.start_date || "-"}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">
+                        End Date
+                      </div>
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                        {selectedPhase?.end_date || "-"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button className="w-full py-2 bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider hover:bg-indigo-600 transition-all">
+                    Phase Report
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Panel - Tasks */}
+            <div className="flex-1 min-w-0">
+              <div className="grid gap-4 overflow-y-auto pr-2 custom-scrollbar max-h-[calc(100vh-200px)]">
+                {/* Cycles */}
+                {isScrum && (
+                  <div className="space-y-3">
+                    {cycles.map((cycle) => (
+                      <Cycle key={cycle.name} cycle={cycle} />
                     ))}
                   </div>
                 )}
-              </DroppableZone>
+
+                {/* Backlog */}
+                <DroppableZone
+                  id="Open"
+                  isOverColor="bg-indigo-50 dark:bg-indigo-900/20 ring-2 ring-indigo-400 dark:ring-indigo-500"
+                  className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-600 transition-all"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3 flex-1">
+                      <ChevronRight
+                        onClick={() => setIsBacklogExpanded(!isBacklogExpanded)}
+                        size={18}
+                        className={`text-slate-400 dark:text-slate-500 transition-transform cursor-pointer ${
+                          isBacklogExpanded ? "rotate-90" : ""
+                        }`}
+                      />
+                      <div className="p-2 rounded-lg bg-indigo-600 dark:bg-indigo-700 text-white">
+                        <Package size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate">
+                          Backlog
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {backlogTasks.length} Work Items
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800">
+                      Backlog
+                    </Badge>
+                  </div>
+
+                  {isBacklogExpanded && (
+                    <div className="space-y-3 animate-in fade-in duration-200">
+                      {showBacklogCreator ? (
+                        <InlineTaskCreator
+                          project_id={project_id}
+                          phase_id={custom_phase}
+                          onCreated={() => {
+                            setShowBacklogCreator(false);
+                            cycles_query3.mutate();
+                          }}
+                          onCancel={() => setShowBacklogCreator(false)}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setShowBacklogCreator(true)}
+                          className="w-full border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-lg p-3 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 hover:border-indigo-300 transition-all"
+                        >
+                          <Plus size={14} />
+                          <span className="text-[9px] font-bold uppercase">
+                            Add Task
+                          </span>
+                        </button>
+                      )}
+
+                      {backlogTasks.map((t) => (
+                        <TaskCard key={t.id} task={t} />
+                      ))}
+                    </div>
+                  )}
+                </DroppableZone>
+              </div>
+
+              <DragOverlay>
+                {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+              </DragOverlay>
             </div>
           </div>
-
-          <DragOverlay>
-            {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
-          </DragOverlay>
-
-          {/* Footer Stats */}
-        </div>
-      </DndContext>
+        </DndContext>
+      )}
     </>
   );
 };

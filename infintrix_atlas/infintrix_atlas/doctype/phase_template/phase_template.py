@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class CyclesTemplate(Document):
+class PhaseTemplate(Document):
 	pass

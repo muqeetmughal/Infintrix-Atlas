@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class CycleTemplate(Document):
+class ChangeRequest(Document):
 	pass

@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestCycleTemplate(FrappeTestCase):
+class TestScopeSnapshot(FrappeTestCase):
 	pass

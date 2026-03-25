@@ -1,17 +1,20 @@
 
-from annotated_types import doc
 import frappe
 from erpnext.projects.doctype.project.project import Project
 from frappe.utils import add_days, flt, get_datetime, get_link_to_form, get_time, get_url, nowtime, today
 from frappe import _
-
-class ProjectOverride(Project):
+from hrms.overrides.employee_project import EmployeeProject
+print("ATLAS PROJECT CONTROLLER LOADED")
+class AtlasProject(EmployeeProject):
 	def validate(self):
 
 		print("Custom Project Validate Logic Here")
 		if not self.is_new():
 			self.copy_from_template()  # nosemgrep
-		# self.send_welcome_email()
+		email_setup = frappe.db.get_all("Email Account", filters={"enable_outgoing": 1}, limit=1)
+		if len(email_setup) > 0:
+			self.send_welcome_email()
+		
 		self.update_costing()
 		self.update_percent_complete()
 		self.validate_from_to_dates("expected_start_date", "expected_end_date")
@@ -19,7 +22,20 @@ class ProjectOverride(Project):
   
   
   
-
+	  
+  
+	def create_default_phase(self):
+		phase = frappe.new_doc("Project Phase")
+		phase.project = self.name
+		phase.phase_name = "Execution"
+		phase.sequence = 1
+		phase.status = "Active"
+		phase.insert()
+	def after_insert(self):
+		super().after_insert()
+		print("Creating default phase for new project...")
+		self.create_default_phase()
+  
 	def send_welcome_email(self):
 		# label = f"{self.project_name} ({self.name})"
 		# url = get_link_to_form(self.doctype, self.name, label)
