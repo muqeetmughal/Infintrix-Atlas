@@ -12,7 +12,6 @@ export default function FormRender({
   full_form = true,
   defaultValues = {},
 }) {
-  // console.log(doctype, open, full_form, defaultValues);
   const form = useForm({ defaultValues });
   const {
     handleSubmit,
@@ -28,13 +27,11 @@ export default function FormRender({
   if (query.isLoading) return <div>Loading...</div>;
 
   const schema = query.data || {};
-    // console.log("SCHEMA:", schema);
   let fields = schema?.fields || [];
 
 
   const onSubmit = (data) => {
     mutation.createDoc(doctype, data).then((res) => {
-      console.log("CREATED:", res);
       onClose();
     });
   };

@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   X,
   Share2,
@@ -17,6 +23,7 @@ import {
   Trash,
   Menu,
   ExternalLink,
+  MessageCircle,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -28,183 +35,101 @@ import {
   useFrappeCreateDoc,
 } from "frappe-react-sdk";
 import { useQueryClient } from "@tanstack/react-query";
-import { Modal as AntdModal, Typography } from "antd";
+import { Modal as AntdModal, Drawer, Typography } from "antd";
 import dayjs from "dayjs";
 import {
-  AssigneeSelectWidget,
+  UsersSelectWidget,
   ShowUserWidget,
 } from "../components/widgets/AssigneeSelectWidget";
-import TextWidget from "../components/widgets/TextWidget";
 import RichTextWidget from "../components/widgets/RichTextWidget/RichTextWidget";
 import { TagsSelectWidget } from "../components/widgets/TagsSelectWidget";
 import StatusWidget from "../components/widgets/StatusWidget";
 import { Button, Dropdown, Space, Form, Input, Select } from "antd";
 import WorkItemTypeWidget from "../components/widgets/WorkItemTypeWidget";
-import CommentSection from "../components/CommentSection";
-import HistorySection from "../components/HistorySection";
 import SubTasks from "../components/SubTasks";
-import { useAssigneeOfTask } from "../hooks/query";
+import {
+  useAssigneeOfTask,
+  useAssigneeUpdateMutation,
+  useTaskDetailsQuery,
+} from "../hooks/query";
 import { useGetDoctypeField } from "../hooks/doctype";
 import SubjectWidget from "../components/widgets/SubjectWidget";
 import FileAttachment from "./FileAttachment";
 import PriorityWidget from "../components/widgets/PriorityWidget";
 import ActivityTimeline from "../components/ActivityTimeline";
-
-const TaskDetail = () => {
-  const [isResizing, setIsResizing] = useState(false);
-  const [fullScreen, setFullScreen] = useState(false);
+import TaskCopilot from "../components/TaskCopilot";
+import TaskSkeleton from "./TaskSkeleton";
+import WatchersWidget from "../components/WatchersWidget";
+import RelativeTime from "../components/RelativeTime";
+const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
   const containerRef = useRef(null);
-  const [position] = useState("modal");
-  const [activeTab, setActiveTab] = useState("comments");
-  const [issueModalOpen, setIssueModalOpen] = useState(false);
-  const [createIssueModalOpen, setCreateIssueModalOpen] = useState(false);
-  const [hasSeenIssueHighlight, setHasSeenIssueHighlight] = useState(false);
-  const [issueForm] = Form.useForm();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [isResizing, setIsResizing] = useState(false);
   const updateMutation = useFrappeUpdateDoc();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const assignee_update_mutation = useAssigneeUpdateMutation();
   const { deleteDoc } = useFrappeDeleteDoc();
-  const createIssueMutation = useFrappeCreateDoc();
-  const queryClient = useQueryClient();
+
   const selectedTask = searchParams.get("selected_task") || null;
-
-  const task_details_query = useFrappeGetDoc("Task", selectedTask || "");
-
+  const task_details_query = useTaskDetailsQuery(selectedTask);
   const assignee_of_task_query = useAssigneeOfTask(selectedTask);
-  const assignee_mutation = useFrappePostCall(
-    "infintrix_atlas.api.v1.switch_assignee_of_task",
+  const task_assignee = useMemo(
+    () => assignee_of_task_query?.data?.message || null,
+    [assignee_of_task_query?.data?.message],
   );
 
-  const notifyStatusChange = useFrappePostCall(
-    "infintrix_atlas.api.v1.notify_status_changed",
-  );
+  const labels_of_task = useMemo(() => {
+    return ((task?._user_tags || "").split(",") || []).filter(
+      (tag) => tag.trim() !== "",
+    );
+  }, [task?._user_tags]);
 
-  const assignees_of_task = (assignee_of_task_query?.data || []).map((todo) => {
-    return todo.allocated_to;
-  });
-
-  const task = task_details_query.data || {};
-  console.log("task details:", task)
-  const issueName = task.issue || null;
-  const issue_query = useFrappeGetDoc(
-    "Issue",
-    issueName,
-    issueName ? ["Issue", issueName] : null,
-  );
-  const issueDoc = issue_query.data || {};
-
-  // Issue field options
-  const issueStatusField = useGetDoctypeField("Issue", "status", "options");
-  const issueStatusOptions = issueStatusField.data?.options || [];
-
-  const issuePriorityQuery = useFrappeGetDocList("Issue Priority", {
-    fields: ["name"],
-    limit_page_length: 1000,
-  });
-  const issueTypeQuery = useFrappeGetDocList("Issue Type", {
-    fields: ["name"],
-    limit_page_length: 1000,
-  });
-
-  // Reset the linked-issue highlight whenever the selected task or its issue changes
-  useEffect(() => {
-    if (task.issue) {
-      setHasSeenIssueHighlight(false);
-    }
-  }, [task.name, task.issue]);
-
-  const handleCreateIssue = (values) => {
-    if (!task.name) return;
-
-    createIssueMutation
-      .createDoc("Issue", {
-        subject: values.subject,
-        description: values.description,
-        status: values.status,
-        priority: values.priority,
-        issue_type: values.issue_type,
-        task: task.name,
-      })
-      .then((doc) => {
-        return updateMutation
-          .updateDoc("Task", task.name, { issue: doc.name })
-          .then(() => {
-            issueForm.resetFields();
-            setCreateIssueModalOpen(false);
-            task_details_query.mutate();
-            issue_query.mutate();
-          });
-      })
-      .catch((err) => {
-        console.error("Failed to create issue", err);
-      });
-  };
-
-  const labels_of_task = ((task?._user_tags || "").split(",") || []).filter(
-    (tag) => tag.trim() !== "",
-  );
-
-  const onClose = () => {
+  const onClose = useCallback(() => {
     searchParams.delete("selected_task");
     setSearchParams(searchParams);
-  };
+  }, [searchParams, setSearchParams]);
 
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
+  // const resize = useCallback(
+  //   (e) => {
+  //     if (isResizing && containerRef.current) {
+  //       const containerRect = containerRef.current.getBoundingClientRect();
+  //       const newWidth = e.clientX - containerRect.left;
 
-  const startResizing = useCallback((e) => {
-    setIsResizing(true);
-    e.preventDefault();
-  }, []);
+  //       if (newWidth >= 300 && newWidth <= 900) {
+  //       }
+  //     }
+  //   },
+  //   [isResizing],
+  // );
 
-  const stopResizing = useCallback(() => {
-    setIsResizing(false);
-  }, []);
+  // const startResizing = useCallback((e) => {
+  //   setIsResizing(true);
+  //   e.preventDefault();
+  // }, []);
 
-  const resize = useCallback(
-    (e) => {
-      if (isResizing && containerRef.current) {
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const newWidth = e.clientX - containerRect.left;
+  // const stopResizing = useCallback(() => {
+  //   setIsResizing(false);
+  // }, []);
 
-        if (newWidth >= 300 && newWidth <= 900) {
-        }
-      }
-    },
-    [isResizing],
-  );
+  // useEffect(() => {
+  //   if (isResizing) {
+  //     window.addEventListener("mousemove", resize);
+  //     window.addEventListener("mouseup", stopResizing);
+  //     document.body.style.cursor = "col-resize";
+  //     document.body.style.userSelect = "none";
+  //   } else {
+  //     window.removeEventListener("mousemove", resize);
+  //     window.removeEventListener("mouseup", stopResizing);
+  //     document.body.style.cursor = "default";
+  //     document.body.style.userSelect = "auto";
+  //   }
 
-  useEffect(() => {
-    if (isResizing) {
-      window.addEventListener("mousemove", resize);
-      window.addEventListener("mouseup", stopResizing);
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-    } else {
-      window.removeEventListener("mousemove", resize);
-      window.removeEventListener("mouseup", stopResizing);
-      document.body.style.cursor = "default";
-      document.body.style.userSelect = "auto";
-    }
+  //   return () => {
+  //     window.removeEventListener("mousemove", resize);
+  //     window.removeEventListener("mouseup", stopResizing);
+  //   };
+  // }, [isResizing, resize, stopResizing]);
 
-    return () => {
-      window.removeEventListener("mousemove", resize);
-      window.removeEventListener("mouseup", stopResizing);
-    };
-  }, [isResizing, resize, stopResizing]);
-
-  if (!selectedTask) return null;
-
-  const tabs = [
-    { id: "comments", label: "Comments" },
-    { id: "history", label: "History" },
-  ];
-
-  const TaskBody = (
+  return (
     <div className="task-body overflow-hidden flex flex-col h-full bg-white dark:bg-slate-900">
       {/* Navigation Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -235,50 +160,55 @@ const TaskDetail = () => {
           >
             <Lock size={18} />
           </button>
-          <div className="flex items-center bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-1 rounded border border-blue-100 dark:border-blue-800 text-xs font-medium cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
-            <Eye size={14} className="mr-1.5" /> 1
-          </div>
+          <WatchersWidget doctype="Task" docname={task.name} />
           <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
             <Share2 size={18} />
           </button>
+          <Button
+            onClick={() => {
+              searchParams.set("copilot", "true");
+              setSearchParams(searchParams);
+            }}
+            // className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+          >
+            <MessageCircle size={16} />
+          </Button>
           <Dropdown
             trigger={"click"}
             menu={{
-              onClick: ({ key }) => {
-                if (key === "delete_task") {
-                  AntdModal.confirm({
-                    title: "Delete task",
-                    content:
-                      "Are you sure you want to delete this task? This action cannot be undone.",
-                    okText: "Delete",
-                    okType: "danger",
-                    cancelText: "Cancel",
-                    onOk: async () => {
-                      try {
-                        if (!task.name) return;
-                        await deleteDoc("Task", task.name);
-                        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                        onClose();
-                      } catch (err) {
-                        console.error("Failed to delete task", err);
-                      }
-                    },
-                  });
-                } else if (key === "open_in_desk") {
-                  window.open(`/app/task/${task.name}`, "_blank");
-                }
-              },
               items: [
                 {
                   key: "open_in_desk",
                   label: "Open in Desk",
                   icon: <ExternalLink size={14} />,
+                  onClick: () => {
+                    window.open(`/app/task/${task.name}`, "_blank");
+                  },
                 },
                 {
                   key: "delete_task",
                   label: "Delete Task",
                   danger: true,
                   icon: <Trash size={14} />,
+                  onClick: () => {
+                    AntdModal.confirm({
+                      title: "Delete task",
+                      content:
+                        "Are you sure you want to delete this task? This action cannot be undone.",
+                      okText: "Delete",
+                      okType: "danger",
+                      cancelText: "Cancel",
+                      onOk: async () => {
+                        try {
+                          if (!task.name) return;
+                          await deleteDoc("Task", task.name);
+                          onClose();
+                        } catch (err) {
+                          console.error("Failed to delete task", err);
+                        }
+                      },
+                    });
+                  },
                 },
               ],
             }}
@@ -347,6 +277,7 @@ const TaskDetail = () => {
               </h3>
               <div className="group relative">
                 <RichTextWidget
+                  loading={updateMutation.loading}
                   value={task.description}
                   onSubmit={(newValue) => {
                     updateMutation
@@ -375,14 +306,13 @@ const TaskDetail = () => {
             {/* Activity Section */}
             <section className="mt-12">
               <ActivityTimeline task_id={task.name} />
-              
             </section>
           </div>
         </main>
 
         {/* Resizer Handle */}
         <div
-          onMouseDown={startResizing}
+          // onMouseDown={startResizing}
           className={`
             w-1.5 cursor-col-resize transition-all duration-200 z-10 relative shrink-0
             ${isResizing ? "bg-blue-500 dark:bg-blue-400 w-2" : "bg-slate-200 dark:bg-slate-700 hover:bg-blue-400 dark:hover:bg-blue-500 hover:w-2"}
@@ -413,20 +343,6 @@ const TaskDetail = () => {
                     .then(() => {
                       task_details_query.mutate();
                       // Notify assigned users about status change
-                      if (oldStatus !== newStatus) {
-                        notifyStatusChange
-                          .call({
-                            task_name: task.name,
-                            old_status: oldStatus,
-                            new_status: newStatus,
-                          })
-                          .catch((err) => {
-                            console.error(
-                              "Failed to send status change notification:",
-                              err,
-                            );
-                          });
-                      }
                     });
                 }}
               />
@@ -460,17 +376,28 @@ const TaskDetail = () => {
             </div>
 
             {/* Attributes Grid */}
-            <div className="grid grid-cols-[100px_1fr] gap-y-5 text-sm">
+            <div className="grid grid-cols-[100px_1fr] gap-y-2 text-sm">
               <>
                 <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
                   Assignee
                 </div>
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
-                  <AssigneeSelectWidget
-                    single={true}
+                  <UsersSelectWidget
                     show_label={true}
-                    value={assignees_of_task || []}
-                    task={selectedTask}
+                    mode={"assignee"}
+                    value={task_assignee}
+                    onSelect={(value) => {
+                      //  alert(value);
+                      assignee_update_mutation
+                        .call({
+                          task_name: task.name,
+                          new_assignee: value,
+                        })
+                        .then(() => {
+                          task_details_query.mutate();
+                          assignee_of_task_query.mutate();
+                        });
+                    }}
                   />
                 </div>
               </>
@@ -505,54 +432,12 @@ const TaskDetail = () => {
                   />
                 </div>
               </>
-              <>
-                <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
-                  Issues
-                </div>
-                <div className="flex items-center space-x-2 py-1">
-                  {task.issue ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIssueModalOpen(true);
-                        setHasSeenIssueHighlight(true);
-                      }}
-                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-700 bg-indigo-50/80 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-semibold transition-colors ${
-                        hasSeenIssueHighlight
-                          ? ""
-                          : "animate-pulse shadow-md shadow-indigo-200/80 ring-2 ring-indigo-300/60"
-                      }`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-300" />
-                      <span className="text-[10px] font-mono font-bold">
-                        {issueDoc.name || task.issue}
-                      </span>
-                      {issueDoc.status && (
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[9px] font-semibold">
-                          {issueDoc.status}
-                        </span>
-                      )}
-                    </button>
-                  ) : (
-                    <Button
-                      size="small"
-                      type="primary"
-                      onClick={() => {
-                        issueForm.resetFields();
-                        setCreateIssueModalOpen(true);
-                      }}
-                    >
-                      Create Issue
-                    </Button>
-                  )}
-                </div>
-              </>
+
               <>
                 <div className="text-slate-500 dark:text-slate-400 font-medium py-1">
                   Reporter
                 </div>
                 <div className="flex items-center space-x-2 py-1 group cursor-pointer">
-                  {console.log("task.owner", task.owner)}
                   <ShowUserWidget value={task.owner} show_label={true} />
                 </div>
               </>
@@ -570,161 +455,86 @@ const TaskDetail = () => {
             <p className="flex justify-between">
               <span>Created</span>
               <span className="text-slate-500 dark:text-slate-400">
-                {dayjs(task.creation).format("MMMM D, YYYY, h:mm A")}
+                <RelativeTime date={task.creation} />
               </span>
             </p>
             <p className="flex justify-between">
               <span>Updated</span>
               <span className="text-slate-500 dark:text-slate-400">
-                {dayjs(task.modified).format("MMMM D, YYYY, h:mm A")}
+                <RelativeTime date={task.modified} />
               </span>
             </p>
           </div>
-
-          <AntdModal
-            open={issueModalOpen}
-            onCancel={() => setIssueModalOpen(false)}
-            footer={null}
-            title={task.issue ? `Issue: ${task.issue}` : "Issue"}
-          >
-            {!task.issue ? (
-              <div>No linked issue for this task.</div>
-            ) : issue_query.isLoading ? (
-              <div>Loading issue...</div>
-            ) : !issue_query.data ? (
-              <div>Issue record not found.</div>
-            ) : (
-              <div className="space-y-3 text-sm">
-                <p>
-                  <span className="font-semibold">Subject:</span>{" "}
-                  {issueDoc.subject}
-                </p>
-                <p>
-                  <span className="font-semibold">Status:</span>{" "}
-                  {issueDoc.status}
-                </p>
-                <p>
-                  <span className="font-semibold">Priority:</span>{" "}
-                  {issueDoc.priority}
-                </p>
-                <p>
-                  <span className="font-semibold">Raised By:</span>{" "}
-                  {issueDoc.raised_by}
-                </p>
-                <p>
-                  <span className="font-semibold">Opening Date:</span>{" "}
-                  {issueDoc.opening_date}
-                </p>
-                {issueDoc.description && (
-                  <>
-                    <p className="font-semibold">Description:</p>
-                    <div
-                      className="text-slate-600 dark:text-slate-300 prose dark:prose-invert max-w-none"
-                      dangerouslySetInnerHTML={{ __html: issueDoc.description }}
-                    />
-                  </>
-                )}
-              </div>
-            )}
-          </AntdModal>
-
-          <AntdModal
-            open={createIssueModalOpen}
-            onCancel={() => {
-              setCreateIssueModalOpen(false);
-              issueForm.resetFields();
-            }}
-            title="Create Issue"
-            okText="Create"
-            onOk={() => issueForm.submit()}
-            confirmLoading={createIssueMutation.loading}
-          >
-            <Form
-              form={issueForm}
-              layout="vertical"
-              onFinish={handleCreateIssue}
-            >
-              <Form.Item
-                label="Subject"
-                name="subject"
-                rules={[{ required: true, message: "Please enter subject" }]}
-              >
-                <Input className="bg-white dark:bg-slate-800" />
-              </Form.Item>
-              <Form.Item
-                label="Status"
-                name="status"
-                rules={[{ required: true, message: "Please select status" }]}
-              >
-                <Select
-                  loading={issueStatusField.isLoading}
-                  options={issueStatusOptions.map((s) => ({
-                    label: s,
-                    value: s,
-                  }))}
-                  placeholder="Select status"
-                />
-              </Form.Item>
-              <Form.Item label="Priority" name="priority">
-                <Select
-                  showSearch
-                  loading={issuePriorityQuery.isLoading}
-                  options={(issuePriorityQuery.data || []).map((p) => ({
-                    label: p.name,
-                    value: p.name,
-                  }))}
-                  placeholder="Select priority"
-                />
-              </Form.Item>
-              <Form.Item label="Issue Type" name="issue_type">
-                <Select
-                  showSearch
-                  loading={issueTypeQuery.isLoading}
-                  options={(issueTypeQuery.data || []).map((t) => ({
-                    label: t.name,
-                    value: t.name,
-                  }))}
-                  placeholder="Select issue type"
-                />
-              </Form.Item>
-              <Form.Item label="Description" name="description">
-                <Input.TextArea
-                  rows={4}
-                  className="bg-white dark:bg-slate-800"
-                />
-              </Form.Item>
-            </Form>
-          </AntdModal>
         </aside>
       </div>
     </div>
   );
+});
+const TaskDetail = React.memo(() => {
+  const [fullScreen, setFullScreen] = useState(false);
+  const [position] = useState("modal");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedTask = searchParams.get("selected_task") || null;
+  const copilot = searchParams.get("copilot") === "true";
 
-  if (position === "modal") {
-    return (
-      <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 flex items-center justify-center animate-in fade-in duration-200">
-        <div
-          className={`bg-white dark:bg-slate-900 overflow-hidden transition-all duration-300 ease-in-out ${
-            fullScreen
-              ? "w-full h-screen max-w-none rounded-none shadow-none"
-              : "w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl"
-          }`}
-        >
-          {task_details_query.isLoading || assignee_of_task_query.isLoading
-            ? "Loading..."
-            : TaskBody}{" "}
-        </div>
-      </div>
-    );
-  }
+  const task_details_query = useTaskDetailsQuery(selectedTask);
+
+  const task = task_details_query.data || {};
+
+  const onClose = () => {
+    searchParams.delete("selected_task");
+    setSearchParams(searchParams);
+  };
+
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [onClose]);
+
+  if (!selectedTask) return null;
 
   return (
-    <div className="fixed top-0 right-0 h-full bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-hidden">
-      {task_details_query.isLoading || assignee_of_task_query.isLoading
-        ? "Loading..."
-        : TaskBody}
+    <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 flex items-center justify-center animate-in fade-in duration-200">
+      <div
+        className={`bg-white dark:bg-slate-900 overflow-hidden transition-all duration-300 ease-in-out ${
+          fullScreen
+            ? "w-full h-screen max-w-none rounded-none shadow-none"
+            : "w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl"
+        }`}
+      >
+        {task_details_query.isLoading ? (
+          <TaskSkeleton />
+        ) : (
+          <>
+            <TaskBody
+              task={task}
+              fullScreen={fullScreen}
+              setFullScreen={setFullScreen}
+            />
+            <Drawer
+              open={!!copilot}
+              onClose={() => {
+                searchParams.set("copilot", "false");
+                setSearchParams(searchParams);
+              }}
+              size={"large"}
+              styles={{
+                body: { padding: 0 },
+              }}
+              // bodyStyle={{ padding: 0 }}
+              // headerStyle={{ display: "none" }}
+              closable={false}
+            >
+              <TaskCopilot />
+            </Drawer>
+          </>
+        )}{" "}
+      </div>
     </div>
   );
-};
+});
 
 export default TaskDetail;

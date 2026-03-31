@@ -10,10 +10,10 @@ export const useDoctypeSchema = (doctype) => {
 		},
 		doctype ? ["Schema", doctype] : null,
 		{
-            refreshInterval: 60 * 60 * 1000, // Refresh every 5 minutes
-            revalidateOnFocus  : false,
-            revalidateIfStale  : false,
-            revalidateOnReconnect: false,
+            // refreshInterval: 60 * 60 * 1000, // Refresh every 5 minutes
+            // revalidateOnFocus  : false,
+            // revalidateIfStale  : false,
+            // revalidateOnReconnect: false,
         },
 	);
 

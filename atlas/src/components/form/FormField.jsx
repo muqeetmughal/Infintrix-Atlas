@@ -57,7 +57,6 @@ export function FormField({ field }) {
       case "Date":
         return <DatePicker format="ddd, MMM DD, YYYY" style={{ width: "100%" }} />;
       case "Datetime":
-        // console.log("Datetime Field Value:", field.value);
         return (
           <DatePicker
             showTime

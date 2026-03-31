@@ -3,18 +3,48 @@
 import frappe
 from erpnext.projects.doctype.task.task import Task
 
-
+print("ATLAS TASK OVERRIDE LOADED")
 class TaskOverride(Task):
 
     def validate(self):
+        # Validate cycle belongs to same phase as task
+        if self.is_new():
+            
+            self.validate_cycle_phase()
+            self.validate_task_allowed()
+        # self.validate_task_type_hierarchy()
+        # self.validate_cycle_lock()
         # ALWAYS call core validation
         super().validate()
 
         # Your custom hierarchy + business rules
-        # self.validate_task_type_hierarchy()
-        # self.validate_cycle_lock()
+    
+        
+    def validate_cycle_phase(self):
+         if self.custom_cycle and self.custom_phase:
+            cycle = frappe.get_doc("Cycle", self.custom_cycle)
+            if cycle.custom_phase != self.custom_phase:
+                frappe.throw(
+                    f"Cycle {self.custom_cycle} belongs to phase {cycle.custom_phase}, "
+                    f"but task is in phase {self.custom_phase}"
+                )
+                
+    def validate_task_allowed(self):
+        if self.custom_phase:
+            phase = frappe.get_doc("Project Phase", self.custom_phase)
+            if phase.status != "Planned":
+                frappe.throw(
+                    f"Tasks can only be created in phases with 'Planned' status. "
+                    f"Phase {self.custom_phase} status: {phase.status}"
+                )
 
-   
+    def before_insert(self):
+        # Inherit project from parent task if not explicitly set
+        if not self.project and self.parent_task:
+            parent = frappe.get_doc("Task", self.parent_task)
+            if parent.project:
+                self.project = parent.project
+
     def validate_task_type_hierarchy(self):
         if not self.parent_task or not self.type:
             return
@@ -111,7 +141,7 @@ class TaskOverride(Task):
 # from erpnext.projects.doctype.task.task import Task
 
 # class TaskOverride(Task):
-    
+
 #     # def validate(self):
 #     #     self.validate_dates()
 #     #     self.validate_progress()
@@ -120,7 +150,6 @@ class TaskOverride(Task):
 #     #     self.validate_dependencies_for_template_task()
 #     #     self.validate_completed_on()
 #     #     self.validate_parent_is_group()
-        
 
 
 #     def has_permission(self, permission_type=None, user=None):
