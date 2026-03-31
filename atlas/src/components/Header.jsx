@@ -1,11 +1,13 @@
 import { useNavigate } from "react-router-dom";
-import { LogOut, Settings, User } from "lucide-react";
+import { Info, LayoutDashboard, LogOut, Settings, User } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { Dropdown } from "antd";
 import { MoonOutlined, SunOutlined } from "@ant-design/icons";
 import { useAuth } from "../hooks/query";
 import GlobalSearch from "./GlobalSearch";
 import Notifications from "./Notifications";
+import Logo from "./Logo";
+import { useFrappeGetCall } from "frappe-react-sdk";
 
 const Header = () => {
   const { toggle, isDark } = useTheme();
@@ -13,10 +15,18 @@ const Header = () => {
   const navigate = useNavigate();
 
   const auth = useAuth();
+  const installed_apps_query = useFrappeGetCall("frappe.apps.get_apps");
+  const installed_apps = installed_apps_query.data?.message || [];
 
   return (
     <>
       <header className="h-16 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 px-10 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center">
+          
+            <div className="sm:hidden">
+              <Logo fullLogo={false} />
+            </div>
+        </div>
         <GlobalSearch />
         <div className="flex items-center space-x-6">
           <button
@@ -32,9 +42,49 @@ const Header = () => {
 
           <Notifications />
           <Dropdown
+          popupRender={(originNode)=>{
+
+            return (
+              <>
+               
+                {originNode}
+              </>
+            )
+
+          }}
             trigger={"click"}
             menu={{
               items: [
+
+
+                {
+                  icon: <LayoutDashboard  size={16}/>,
+                  key: "apps",
+                  label: "Apps",
+                  children: installed_apps.map((app) => ({
+                    key: app.name,
+                    label: (
+                      <div
+                        className="flex items-center space-x-2 cursor-pointer"
+                        onClick={() => {
+                          window.location.href = app.route;
+                        }}
+                      >
+                        <img
+                          src={app.logo}
+                          alt={app.title}
+                          className="w-5 h-5"
+                        />
+                        <span>{app.title}</span>
+                      </div>
+                    ),
+                  })),
+                },
+                {
+                  key: "about",
+                  label: "About",
+                  icon: <Info  size={16}/>,
+                },
                 {
                   key: "profile",
                   label: "Profile",
@@ -75,14 +125,7 @@ const Header = () => {
                   auth.user?.name?.charAt(0).toUpperCase()
                 )}
               </div>
-              <div>
-                <div className="text-xs font-black text-slate-900 dark:text-slate-100">
-                  {auth.user?.full_name || auth.currentUser}
-                </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                  {auth.user?.role_profiles?.join(", ") || "User"}
-                </div>
-              </div>
+          
             </div>
           </Dropdown>
         </div>

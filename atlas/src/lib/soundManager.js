@@ -23,7 +23,6 @@ class SoundManager {
   }
 
   play(key) {
-    console.log("playing sound:", key);
     if (!this.unlocked) return;
 
     if (!this.audioMap[key]) {

@@ -1,18 +1,20 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
-import MainLayout from "./layouts/MainLayout";
-import NotFound from "./components/NotFound";
-import Projects from "./pages/Projects";
-import Dashboard from "./pages/Dashboard";
-import AIArchitect from "./pages/AIArchitect";
-import Tasks from "./pages/Tasks";
-import TaskForm from "./pages/TaskForm";
-import ErrorBoundary from "./components/ErrorBoundry";
-import Login from "./pages/Login";
-import Profile from "./pages/Profile";
-import Team from "./pages/Team";
-import TeamDetail from "./pages/TeamDetail";
-import CustomerPortal from "./pages/CustomerPortal";
+import { lazy } from "react";
+import ClientPage from "./pages/client/ClientPage";
+
+const MainLayout = lazy(() => import("./layouts/MainLayout"));
+const NotFound = lazy(() => import("./components/NotFound"));
+const Projects = lazy(() => import("./pages/Projects"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const AIArchitect = lazy(() => import("./pages/AIArchitect"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const TaskForm = lazy(() => import("./pages/TaskForm"));
+const ErrorBoundary = lazy(() => import("./components/ErrorBoundry"));
+const Login = lazy(() => import("./pages/Login"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Team = lazy(() => import("./pages/Team"));
+const TeamDetail = lazy(() => import("./pages/TeamDetail"));
 export const router = createBrowserRouter(
   [
     {
@@ -64,21 +66,18 @@ export const router = createBrowserRouter(
           element: <Tasks />,
         },
         {
-            path : "profile",
-            element : <Profile/>
+          path: "profile",
+          element: <Profile />,
         },
         {
-            path : "team",
-            element : <Team/>
+          path: "team",
+          element: <Team />,
         },
         {
-            path : "team/:id",
-            element : <TeamDetail/>
+          path: "team/:id",
+          element: <TeamDetail />,
         },
-        {
-            path : "customer-portal",
-            element : <CustomerPortal/>
-        },
+
         {
           path: "*",
           element: <NotFound />,
@@ -86,10 +85,20 @@ export const router = createBrowserRouter(
       ],
     },
     {
-        path: "login",
-        errorElement: <ErrorBoundary />,
-        element: <Login />,
-    }
+      path: "/client",
+      errorElement: <ErrorBoundary />,
+      children: [
+        {
+          path: "dashboard",
+          element: <ClientPage />,
+        },
+      ],
+    },
+    {
+      path: "login",
+      errorElement: <ErrorBoundary />,
+      element: <Login />,
+    },
   ],
   {
     basename: `/${import.meta.env.VITE_BASE_NAME}`,

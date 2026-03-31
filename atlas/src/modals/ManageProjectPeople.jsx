@@ -20,12 +20,13 @@ const ManageProjectPeople = () => {
 
 
   const onClose = () => {
+    form.resetFields();
     qp.clear("manage_project_people");
     users_project_query.mutate();
+
   };
 
   const handleSubmit = (values) => {
-    console.log("Form submitted with people: ", values);
     // Add your effect/logic here
     updateMutation
       .call({

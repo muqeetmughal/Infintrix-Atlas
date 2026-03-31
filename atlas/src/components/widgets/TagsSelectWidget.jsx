@@ -15,6 +15,7 @@ export const TagsSelectWidget = (props) => {
   const addTag = useFrappePostCall(
     "frappe.desk.doctype.tag.tag.add_tag"
   );
+
   const removeTag = useFrappePostCall(
     "frappe.desk.doctype.tag.tag.remove_tag"
   );
@@ -25,12 +26,10 @@ export const TagsSelectWidget = (props) => {
     order_by: "name asc",
   });
 
-  // keep in sync if parent changes value
   useEffect(() => {
     setSelected(props.value || []);
   }, [props.value]);
 
-  // persist tagColors to localStorage
   useEffect(() => {
     localStorage.setItem("tagColors", JSON.stringify(tagColors));
   }, [tagColors]);
@@ -49,16 +48,19 @@ export const TagsSelectWidget = (props) => {
     "gold",
   ];
 
-  const getOrAssignColor = (tagName) => {
-    if (tagColors[tagName]) {
-      return tagColors[tagName];
-    }
+  const assignColor = (tagName) => {
+    if (tagColors[tagName]) return;
+
     const newColor = colors[Math.floor(Math.random() * colors.length)];
+
     setTagColors((prev) => ({
       ...prev,
       [tagName]: newColor,
     }));
-    return newColor;
+  };
+
+  const getColor = (tagName) => {
+    return tagColors[tagName] || "blue";
   };
 
   return (
@@ -67,15 +69,14 @@ export const TagsSelectWidget = (props) => {
       variant="borderless"
       placeholder="Labels"
       value={selected}
-      style={{
-        width: "100%",
-      }}
+      style={{ width: "100%" }}
       onChange={(values) => {
         setSelected(values);
         props.onChange?.(values);
       }}
       onSelect={(value) => {
-        getOrAssignColor(value);
+        assignColor(value);
+
         addTag.call({
           tag: value,
           dt: "Task",
@@ -89,15 +90,23 @@ export const TagsSelectWidget = (props) => {
           dn: props.docname,
         });
       }}
-      options={tagsList.data.map((t) => ({
+      options={(tagsList.data || []).map((t) => ({
         label: t.name,
         value: t.name,
       }))}
-      tagRender={(props) => (
-        <Tag color={getOrAssignColor(props.label)} {...props}>
-          {props.label}
-        </Tag>
-      )}
+      tagRender={(tagProps) => {
+        const { label, closable, onClose } = tagProps;
+
+        return (
+          <Tag
+            color={getColor(label)}
+            closable={closable}
+            onClose={onClose}
+          >
+            {label}
+          </Tag>
+        );
+      }}
     />
   );
 };

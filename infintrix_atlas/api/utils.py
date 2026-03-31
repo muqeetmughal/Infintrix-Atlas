@@ -1,6 +1,6 @@
 import frappe
 
-def create_custom_notification(user, subject, content, document_type=None, document_name=None, icons=None):
+def send_notification(user, subject, content, document_type=None, document_name=None, icons=None):
     """
     Creates a Notification Log entry for a specific user.
 
@@ -11,6 +11,9 @@ def create_custom_notification(user, subject, content, document_type=None, docum
     :param document_name: Optional, the name of the document related to the notification.
     :param icons: Optional, icon HTML (e.g., '<i class="fa fa-info"></i>').
     """
+    if user  == frappe.session.user:
+        # Don't send notifications to the user performing the action
+        return
     try:
         # Create a new Notification Log document
         doc = frappe.get_doc({
@@ -22,7 +25,7 @@ def create_custom_notification(user, subject, content, document_type=None, docum
             "document_type": document_type,
             "document_name": document_name,
             "read": 0,  # Set as unread
-            # "icons": icons,
+            "icons": icons,
             # Additional fields can be set as needed
         })
         

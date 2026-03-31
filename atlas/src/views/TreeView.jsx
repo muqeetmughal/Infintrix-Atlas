@@ -1,8 +1,15 @@
-import React from 'react';
-import { DownOutlined } from '@ant-design/icons';
-import { Tree } from 'antd';
-import { useFrappeGetCall } from 'frappe-react-sdk';
-import { useQueryParams } from '../hooks/useQueryParams';
+import React from "react";
+import {
+  DeleteOutlined,
+  DownOutlined,
+  FolderFilled,
+  LinkOutlined,
+} from "@ant-design/icons";
+import { Button, Space, Tree, Typography } from "antd";
+import { useFrappeGetCall } from "frappe-react-sdk";
+import { useQueryParams } from "../hooks/useQueryParams";
+import { Folder } from "lucide-react";
+import TaskActions from "../components/TaskActions";
 // const treeData = [
 //   {
 //     title: 'parent 1',
@@ -54,24 +61,58 @@ import { useQueryParams } from '../hooks/useQueryParams';
 //   },
 // ];
 const TreeView = () => {
-
   const qp = useQueryParams();
   const project = qp.get("project") || null;
 
-  const tree_query = useFrappeGetCall("infintrix_atlas.api.v1.get_task_tree", { project });
+  const tree_query = useFrappeGetCall("infintrix_atlas.api.v1.get_task_tree", {
+    project,
+  });
 
-  console.log("tree query:", tree_query.data);
+  // console.log("tree_query", tree_query);
+
   const onSelect = (selectedKeys, info) => {
-    console.log('selected', selectedKeys, info);
+    // console.log('selected', selectedKeys, info);
   };
   return (
     <Tree
-    defaultExpandAll
+      defaultExpandAll
       showLine
       switcherIcon={<DownOutlined />}
-      defaultExpandedKeys={['0-0-0']}
+      // defaultExpandedKeys={['0-0-0']}
       onSelect={onSelect}
-      treeData={tree_query.data?.message}
+      treeData={tree_query.data?.message || []}
+      fieldNames={{
+        key: "name",
+        title: "subject",
+      }}
+      icon={<FolderFilled />}
+      titleRender={(node) => {
+        return (
+          <>
+            <Typography.Text className="flex justify-center items-center"
+             >
+                {node.children.length > 0 && (
+                  <Folder size={14} className="mr-1" />
+                )}
+                {node.subject}
+
+                <Space>
+                  <Button
+                    icon={<LinkOutlined />}
+                    size="small"
+                    type="text"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      qp.set("selected_task", node.name);
+                    }}
+                  />
+
+                  <TaskActions task={node} />
+                </Space>
+            </Typography.Text>
+          </>
+        );
+      }}
     />
   );
 };

@@ -1,6 +1,6 @@
 import { Button, Input, Skeleton, message } from "antd";
 import { useFrappeUpdateDoc, useSWRConfig } from "frappe-react-sdk";
-import { Edit, X, Check } from "lucide-react";
+import { Edit, X } from "lucide-react";
 import React from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -10,23 +10,35 @@ const SubjectWidget = ({ task, disableClick, style, inputStyle, onUpdate }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const updateMutation = useFrappeUpdateDoc();
   const swr = useSWRConfig();
+  const editorRef = React.useRef(null);
+
   React.useEffect(() => {
     setEditingSubject(false);
     setSubject(task.subject);
   }, [task.subject]);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (editorRef.current && !editorRef.current.contains(event.target)) {
+        setEditingSubject(false);
+      }
+    };
+
+    if (editingSubject) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [editingSubject]);
+
   const handleSave = () => {
-    // Use correct SDK method: updateDoc
     updateMutation
       .updateDoc("Task", task.name, {
         subject: subject,
       })
-      .then((updatedTask) => {
-        // message.success("Task name updated successfully");
-        // Immediately update parent component's task state
+      .then(() => {
         if (onUpdate) {
           onUpdate({ ...task, subject: subject });
         }
-        // Invalidate ALL task-related caches to ensure immediate update everywhere
         swr.mutate(
           (key) => {
             if (!Array.isArray(key)) return false;
@@ -60,10 +72,10 @@ const SubjectWidget = ({ task, disableClick, style, inputStyle, onUpdate }) => {
     setSubject(task.subject);
     setEditingSubject(false);
   };
+
   const handleTitleClick = (e) => {
     e.stopPropagation();
     if (disableClick || task.id === "new_item") return;
-    // console.log("Issue clicked:", issue, issue);
     searchParams.set("selected_task", task.id);
     setSearchParams(searchParams);
   };
@@ -71,8 +83,9 @@ const SubjectWidget = ({ task, disableClick, style, inputStyle, onUpdate }) => {
   if (updateMutation.loading) {
     return <Skeleton active paragraph={false} title={{ width: "80%" }} />;
   }
+
   return (
-    <div className="flex items-center gap-2 group min-w-0">
+    <div className="flex items-center gap-2 group min-w-0" ref={editorRef}>
       {editingSubject ? (
         <>
           <Input
@@ -94,8 +107,6 @@ const SubjectWidget = ({ task, disableClick, style, inputStyle, onUpdate }) => {
                 handleSave();
               } else if (e.key == "Escape") {
                 handleCancel();
-              } else {
-                return;
               }
             }}
           />
@@ -112,7 +123,7 @@ const SubjectWidget = ({ task, disableClick, style, inputStyle, onUpdate }) => {
           <p
             style={style}
             onClick={handleTitleClick}
-            className="flex-1 min-w-0 text-sm font-medium text-slate-800 dark:text-slate-100 leading-snug cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 whitespace-normal break-words"
+            className="flex-1 min-w-0 text-sm font-medium text-slate-800 dark:text-slate-100 leading-snug cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 whitespace-normal wrap-break-word"
           >
             {subject}
           </p>

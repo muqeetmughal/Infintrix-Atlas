@@ -67,7 +67,7 @@ const Dashboard = () => {
             projects: projectsArr,
         };
     }, [dashboard_stats_query.data, dashboard_stats_query.isLoading, dashboard_stats_query.loading, dashboard_stats_query.error, dashboard_stats_query.isError]);
-
+    
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
             {/* Stats Grid */}

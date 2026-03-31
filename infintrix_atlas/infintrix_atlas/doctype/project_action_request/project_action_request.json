@@ -1,0 +1,126 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-23 18:07:20.835259",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "project",
+  "phase",
+  "related_task",
+  "title",
+  "description",
+  "due_date",
+  "column_break_uptf",
+  "assigned_to_user",
+  "is_portal_visible",
+  "action_type",
+  "status",
+  "blocking_task"
+ ],
+ "fields": [
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1
+  },
+  {
+   "fieldname": "related_task",
+   "fieldtype": "Link",
+   "label": "Related Task",
+   "options": "Task"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Description",
+   "reqd": 1
+  },
+  {
+   "fieldname": "action_type",
+   "fieldtype": "Select",
+   "label": "Action Type",
+   "options": "Approval\nDocument Submission\nPayment\nFeedback\nSignature"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nCompleted\nRejected\nExpired"
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "assigned_to_user",
+   "fieldtype": "Link",
+   "label": "Assigned To User",
+   "options": "User"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_portal_visible",
+   "fieldtype": "Check",
+   "label": "Is Portal Visible",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_uptf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "phase",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Phase",
+   "options": "Project Phase",
+   "reqd": 1
+  },
+  {
+   "fieldname": "blocking_task",
+   "fieldtype": "Link",
+   "label": "Blocking Task",
+   "options": "Task"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-24 03:46:08.829683",
+ "modified_by": "Administrator",
+ "module": "Infintrix Atlas",
+ "name": "Project Action Request",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -31,7 +31,7 @@ const StatusWidget = (props) => {
         //     <span className="ml-2">{props.label}</span>
         //   </div>
         // )}
-        popupClasses="dark:bg-gray-800"
+        // popupClasses="dark:bg-gray-800"
         className=" dark:text-gray-200"
         maxTagCount="responsive"
         // style={{ width: "100%" }}
@@ -43,12 +43,12 @@ const StatusWidget = (props) => {
             <Select.Option key={option} value={option}>
               <Badge className={`text-${TASK_STATUS_COLORS[option]}-600`}>
                 <div className="flex justify-start items-center">
-                  <span>
+                  {/* <span>
                     {React.createElement(TASK_STATUS_ICONS[option], {
                       size: 14,
                       className: `text-${TASK_STATUS_COLORS[option]}-600 mr-1`,
                     })}
-                  </span>
+                  </span> */}
                   <span>{option}</span>
                 </div>
               </Badge>
