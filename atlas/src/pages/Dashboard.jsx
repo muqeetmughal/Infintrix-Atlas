@@ -10,6 +10,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { useFrappeGetCall } from 'frappe-react-sdk';
 import { Spin } from 'antd';
+import Accountability from '../components/Accountability';
 
 const Dashboard = () => {
     const [tasks] = useState(INITIAL_TASKS);
@@ -66,7 +67,7 @@ const Dashboard = () => {
             projects: projectsArr,
         };
     }, [dashboard_stats_query.data, dashboard_stats_query.isLoading, dashboard_stats_query.loading, dashboard_stats_query.error, dashboard_stats_query.isError]);
-
+    
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
             {/* Stats Grid */}
@@ -163,6 +164,8 @@ const Dashboard = () => {
                     </div>
                 </Card>
             </div>
+
+            <Accountability/>
         </div>
     );
 }

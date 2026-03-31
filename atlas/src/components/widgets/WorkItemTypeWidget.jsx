@@ -1,9 +1,9 @@
 import { Select, Spin } from "antd";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useFrappeGetDocList } from "frappe-react-sdk";
-import { IconRenderer } from "../IconRenderer";
+import { TASK_TYPE_ICONS } from "../../data/constants";
 
-const WorkItemTypeWidget = (props) => {
+const WorkItemTypeWidget = React.memo((props) => {
   const { show_icon = true, show_label = true } = props;
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value || null);
@@ -15,7 +15,9 @@ const WorkItemTypeWidget = (props) => {
     return {
       label: task_type.name,
       key: task_type.name,
-      icon: <IconRenderer name={task_type.custom_icon || "QuestionOutlined"} />,
+      icon: TASK_TYPE_ICONS[task_type.name]
+        ? React.createElement(TASK_TYPE_ICONS[task_type.name])
+        : null,
       color: task_type.custom_color || "#000000",
     };
   });
@@ -23,16 +25,12 @@ const WorkItemTypeWidget = (props) => {
     const selected_type = task_types.find((t) => t.label === selected);
     return (
       <div className="flex items-center">
-        {show_icon && (
-          <IconRenderer
-            name={
-              selected_type?.icon
-                ? selected_type.icon.props.name
-                : "QuestionOutlined"
-            }
-            style={{ color: selected_type?.color }}
-          />
-        )}
+        {show_icon &&
+          React.createElement(
+            TASK_TYPE_ICONS[selected_type?.label] || TASK_TYPE_ICONS["Task"],
+          )
+        
+        }
         {show_label && (
           <span
             className="ml-2"
@@ -52,55 +50,58 @@ const WorkItemTypeWidget = (props) => {
 
   return (
     <>
-     
-      {(!open && selected_type) ? (
-        <div className="flex items-center" onClick={(e)=>{
-          e.stopPropagation();
-          setOpen(true)
-        }}>
-          <IconRenderer
-            name={
-              selected_type.icon
-                ? selected_type.icon.props.name
-                : "QuestionOutlined"
-            }
-            style={{ color: selected_type.color }}
-          />
-        </div>
-      ) :  <div onClick={(e) => e.stopPropagation()}>
-        <Select
-          variant="borderless"
-          {...props}
-          open={open}
-          onOpenChange={(visible) => setOpen(visible)}
-          onSelect={() => setOpen(false)}
-          value={selected}
-          onChange={(v) => {
-            setSelected(v);
-            props.onChange && props.onChange(v);
+      {!open && selected_type ? (
+        <div
+          className="flex items-center"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen(true);
           }}
-          popupMatchSelectWidth={false}
         >
-        {task_types.map((option) => (
-          <Select.Option key={option.key} value={option.label}>
-            <IconRenderer
-              name={option.icon ? option.icon.props.name : "QuestionOutlined"}
-              style={{ color: option.color }}
-            />
-            <span
-              className="ml-2"
-              style={{
-                color: option.color,
-              }}
-            >
-              {option.label}
-            </span>
-          </Select.Option>
-        ))}
-      </Select>
-    </div>}
+          {React.createElement(
+            TASK_TYPE_ICONS[selected_type.label] || TASK_TYPE_ICONS["Task"],
+            { style: { color: selected_type.color } },
+          )}
+   
+        </div>
+      ) : (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Select
+            variant="borderless"
+            {...props}
+            open={open}
+            onOpenChange={(visible) => setOpen(visible)}
+            onSelect={() => setOpen(false)}
+            value={selected}
+            onChange={(v) => {
+              setSelected(v);
+              props.onChange && props.onChange(v);
+            }}
+            popupMatchSelectWidth={false}
+          >
+            {task_types.map((option) => (
+              <Select.Option key={option.key} value={option.label}>
+                {
+                  React.createElement(
+                    TASK_TYPE_ICONS[option.label] || TASK_TYPE_ICONS["Task"],
+                    { style: { color: option.color } },
+                  )
+                }
+                <span
+                  className="ml-2"
+                  style={{
+                    color: option.color,
+                  }}
+                >
+                  {option.label}
+                </span>
+              </Select.Option>
+            ))}
+          </Select>
+        </div>
+      )}
     </>
   );
-};
+});
 
 export default WorkItemTypeWidget;

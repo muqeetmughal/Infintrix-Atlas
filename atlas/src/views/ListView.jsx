@@ -276,13 +276,14 @@ export default function ListView() {
   const [activeId, setActiveId] = useState(null);
   const schema_query = useDoctypeSchema("Task");
   const qp = useQueryParams();
+  const project = qp.get("project") || null;
 
   const statusFilter = qp.getArray("status");
   const priorityFilter = qp.getArray("priority");
   const searchQuery = (qp.get("search") || "").toLowerCase();
 
   const group_by = searchParams.get("group_by") || null;
-  const tasks_list_query = useTasksQuery();
+  const tasks_list_query = useTasksQuery(project);
 
   const schema = schema_query.data || {};
   const fields = schema.fields || [];
@@ -308,7 +309,7 @@ export default function ListView() {
     return [];
   }, [selectedGroupByField]);
 
-  const items = tasks_list_query.data || [];
+  const items = tasks_list_query?.data?.message || [];
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {

@@ -6,7 +6,7 @@ import {
   ChevronUp,
   TriangleAlert,
 } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useGetDoctypeField } from "../../hooks/doctype";
 import { Select } from "antd";
 
@@ -17,7 +17,7 @@ const priorityIcons = {
   Urgent: <TriangleAlert size={16} />,
 };
 
-const PriorityWidget = (props) => {
+const PriorityWidget = React.memo((props) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(props.value || []);
 
@@ -44,7 +44,7 @@ const PriorityWidget = (props) => {
         </div>
       )}
       popupMatchSelectWidth={150}
-      dropdownClassName="dark:bg-gray-800"
+      classNames={{ popup: { root: "dark:bg-gray-800" } }}
       className="dark:text-gray-200"
       maxTagCount="responsive"
     >
@@ -60,6 +60,6 @@ const PriorityWidget = (props) => {
       ))}
     </Select>
   );
-};
+});
 
 export default PriorityWidget;

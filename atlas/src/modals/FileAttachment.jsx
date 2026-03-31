@@ -18,7 +18,6 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
 
     const file_upload = useFrappeFileUpload();
     const { deleteDoc } = useFrappeDeleteDoc();
-    const notify_attachment = useFrappePostCall("infintrix_atlas.api.v1.notify_attachment_added");
 
     const files_query = useFrappeGetDocList("File", {
         filters: { attached_to_doctype: doctype, attached_to_name: docname },
@@ -59,22 +58,22 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
                         { uid: res.name, name: res.file_name, url: res.file_url, status: "done" }
                     ]);
                     
-                    // Send notification to task assignee when file is uploaded
-                    if (doctype === "Task" && docname) {
-                        try {
-                            await notify_attachment.call({
-                                task_name: docname,
-                                file_name: res.file_name
-                            });
-                        } catch (notifyError) {
-                            console.error("Failed to send notification:", notifyError);
-                            // Don't fail the upload if notification fails
-                        }
-                    }
+                    // // Send notification to task assignee when file is uploaded
+                    // if (doctype === "Task" && docname) {
+                    //     try {
+                    //         await notify_attachment.call({
+                    //             task_name: docname,
+                    //             file_name: res.file_name
+                    //         });
+                    //     } catch (notifyError) {
+                    //         console.error("Failed to send notification:", notifyError);
+                    //         // Don't fail the upload if notification fails
+                    //     }
+                    // }
                 }
                 setLocalFiles([]);
                 message.success("Files uploaded successfully");
-                files_query.refetch?.();
+                files_query.mutate?.();
             } catch (err) {
                 message.error("File upload failed");
             } finally {
@@ -119,7 +118,7 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
                 setFrappeFileIds(prev => { const copy = { ...prev }; delete copy[file.name]; return copy; });
                 await deleteDoc("File", frappeFileId);
                 message.success("File deleted successfully");
-                files_query.refetch?.();
+                files_query.mutate?.();
             } else if (file.originFileObj instanceof File) {
                 setLocalFiles(prev => prev.filter(f => f !== file));
                 message.success("File removed from upload queue");
@@ -127,7 +126,7 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
             return true;
         } catch {
             message.error("Failed to delete file");
-            files_query.refetch?.();
+            files_query.mutate?.();
             return false;
         }
     };
@@ -160,7 +159,7 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
                 centered
                 width={isFullscreen ? "100vw" : "80vw"}
                 style={isFullscreen ? { position: "fixed", top: 0, left: 0, margin: 0, padding: 0 } : {}}
-                bodyStyle={isFullscreen ? { padding: 0, height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" } : { padding: "20px" }}
+                styles={{ body: isFullscreen ? { padding: 0, height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" } : { padding: "20px" } }}
                 title={
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span>Image Preview</span>

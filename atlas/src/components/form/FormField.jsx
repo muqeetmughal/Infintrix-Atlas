@@ -8,7 +8,7 @@ import {
   InputNumber,
   Select,
 } from "antd";
-import { RichTextWidgetForm } from "../widgets/RichTextWidget";
+import { RichTextWidgetForm } from "../widgets/RichTextWidget/RichTextWidget";
 
 export function FormField({ field }) {
   if (field.hidden) return null;
@@ -57,7 +57,6 @@ export function FormField({ field }) {
       case "Date":
         return <DatePicker format="ddd, MMM DD, YYYY" style={{ width: "100%" }} />;
       case "Datetime":
-        // console.log("Datetime Field Value:", field.value);
         return (
           <DatePicker
             showTime

@@ -75,7 +75,6 @@ export default function CompleteCycleModal() {
     searchParams.delete("complete_cycle");
     setSearchParams(searchParams);
     mutate(["cycles", project_id]);
-    mutate(["tasks", project_id]);
   };
 
   const handleFinish = () => {
@@ -160,10 +159,7 @@ export default function CompleteCycleModal() {
         </>
       )}
     </Modal>
-          <Confetti
-        isVisible={showCelebration}
-        onClose={() => setShowCelebration(false)}
-      />
+      
     </>
   );
 }

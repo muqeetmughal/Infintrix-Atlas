@@ -2,17 +2,28 @@ import React, { useState } from "react";
 import { useAuth } from "../hooks/query";
 import { Clock, Key, LogIn, Mail } from "lucide-react";
 import Logo from "../components/Logo";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 
 const Login = () => {
   const auth = useAuth();
+  const [loading, setLoading] = useState(false);  
+  const [error, setError] = useState(null);
 
-  const [email, setEmail] = useState("Administrator");
-  const [password, setPassword] = useState("admin");
-
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+  
   const handleSubmit = (e) => {
     e.preventDefault();
-    auth.login({ username : email, password : password });
+    auth.login({ username : email, password : password }).then(() => {
+      setLoading(false);
+      navigate("/");
+    }).catch((err) => {
+      console.error("Login failed:", err.message);
+      setError(err.message);
+      setLoading(false);
+    });
+    setLoading(true);
   };
 
   if (auth.currentUser) {
@@ -32,6 +43,7 @@ const Login = () => {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-[48px] p-10 shadow-2xl shadow-indigo-100/50">
+      {error && <div className="text-red-500 text-center">{error}</div>}
         <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-2">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">
@@ -75,15 +87,15 @@ const Login = () => {
 
             <button
               type="submit"
-              disabled={auth.isLoading}
+              disabled={loading}
               className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 mt-4"
             >
-              {auth.isLoading ? (
+              {loading ? (
                 <Clock className="animate-spin" size={18} />
               ) : (
                 <LogIn size={18} />
               )}
-              {auth.isLoading ? "Authenticating..." : "Login"}
+              {loading ? "Verifying..." : "Login"}
             </button>
           </form>
 

@@ -1,98 +1,15 @@
+from cmath import phase
+from warnings import filters
+
+from frappe import _
 import frappe
 from frappe.query_builder import DocType, functions as fn
 from datetime import datetime, timedelta
 import json
+from frappe.utils import now, user
 from infintrix_atlas.permissions import project_permission_query, task_permission_query
-from .utils import create_custom_notification
-
-
-@frappe.whitelist()
-def get_tasks():
-    project = frappe.request.args.get("project")
-
-    print("Fetching tasks for project:", project)
-    Task = DocType("Task")
-    ToDo = DocType("ToDo")
-
-    # Step 1: Fetch all tasks
-    if project != "null" and project:
-        tasks = (
-            frappe.qb.from_(Task)
-            .select(
-                Task.name.as_("id"),
-                Task.name,
-                Task.subject.as_("title"),
-                Task.type,
-                Task.priority,
-                Task.status,
-                Task.project,
-                Task.custom_cycle.as_("cycle"),
-                Task.custom_sort_order.as_("sort_order"),
-                Task.modified,
-            )
-            .where(Task.project == project)
-            .orderby(Task.status, order=frappe.qb.asc)
-            .orderby(Task.custom_sort_order, order=frappe.qb.asc)
-            .orderby(Task.modified, order=frappe.qb.desc)
-            .run(as_dict=True)
-        )
-    else:
-        tasks = (
-            frappe.qb.from_(Task)
-            .select(
-                Task.name.as_("id"),
-                Task.name,
-                Task.subject.as_("title"),
-                Task.type,
-                Task.priority,
-                Task.status,
-                Task.project,
-                Task.modified,
-                Task.custom_cycle.as_("cycle"),
-                Task.custom_sort_order.as_("sort_order"),
-            )
-            .where(Task.project.isnull())
-            .orderby(Task.status, order=frappe.qb.asc)
-            .orderby(Task.custom_sort_order, order=frappe.qb.asc)
-            .orderby(Task.modified, order=frappe.qb.desc)
-            .run(as_dict=True)
-        )
-
-    if not tasks:
-        return []
-
-    task_names = [t["name"] for t in tasks]
-
-    # Step 2: Fetch all assignees in ONE query
-    assignees = (
-        frappe.qb.from_(ToDo)
-        .select(
-            ToDo.reference_name,
-            ToDo.allocated_to,
-        )
-        .where(
-            (ToDo.reference_type == "Task")
-            & (ToDo.reference_name.isin(task_names))
-            & (ToDo.status != "Cancelled")
-        )
-        .run(as_dict=True)
-    )
-
-    # Step 3: Map assignees to tasks
-    assignee_map = {}
-    for row in assignees:
-        assignee_map.setdefault(row.reference_name, []).append(row.allocated_to)
-
-    # Step 4: Attach assignees and project name to tasks
-    for task in tasks:
-        task["assignees"] = assignee_map.get(task["name"], [])
-        task["project_name"] = (
-            frappe.db.get_value("Project", task.get("project"), "project_name")
-            if task.get("project")
-            else None
-        )
-
-    return tasks
+from .utils import send_notification
+from frappe.desk.doctype.tag.tag import add_tag, remove_tag
 
 
 @frappe.whitelist()
@@ -120,7 +37,8 @@ def update_task_sort_order(payload=None):
             "status": (t or {}).get("status"),
         }
 
-    updates = [v for v in dedup.values() if v.get("custom_sort_order") is not None]
+    updates = [v for v in dedup.values() if v.get(
+        "custom_sort_order") is not None]
     if not updates:
         return {"success": True, "updated": 0}
 
@@ -183,10 +101,8 @@ def get_doctype_meta(doctype_name):
         frappe.throw(f"Error fetching metadata: {e}")
 
 
-@frappe.whitelist()  # Adjust permissions as needed
+@frappe.whitelist()
 def switch_assignee_of_task(task_name, new_assignee):
-    # task_name = frappe.request.args.get("task")
-    # new_assignee = frappe.request.args.get("assignee")
     if not task_name:
         frappe.throw("Task is required")
 
@@ -197,38 +113,36 @@ def switch_assignee_of_task(task_name, new_assignee):
     elif new_assignee == "auto":
         new_assignee = frappe.session.user
 
-    # Get existing assignee
-    existing_todo = frappe.db.get_value(
+    # Get all existing open ToDos for this task
+    existing_todos = frappe.db.get_all(
         "ToDo",
-        {
+        filters={
             "reference_type": "Task",
             "reference_name": task_name,
-            "status": ["!=", "Cancelled"],
+            "status": "Open",
         },
-        "name",
+        fields=["name", "allocated_to"],
     )
 
-    existing_assignee = None
-    if existing_todo:
-        existing_assignee = frappe.db.get_value("ToDo", existing_todo, "allocated_to")
+    # Check if the only existing open ToDo is already assigned to new_assignee
+    if len(existing_todos) == 1 and existing_todos[0]["allocated_to"] == new_assignee:
+        return {"success": True, "message": "Task already assigned to this user"}
 
-    # Return early if assignee hasn't changed 
-    if existing_assignee == new_assignee:
-        return {"success": True, "message": "No changes made"}
+    # Close all existing open ToDos
+    for todo in existing_todos:
+        frappe.db.set_value("ToDo", todo["name"], "status", "Closed")
 
-    # Notify old assignee that task has been removed
-    if existing_assignee:
-        frappe.db.set_value("ToDo", existing_todo, "status", "Closed")
-        create_custom_notification(
-            user=existing_assignee,
-            subject=f"Task Removed: {task_doc.subject}",
+        # Notify old assignee
+        send_notification(
+            user=todo["allocated_to"],
+            subject=f"{task_doc.subject}",
             content=f"The task '<b>{task_doc.subject}</b>' has been removed from you.",
             document_type="Task",
             document_name=task_name,
             icons='<i class="fa fa-trash"></i>',
         )
 
-    # Create new todo for new assignee only if not unassigned
+    # Create new ToDo for new assignee only if not unassigned
     if new_assignee:
         frappe.get_doc(
             {
@@ -242,9 +156,10 @@ def switch_assignee_of_task(task_name, new_assignee):
                 "assigned_by": frappe.session.user,
             }
         ).insert()
-        create_custom_notification(
+
+        send_notification(
             user=new_assignee,
-            subject=f"Task Assigned: {task_doc.subject}",
+            subject=f"{task_doc.subject}",
             content=f"You have been assigned to task '<b>{task_doc.subject}</b>'.",
             document_type="Task",
             document_name=task_name,
@@ -256,97 +171,25 @@ def switch_assignee_of_task(task_name, new_assignee):
 
 
 @frappe.whitelist()
-def notify_attachment_added(task_name, file_name):
-
+def get_assignee_of_task(task_name):
     if not task_name:
         frappe.throw("Task is required")
 
-    try:
-        task_doc = frappe.get_doc("Task", task_name)
-        
-        assignee = frappe.db.get_value(
-            "ToDo",
-            {
-                "reference_type": "Task",
-                "reference_name": task_name,
-                "status": ["!=", "Cancelled"],
-            },
-            "allocated_to"
-        )
+    assignee = frappe.db.get_value(
+        "ToDo",
+        {
+            "reference_type": "Task",
+            "reference_name": task_name,
+            "status": ["=", "Open"],
+        },
+        "allocated_to",
 
-        # If there's an assignee, send them a notification
-        if assignee:
-            create_custom_notification(
-                user=assignee,
-                subject=f"File attached to task: {task_doc.subject}",
-                content=f"A new file '<b>{file_name}</b>' has been attached to task '<b>{task_doc.subject}</b>'.",
-                document_type="Task",
-                document_name=task_name,
-                icons='<i class="fa fa-paperclip"></i>',
-            )
-            return {"success": True, "message": f"Notification sent to {assignee}"}
-        else:
-            return {"success": True, "message": "No assignee found, no notification sent"}
-    
-    except Exception as e:
-        frappe.log_error(f"Failed to send attachment notification: {e}", "Attachment Notification Error")
-        return {"success": False, "message": str(e)}
+    )
+
+    return assignee
 
 
 @frappe.whitelist()
-def notify_status_changed(task_name, old_status, new_status):
-
-    if not task_name:
-        frappe.throw("Task is required")
-
-    try:
-        task_doc = frappe.get_doc("Task", task_name)
-        
-        # Get all assignees (there might be multiple)
-        assignees = frappe.db.get_all(
-            "ToDo",
-            filters={
-                "reference_type": "Task",
-                "reference_name": task_name,
-                "status": ["!=", "Cancelled"],
-            },
-            fields=["allocated_to"],
-            distinct=True
-        )
-
-        # If there are assignees, send them notifications
-        if assignees:
-            status_icons = {
-                "Open": '<i class="fa fa-circle-o"></i>',
-                "Working": '<i class="fa fa-cog"></i>',
-                "Pending Review": '<i class="fa fa-eye"></i>',
-                "Completed": '<i class="fa fa-check-circle"></i>',
-                "Cancelled": '<i class="fa fa-times-circle"></i>',
-            }
-            icon = status_icons.get(new_status, '<i class="fa fa-info-circle"></i>')
-            
-            for assignee_row in assignees:
-                assignee = assignee_row.allocated_to
-                # Don't notify if the assignee is the one who changed the status
-                if assignee != frappe.session.user:
-                    create_custom_notification(
-                        user=assignee,
-                        subject=f"Task status updated: {task_doc.subject}",
-                        content=f"Task '<b>{task_doc.subject}</b>' status changed from '<b>{old_status}</b>' to '<b>{new_status}</b>'.",
-                        document_type="Task",
-                        document_name=task_name,
-                        icons=icon,
-                    )
-            
-            return {"success": True, "message": f"Notifications sent to {len(assignees)} assignee(s)"}
-        else:
-            return {"success": True, "message": "No assignee found, no notification sent"}
-    
-    except Exception as e:
-        frappe.log_error(f"Failed to send status change notification: {e}", "Status Change Notification Error")
-        return {"success": False, "message": str(e)}
-
-
 def get_project_flow_metrics(project):
     """
     Returns execution efficiency (%) and backlog health label
@@ -385,7 +228,8 @@ def get_project_flow_metrics(project):
 
         if status in ("Working", "Pending Review"):
             in_progress_count += 1
-
+        elif status == "Backlog":
+            backlog_tasks.append(t)
         elif status == "Open":
             open_tasks.append(t)
 
@@ -508,7 +352,7 @@ def complete_cycle(name, move_tasks_to):
         "Task",
         filters={
             "custom_cycle": name,
-            "status": ["in", ["Open", "Working", "Pending Review"]],
+            "status": ["in", ["Open", "Working", "Pending Review", "Blocked"]],
         },
         fields=["name"],
     )
@@ -530,147 +374,6 @@ def complete_cycle(name, move_tasks_to):
     frappe.db.commit()
 
     return {"success": True, "message": f"Cycle {name} completed successfully"}
-
-
-@frappe.whitelist()
-def query_tasks(payload=None):
-    if isinstance(payload, str):
-        payload = json.loads(payload or "{}")
-
-    filters = payload.get("filters", {})
-    search = payload.get("search")
-    group_by = payload.get("group_by")
-    tree = payload.get("tree", False)
-    page = int(payload.get("page", 1))
-    page_size = int(payload.get("page_size", 20))
-    order_by = payload.get(
-        "order_by",
-        "t.status asc, t.custom_sort_order asc, t.modified desc",
-    )
-
-    offset = (page - 1) * page_size
-
-    conditions = []
-    values = []
-
-    # Client → DB field mapping
-    field_map = {
-        "id": "t.name",
-        "name": "t.name",
-        "subject": "t.subject",
-        "priority": "t.priority",
-        "status": "t.status",
-        "cycle": "t.custom_cycle",
-        "project": "t.project",
-        "assignee": "a.owner",
-    }
-
-    # -------------------------------
-    # Filters
-    # -------------------------------
-    for key, val in (filters or {}).items():
-        col = field_map.get(key, f"t.{key}")
-
-        if isinstance(val, list) and val[0].lower() == "in":
-            placeholders = ", ".join(["%s"] * len(val[1]))
-            conditions.append(f"{col} IN ({placeholders})")
-            values.extend(val[1])
-        else:
-            conditions.append(f"{col} = %s")
-            values.append(val)
-
-    # -------------------------------
-    # Search
-    # -------------------------------
-    if search:
-        conditions.append("(t.name LIKE %s OR t.subject LIKE %s)")
-        values.extend([f"%{search}%", f"%{search}%"])
-
-    # -------------------------------
-    # Tree mode (top level only)
-    # -------------------------------
-    if tree:
-        conditions.append("t.parent_task IS NULL")
-
-    where_clause = " AND ".join(conditions)
-    if where_clause:
-        where_clause = "WHERE " + where_clause
-
-    # -------------------------------
-    # Grouping
-    # -------------------------------
-    if group_by:
-        group_col = field_map.get(group_by, f"t.{group_by}")
-        group_clause = f"GROUP BY {group_col}"
-    else:
-        # Critical: always group by task so aggregates don’t collapse rows
-        group_clause = "GROUP BY t.name"
-
-    # -------------------------------
-    # SQL
-    # -------------------------------
-    sql = f"""
-        SELECT
-            t.name AS id,
-            t.subject,
-            t.priority,
-            t.status,
-            t.custom_cycle AS cycle,
-            t.project,
-            p.project_name,
-            COUNT(DISTINCT c.name) AS subtask_count,
-            GROUP_CONCAT(DISTINCT u.full_name ORDER BY u.full_name SEPARATOR ', ') AS assignees
-
-        FROM `tabTask` t
-
-        LEFT JOIN `tabTask` c ON c.parent_task = t.name
-        LEFT JOIN `tabProject` p ON p.name = t.project
-        LEFT JOIN `tabToDo` a ON a.reference_name = t.name
-        LEFT JOIN `tabUser` u ON u.name = a.owner
-
-        {where_clause}
-        {group_clause}
-        ORDER BY {order_by}
-        LIMIT %s OFFSET %s
-    """
-
-    values.extend([page_size, offset])
-
-    data = frappe.db.sql(sql, values, as_dict=True)
-
-    # -------------------------------
-    # Load children for tree mode
-    # -------------------------------
-    if tree and data:
-        parents = [d["id"] for d in data]
-
-        children = frappe.db.sql(
-            """
-            SELECT
-                name AS id,
-                subject,
-                parent_task
-            FROM `tabTask`
-            WHERE parent_task IN %s
-            """,
-            [parents],
-            as_dict=True,
-        )
-
-        children_map = {}
-        for c in children:
-            children_map.setdefault(c["parent_task"], []).append(c)
-
-        for row in data:
-            row["children"] = children_map.get(row["id"], [])
-
-    return {
-        "data": data,
-        "page": page,
-        "page_size": page_size,
-        "has_more": len(data) == page_size,
-        "total": frappe.db.count("Task", filters),
-    }
 
 
 @frappe.whitelist()
@@ -701,7 +404,9 @@ def get_project_user_stats(user=None, activity_limit=5):
             "active_tasks": 0,
             "avg_progress": 0,
             "team_members": 0,
-            "recent_activities": [{"text": "No recent activities found", "time_display": ""}]
+            "recent_activities": [
+                {"text": "No recent activities found", "time_display": ""}
+            ],
         }
 
     # -----------------------------
@@ -717,7 +422,9 @@ def get_project_user_stats(user=None, activity_limit=5):
         WHERE status NOT IN ('Completed', 'Cancelled')
         AND project IN %(projects)s
         {task_where}
-        """.format(task_where=task_where),
+        """.format(
+            task_where=task_where
+        ),
         {"projects": tuple(project_names)},
     )[0][0]
 
@@ -742,7 +449,6 @@ def get_project_user_stats(user=None, activity_limit=5):
         {"projects": tuple(project_names)},
     )[0][0]
 
-
     projects_list = []
     for p in projects:
         try:
@@ -753,13 +459,15 @@ def get_project_user_stats(user=None, activity_limit=5):
             except Exception:
                 pct = 0
 
-        projects_list.append({
-            "name": p.get("name"),
-            "project_name": p.get("project_name") or p.get("name"),
-            "project_type": p.get("project_type") or "",
-            "status": p.get("status") or "",
-            "percent_complete": pct,
-        })
+        projects_list.append(
+            {
+                "name": p.get("name"),
+                "project_name": p.get("project_name") or p.get("name"),
+                "project_type": p.get("project_type") or "",
+                "status": p.get("status") or "",
+                "percent_complete": pct,
+            }
+        )
 
     try:
         activity_limit = int(activity_limit)
@@ -802,14 +510,16 @@ def get_project_user_stats(user=None, activity_limit=5):
 
     project_activities = []
     for p in project_activities_raw:
-        project_activities.append({
-            "type": p.type,
-            "doc_name": p.doc_name,
-            "title": p.title,
-            "detail": f"Status: {p.status}",
-            "user": p.user,
-            "timestamp": p.timestamp,
-        })
+        project_activities.append(
+            {
+                "type": p.type,
+                "doc_name": p.doc_name,
+                "title": p.title,
+                "detail": f"Status: {p.status}",
+                "user": p.user,
+                "timestamp": p.timestamp,
+            }
+        )
 
     activities = task_activities + project_activities
     activities.sort(key=lambda x: x["timestamp"], reverse=True)
@@ -819,19 +529,24 @@ def get_project_user_stats(user=None, activity_limit=5):
 
     recent_activities = []
     for d in activity_data:
-        user_full_name = frappe.db.get_value("User", d["user"], "full_name") or d["user"]
+        user_full_name = (
+            frappe.db.get_value("User", d["user"], "full_name") or d["user"]
+        )
         text = f"{user_full_name} updated {d['type']}: {d['title']} ({d['detail']})"
 
-        recent_activities.append({
-            "text": text,
-            "time_display": pretty_date(d["timestamp"]),
-            "timestamp": str(d["timestamp"]),
-            "type": d["type"],
-            "doc_name": d["doc_name"]
-        })
+        recent_activities.append(
+            {
+                "text": text,
+                "time_display": pretty_date(d["timestamp"]),
+                "timestamp": str(d["timestamp"]),
+                "type": d["type"],
+                "doc_name": d["doc_name"],
+            }
+        )
 
     if not recent_activities:
-        recent_activities = [{"text": "No recent activities found", "time_display": ""}]
+        recent_activities = [
+            {"text": "No recent activities found", "time_display": ""}]
 
     return {
         "total_projects": total_projects,
@@ -841,8 +556,6 @@ def get_project_user_stats(user=None, activity_limit=5):
         "projects": projects_list,
         "recent_activities": recent_activities,
     }
-
-
 
 
 @frappe.whitelist()
@@ -912,7 +625,7 @@ def update_users_on_project(project, users):
     project_name = frappe.db.get_value("Project", project, "project_name")
 
     for user in removed_users:
-        create_custom_notification(
+        send_notification(
             user=user,
             subject=f"Removed from Project: {project_name}",
             content=f"You have been removed from project '{project_name}'.",
@@ -922,7 +635,7 @@ def update_users_on_project(project, users):
         )
 
     for user in added_users:
-        create_custom_notification(
+        send_notification(
             user=user,
             subject=f"Added to Project: {project_name}",
             content=f"You have been added to project '{project_name}'.",
@@ -934,39 +647,85 @@ def update_users_on_project(project, users):
     return {"success": True, "message": "Project users updated"}
 
 
-import frappe
-
-
 @frappe.whitelist()
 def global_search(query: str, limit: int = 10):
     """
     Global search for Tasks and Projects
     """
-    if not query or len(query) < 2:
-        return []
-
-    query = f"%{query}%"
     results = []
 
+    if not query or len(query) < 2:
+        # Return last 5 from all if query is empty
+        tasks = frappe.get_all(
+            "Task",
+            fields=["name", "subject", "project"],
+            order_by="modified desc",
+            limit=5,
+            filters={"project": ["!=", ""]},
+        )
+
+        projects = frappe.get_all(
+            "Project",
+            fields=["name", "project_name"],
+            order_by="modified desc",
+            limit=5,
+        )
+        cycles = frappe.get_all(
+            "Cycle",
+            fields=["name", "cycle_name", "project"],
+            order_by="modified desc",
+            limit=5,
+        )
+
+        for task in tasks:
+            if frappe.has_permission("Task", "read", task.name):
+                results.append(
+                    {
+                        "type": "Task",
+                        "name": task.name,
+                        "title": task.subject,
+                        "route": f"/tasks/kanban?project={task.project}&selected_task={task.name}",
+                    }
+                )
+
+        for project in projects:
+            if frappe.has_permission("Project", "read", project.name):
+                results.append(
+                    {
+                        "type": "Project",
+                        "name": project.name,
+                        "title": project.project_name,
+                        "route": f"/tasks/kanban?project={project.name}",
+                    }
+                )
+
+        for cycle in cycles:
+            project_name = frappe.db.get_value(
+                "Project", cycle.project, "project_name") or cycle.project
+            if frappe.has_permission("Cycle", "read", cycle.name):
+                results.append(
+                    {
+                        "type": "Cycle",
+                        "name": cycle.name,
+                        "title": f"{cycle.cycle_name} (Project: {project_name})",
+                        "route": f"/tasks/backlog?project={cycle.project}",
+                    }
+                )
+
+        return results
+
     # ---- TASKS ----
-    tasks = frappe.db.sql(
-        """
-        SELECT
-            name,
-            subject
-        FROM `tabTask`
-        WHERE
-            docstatus < 2
-            AND (
-                name LIKE %(query)s
-                OR subject LIKE %(query)s
-            )
-        ORDER BY modified DESC
-        LIMIT %(limit)s
-        """,
-        {"query": query, "limit": limit},
-        as_dict=True,
+    tasks = frappe.get_all(
+        "Task",
+        filters=[
+            ["subject", "like", f"%{query}%"],
+        ],
+        fields=["name", "subject", "project"],
+        order_by="modified desc",
+        limit=limit,
     )
+
+    print(f"Found {len(tasks)} tasks matching query '{query}'")
 
     for task in tasks:
         if frappe.has_permission("Task", "read", task.name):
@@ -975,29 +734,22 @@ def global_search(query: str, limit: int = 10):
                     "type": "Task",
                     "name": task.name,
                     "title": task.subject,
-                    "route": f"/app/task/{task.name}",
+                    "route": f"/tasks/kanban?project={task.project}&selected_task={task.name}",
                 }
             )
 
     # ---- PROJECTS ----
-    projects = frappe.db.sql(
-        """
-        SELECT
-            name,
-            project_name
-        FROM `tabProject`
-        WHERE
-            docstatus < 2
-            AND (
-                name LIKE %(query)s
-                OR project_name LIKE %(query)s
-            )
-        ORDER BY modified DESC
-        LIMIT %(limit)s
-        """,
-        {"query": query, "limit": limit},
-        as_dict=True,
+    projects = frappe.get_all(
+        "Project",
+        or_filters=[
+            ["name", "like", f"%{query}%"],
+            ["project_name", "like", f"%{query}%"],
+        ],
+        fields=["name", "project_name"],
+        order_by="modified desc",
+        limit=limit,
     )
+    print(f"Found {len(projects)} projects matching query '{query}'")
 
     for project in projects:
         if frappe.has_permission("Project", "read", project.name):
@@ -1006,30 +758,1397 @@ def global_search(query: str, limit: int = 10):
                     "type": "Project",
                     "name": project.name,
                     "title": project.project_name,
-                    "route": f"/app/project/{project.name}",
+                    "route": f"/tasks/kanban?project={project.name}",
                 }
             )
 
+    cycles = frappe.get_all(
+        "Cycle",
+        or_filters=[
+            ["cycle_name", "like", f"%{query}%"],
+        ],
+        fields=["name", "cycle_name", "project"],
+        order_by="modified desc",
+        limit=limit,
+    )
+
+    print(f"Found {len(cycles)} cycles matching query '{query}'")
+    for cycle in cycles:
+        project_name = frappe.db.get_value(
+            "Project", cycle.project, "project_name") or cycle.project
+        if frappe.has_permission("Cycle", "read", cycle.name):
+            results.append(
+                {
+                    "type": "Cycle",
+                    "name": cycle.name,
+                    "title": f"{cycle.cycle_name} (Project: {project_name})",
+                    "route": f"/tasks/backlog?project={cycle.project}",
+                }
+            )
     return results
 
 
 @frappe.whitelist()
 def online_users():
-	sessions = frappe.db.sql(
-		"""
+    sessions = frappe.db.sql(
+        """
 		SELECT user, MAX(lastupdate) as lastupdate
 		FROM `tabSessions`
 		WHERE status = 'Active'
 		GROUP BY user
 	""",
-		as_dict=True,
-	)
+        as_dict=True,
+    )
 
-	now = datetime.now()
-	online_threshold = now - timedelta(minutes=5)
+    now = datetime.now()
+    online_threshold = now - timedelta(minutes=5)
 
-	online_users = [
-		s["user"] for s in sessions if s["lastupdate"] and s["lastupdate"] > online_threshold
-	]
+    online_users = [
+        s["user"]
+        for s in sessions
+        if s["lastupdate"] and s["lastupdate"] > online_threshold
+    ]
 
-	return online_users
+    return online_users
+
+
+@frappe.whitelist()
+def tasks_accountability_report(project=None):
+    """
+    Returns accountability report with metrics per assignee:
+    - Open: count of open tasks
+    - Overdue: count of overdue tasks
+    - Aging > 3d: count of tasks not updated for > 3 days
+    - Pending Review: count of pending review tasks
+    - Avg Delay: average days overdue
+    - Completed: count of completed tasks
+    """
+
+    conditions = []
+    params = {}
+
+    if project:
+        conditions.append("t.project = %(project)s")
+        params["project"] = project
+
+    where_clause = ""
+    if conditions:
+        where_clause = "WHERE " + " AND ".join(conditions)
+
+    tasks = frappe.db.sql(
+        f"""
+                SELECT
+                    u.name AS assignee,
+                    u.full_name,
+                    COUNT(CASE WHEN t.status = 'Open' THEN 1 END) AS open_count,
+                    COUNT(CASE WHEN t.status = 'Open' AND t.modified < DATE_SUB(CURDATE(), INTERVAL 1 DAY) THEN 1 END) AS overdue_count,
+                    COUNT(CASE WHEN DATE_SUB(NOW(), INTERVAL 3 DAY) > t.modified THEN 1 END) AS aging_3d_count,
+                    COUNT(CASE WHEN t.status = 'Pending Review' THEN 1 END) AS pending_review_count,
+                    ROUND(AVG(CASE WHEN t.modified < CURDATE() THEN DATEDIFF(CURDATE(), t.modified) ELSE 0 END), 2) AS avg_delay,
+                    COUNT(CASE WHEN t.status = 'Completed' THEN 1 END) AS completed_count
+                FROM `tabTask` t
+                LEFT JOIN `tabToDo` td ON td.reference_name = t.name AND td.reference_type = 'Task' AND td.status != 'Cancelled'
+                LEFT JOIN `tabUser` u ON u.name = td.allocated_to
+                {where_clause}
+                GROUP BY u.name, u.full_name
+                ORDER BY open_count DESC, overdue_count DESC
+                """,
+        params,
+        as_dict=True,
+    )
+
+    return tasks
+
+
+# file: your_app/your_app/api/task_tree.py
+
+
+@frappe.whitelist()
+def get_task_tree(project=None):
+
+    fields = ["name", "subject", "status", "priority", "project"]
+
+    def get_children(parent):
+        filters = {"parent_task": parent}
+        if project:
+            filters["project"] = project
+
+        children = frappe.get_all(
+            "Task",
+            filters=filters,
+            fields=fields,
+        )
+
+        for child in children:
+            child["children"] = get_children(child["name"])
+
+        return children
+
+    # ROOT tasks → parent_task == ""
+    root_filters = {"parent_task": ""}
+    if project:
+        root_filters["project"] = project
+
+    roots = frappe.get_all(
+        "Task",
+        filters=root_filters,
+        fields=fields,
+    )
+
+    for root in roots:
+        print("task:", root)
+        root["children"] = get_children(root["name"])
+
+    return roots
+
+
+@frappe.whitelist()
+def get_task_activity(task):
+    versions = frappe.get_all(
+        "Version",
+        filters={"ref_doctype": "Task", "docname": task},
+        fields=["owner", "creation", "data"],
+        order_by="creation desc",
+        limit_page_length=10
+    )
+
+    comments = frappe.get_all(
+        "Comment",
+        filters={"reference_doctype": "Task", "reference_name": task},
+        fields=["comment_type", "content", "owner", "creation"],
+        order_by="creation desc",
+        limit_page_length=10
+    )
+
+    return {
+        "versions": versions,
+        "comments": comments
+    }
+
+
+@frappe.whitelist()
+def get_customer_portal_data(project=None):
+    print(f"Fetching customer portal data for project: {project}")
+    project_doc = frappe.get_doc("Project", project)
+    print(f"Project found: {project_doc.project_name}")
+    over_all_status = "On Track"  # This could be calculated based on project metrics
+
+    if project_doc.status == "Open":
+        over_all_status = "On Track"
+    elif project_doc.status == "Completed":
+        over_all_status = "Completed"
+    else:
+        over_all_status = "At Risk"
+
+    percent_complete = project_doc.percent_complete or 0
+    active_cycle = frappe.db.get_value(
+        "Cycle",
+        {"project": project, "status": "Active"},
+        ["cycle_name as title", "start_date", "end_date"],
+        as_dict=True,
+    )
+
+    next_milestone_date = frappe.db.sql(
+        """
+        SELECT end_date FROM `tabCycle`
+        WHERE project = %s AND end_date > CURDATE()
+        ORDER BY end_date ASC
+        LIMIT 1
+        """,
+        (project,),
+        as_dict=True,
+    )
+
+    # print(f"Active cycle: {active_cycle}")
+    # print(f"Next milestone date: {next_milestone_date}")
+
+    cycles = frappe.get_all(
+        "Cycle",
+        filters={"project": project},
+        fields=["name as id", "name", "cycle_name as title",
+                "start_date", "end_date", "status"],
+        order_by="start_date asc",
+    )
+
+    data = {
+        "summary": {
+            "project_name": project_doc.project_name,
+            "overall_status": over_all_status,
+            "percent_complete": percent_complete,
+            "days_to_milestone": 14,
+            "project_mode": project_doc.custom_execution_mode or "Kanban",
+            "active_cycle": active_cycle,
+            "next_milestone_date": next_milestone_date[0]["end_date"] if next_milestone_date else None,
+        },
+        "cycles": cycles,
+        "cycles2": [
+            {
+                "id": "C1",
+                "title": "Discovery & UX",
+                "start_date": "2024-01-01",
+                "end_date": "2024-02-15",
+                "status": "Completed",
+                "deliverables": ["Architecture Doc", "User Flow Maps"],
+                "completion": 100,
+            },
+            {
+                "id": "C2",
+                "title": "Visual Design",
+                "start_date": "2024-02-16",
+                "end_date": "2024-04-30",
+                "status": "Completed",
+                "deliverables": ["Hi-Fi Prototypes", "Brand Guidelines"],
+                "completion": 100,
+            },
+            {
+                "id": "C3",
+                "title": "Core Integration",
+                "start_date": "2024-05-01",
+                "end_date": "2024-05-30",
+                "status": "Active",
+                "deliverables": ["Stripe Connect API", "KYC Module"],
+                "completion": 45,
+            },
+            {
+                "id": "C4",
+                "title": "UAT & Scaling",
+                "start_date": "2024-06-01",
+                "end_date": "2024-07-01",
+                "status": "Planned",
+                "deliverables": ["Security Audit", "Beta Launch"],
+                "completion": 0,
+            },
+        ],
+        "pendingActions": [
+            {
+                "id": "ACT-001",
+                "title": "Approve Design Prototype (v2.4)",
+                "type": "Approval",
+                "due_date": "2024-05-18",
+                "status": "Pending",
+                "priority": "High",
+            },
+            {
+                "id": "ACT-002",
+                "title": "Submit Bank API Documentation",
+                "type": "Requirement Submission",
+                "due_date": "2024-05-20",
+                "status": "Pending",
+                "priority": "Medium",
+            },
+        ],
+        "requirements": [
+            {
+                "id": "REQ-1",
+                "title": "Auth Specification",
+                "submitted_on": "2024-04-10",
+                "status": "Approved",
+                "owner": "Alex Rivera",
+            },
+            {
+                "id": "REQ-2",
+                "title": "KYC Flow Prototype",
+                "submitted_on": "2024-05-02",
+                "status": "In Review",
+                "owner": "Jane Doe",
+            },
+            {
+                "id": "REQ-3",
+                "title": "Performance Benchmarks",
+                "submitted_on": "2024-05-12",
+                "status": "Submitted",
+                "owner": "Alex Rivera",
+            },
+            {
+                "id": "REQ-4",
+                "title": "Mobile UI Kit",
+                "submitted_on": "2024-05-14",
+                "status": "Approved",
+                "owner": "Jane Doe",
+            },
+        ],
+        "progress": {
+            "completed": 45,
+            "in_progress": 12,
+            "pending": 8,
+        },
+        "financials": {
+            "total_budget": 185000,
+            "total_invoiced": 125000,
+            "paid": 110000,
+            "last_invoice_date": "2024-05-01",
+        },
+        "team": [
+            {
+                "id": "T-1",
+                "name": "Sarah Chen",
+                "role": "Account Manager",
+                "avatar": "SC",
+                "color": "#f56a00",
+                "email": "sarah@erp.io",
+            },
+            {
+                "id": "T-2",
+                "name": "Mike Ross",
+                "role": "Lead Engineer",
+                "avatar": "MR",
+                "color": "#87d068",
+                "email": "mike@erp.io",
+            },
+            {
+                "id": "T-3",
+                "name": "Jane Doe",
+                "role": "UI Designer",
+                "avatar": "JD",
+                "color": "#1677ff",
+                "email": "jane@erp.io",
+            },
+        ],
+        "resources": [
+            {
+                "id": "RES-1",
+                "title": "Brand Identity Guidelines",
+                "type": "PDF",
+                "size": "4.2 MB",
+                "date": "2024-02-10",
+            },
+            {
+                "id": "RES-2",
+                "title": "Project Kickoff Notes",
+                "type": "Doc",
+                "size": "124 KB",
+                "date": "2024-01-05",
+            },
+            {
+                "id": "RES-3",
+                "title": "API Security Baseline",
+                "type": "PDF",
+                "size": "1.8 MB",
+                "date": "2024-04-22",
+            },
+        ],
+    }
+    return data
+
+
+def is_project_manager():
+    user = frappe.session.user
+    user_roles = frappe.get_roles(user)
+
+    if "Administrator" in user_roles or "Projects Manager" in user_roles:
+        return True
+    return False
+
+
+@frappe.whitelist()
+def set_project_mode(project, mode):
+
+    if not is_project_manager():
+        return {"success": False, "message": "Unauthorized"}
+
+    if mode not in ("Kanban", "Scrum"):
+        return {"success": False, "message": "Invalid mode"}
+
+    try:
+        frappe.db.sql(
+            "UPDATE `tabProject` SET custom_execution_mode = %s WHERE name = %s",
+            (mode, project)
+        )
+        # if mode == "Kanban":
+        #     frappe.db.sql(
+        #         "UPDATE `tabTask` SET custom_cycle = NULL WHERE project = %s",
+        #         (project,)
+        #     )
+        frappe.db.commit()
+        return {"success": True, "message": f"Project mode set to {mode}"}
+    except Exception as e:
+        frappe.log_error(
+            f"Failed to set project mode: {e}",
+            "Set Project Mode Error",
+        )
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def list_projects(filters={}, limit=20, offset=0):
+    Project = DocType("Project")
+    Task = DocType("Task")
+    ToDo = DocType("ToDo")
+    ProjectUser = DocType("Project User")
+
+    user = frappe.session.user
+    user_roles = frappe.get_roles(user)
+    is_admin = "Administrator" in user_roles
+    is_project_manager = "Project Manager" in user_roles
+
+    query = (
+        frappe.qb.from_(Project)
+        .select(
+            Project.name,
+            Project.project_name,
+            Project.project_type,
+            Project.status,
+            Project.percent_complete,
+            Project.modified,
+        )
+        .distinct()
+    )
+
+    # Permission-based filtering
+    if is_admin:
+        # Administrators see all projects
+        pass
+    elif is_project_manager:
+        # Project Managers see projects they created OR projects where they're assigned to any task
+        query = query.where(
+            (Project.owner == user) |
+            (Project.name.isin(
+                frappe.qb.from_(Task)
+                .inner_join(ToDo).on(
+                    (ToDo.reference_name == Task.name) &
+                    (ToDo.reference_type == "Task") &
+                    (ToDo.allocated_to == user)
+                )
+                .select(Task.project)
+            ))
+        )
+    else:
+        # Regular users see only projects they're added to in Project User
+        query = query.inner_join(ProjectUser).on(
+            (ProjectUser.parent == Project.name) &
+            (ProjectUser.user == user)
+        )
+
+    # Apply filters
+    for key, value in filters.items():
+        if key == "status":
+            query = query.where(Project.status == value)
+        elif key == "project_type":
+            query = query.where(Project.project_type == value)
+
+    query = query.limit(limit).offset(offset).orderby(
+        Project.modified, order=frappe.qb.desc)
+
+    projects = query.run(as_dict=True)
+    return projects
+
+
+@frappe.whitelist()
+def list_tasks(project, group_by=None, filters=None, limit=None, offset=0):
+
+    project_execution_mode = frappe.db.get_value(
+        "Project", project, "custom_execution_mode") or "Kanban"
+    isScrum = project_execution_mode == "Scrum"
+
+    filters = json.loads(filters) or {}
+    print("filters received:", filters, type(filters))
+
+    filters.update({"project": project})
+    filters.update(filters)
+    # if isScrum:
+    #     active_cycle = frappe.db.get_value(
+    #         "Cycle",
+    #         {"project": project, "status": "Active"},
+    #         "name"
+    #     )
+    #     filters.update({"custom_cycle": active_cycle})
+    # else:
+    #     # For Kanban mode, don't filter by cycle
+    #     pass
+
+    Task = DocType("Task")
+    ToDo = DocType("ToDo")
+    Project = DocType("Project")
+
+    ProjectUser = DocType("Project User")
+
+    ProjectPhase = DocType("Project Phase")
+
+    query = (
+        frappe.qb.from_(Task)
+        .select(
+            Task.name,
+            Task.name.as_("id"),
+            Task.subject,
+            Task.status,
+            Task.type,
+            Task.custom_cycle.as_("cycle"),
+            Task.priority,
+            Task.modified,
+            Task.project,
+            Project.project_name,
+            Task.custom_phase,
+            ProjectPhase.title.as_("phase_name"),
+            fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+        ).inner_join(Project).on(Project.name == Task.project)
+        .left_join(ProjectPhase).on(ProjectPhase.name == Task.custom_phase)
+        .left_join(ToDo).on(
+            (ToDo.reference_name == Task.name)
+            & (ToDo.reference_type == "Task")
+            & (ToDo.status == "Open")
+        )
+    )
+
+    print(f"check1", query)
+
+    # Permission-based filtering
+    user = frappe.session.user
+    user_roles = frappe.get_roles(user)
+    is_admin = "Administrator" in user_roles
+    is_project_manager = "Project Manager" in user_roles
+
+    if not is_admin:
+        if is_project_manager:
+            # Project Manager sees only projects they created
+            query = query.inner_join(frappe.qb.DocType("Project")).on(
+                frappe.qb.DocType("Project").name == Task.project
+            ).where(frappe.qb.DocType("Project").owner == user)
+        else:
+            # Project User sees projects they're assigned to
+            query = query.inner_join(ProjectUser).on(
+                (ProjectUser.parent == Task.project)
+                & (ProjectUser.user == user)
+            )
+
+    if limit:
+        query = query.limit(limit).offset(offset)
+
+    query = query.groupby(Task.name).orderby(
+        Task.modified, order=frappe.qb.desc)
+    # Only return parent tasks (exclude subtasks)
+    # query = query.where((Task.parent_task.isnull()) | (Task.parent_task == ""))
+    # tasks = query.run(as_dict=True)
+
+    # Apply filters
+    for key, value in filters.items():
+        if key == "subject":
+            query = query.where(Task.subject.like(f"%{value}%"))
+        if key == "project":
+            query = query.where(Task.project == value)
+        elif key == "priority":
+            query = query.where(Task.priority == value)
+        elif key == "type":
+            query = query.where(Task.type == value)
+        elif key == "custom_phase":
+            query = query.where(Task.custom_phase == value)
+        elif key == "custom_cycle":
+
+            query = query.where(Task.custom_cycle == value)
+        elif key == "status":
+            query = query.where(Task.status == value)
+
+    query = query.groupby(Task.name).orderby(
+        Task.modified, order=frappe.qb.desc)
+
+    # Only return parent tasks (exclude subtasks)
+    query = query.where((Task.parent_task.isnull()))
+
+    tasks = query.run(as_dict=True)
+
+    # Group tasks by specified field
+    if group_by:
+        grouped_data = {}
+        for task in tasks:
+            group_key = task.get(group_by, "Ungrouped")
+            if group_key not in grouped_data:
+                grouped_data[group_key] = {
+                    "name": str(group_key),
+                    "id": str(group_key),
+                    "title": str(group_key),
+                    group_by: group_key,
+                    "children": []
+                }
+            grouped_data[group_key]["children"].append(task)
+
+        return list(grouped_data.values())
+
+    return tasks
+
+
+@frappe.whitelist()
+def list_subtasks(parent_task):
+    Task = DocType("Task")
+    ToDo = DocType("ToDo")
+
+    subtasks = (
+        frappe.qb.from_(Task)
+        .select(
+            Task.name,
+            Task.name.as_("id"),
+            Task.subject,
+            Task.status,
+            Task.type,
+            Task.custom_cycle.as_("cycle"),
+            Task.priority,
+            Task.modified,
+            Task.project,
+            Task.parent_task,
+            fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+
+        )
+        .left_join(ToDo).on(
+            (ToDo.reference_name == Task.name)
+            & (ToDo.reference_type == "Task")
+            & (ToDo.status == "Open")
+        )
+        .where(Task.parent_task == parent_task)
+        .groupby(Task.name)
+        .orderby(Task.modified, order=frappe.qb.desc)
+        .run(as_dict=True)
+    )
+
+    return subtasks
+
+
+@frappe.whitelist()
+def backlog_with_phases(project=None):
+    if not project:
+        return {"error": "Project parameter is required"}
+    isScrum = frappe.db.get_value("Project", project, "custom_execution_mode") == "Scrum"
+    filters = {"project": project}
+    Task = DocType("Task")
+    ToDo = DocType("ToDo")
+    active_phase = frappe.db.get_value(
+        "Project Phase",
+        {"project": project, "status": "Active"},
+        ["name", "title", "start_date", "end_date", "status"],
+        as_dict=True,
+    )
+    phases = frappe.qb.from_(DocType("Project Phase")).select(
+        DocType("Project Phase").name,
+        DocType("Project Phase").title,
+        DocType("Project Phase").start_date,
+        DocType("Project Phase").end_date,
+        DocType("Project Phase").status,
+        DocType("Project Phase").sequence,
+    ).where(DocType("Project Phase").project == project).orderby(DocType("Project Phase").sequence, order=frappe.qb.asc).run(as_dict=True)
+
+    # Calculate phase_progress for each phase
+    for phase in phases:
+        total_tasks = frappe.db.count(
+            "Task",
+            filters={"custom_phase": phase["name"], "project": project}
+        )
+        completed_tasks = frappe.db.count(
+            "Task",
+            filters={"custom_phase": phase["name"], "project": project, "status": "Completed"}
+        )
+        phase["phase_progress"] = round((completed_tasks / total_tasks * 100)) if total_tasks > 0 else 0
+
+    all_tasks = frappe.qb.from_(Task).select(
+        Task.name.as_("id"),
+        Task.name,
+        Task.subject,
+        Task.status,
+        Task.type,
+        Task.custom_cycle.as_("cycle"),
+        Task.priority,
+        Task.modified,
+        Task.project,
+        Task.custom_phase,
+        fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+    ).left_join(ToDo).on(
+        (ToDo.reference_name == Task.name)
+        & (ToDo.reference_type == "Task")
+        & (ToDo.status == "Open")
+    ).where(Task.project == project).groupby(Task.name).orderby(Task.modified, order=frappe.qb
+                                                                .desc).run(as_dict=True)
+
+    tasks_by_phases = {}
+    cycles_by_phase = {}
+    for phase in phases:
+        phase_tasks = frappe.qb.from_(Task).select(
+            Task.name.as_("id"),
+            Task.name,
+            Task.subject,
+            Task.status,
+            Task.type,
+            Task.custom_cycle.as_("cycle"),
+            Task.priority,
+            Task.modified,
+            Task.project,
+            Task.custom_phase,
+            fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+        ).left_join(ToDo).on(
+            (ToDo.reference_name == Task.name)
+            & (ToDo.reference_type == "Task")
+            & (ToDo.status == "Open")
+        ).where(
+            (Task.project == project) &
+            (Task.custom_phase == phase["name"])
+        ).groupby(Task.name).orderby(Task.modified, order=frappe.qb.desc).run(as_dict=True)
+        phase_cycles = frappe.qb.from_(DocType("Cycle")).select(
+            DocType("Cycle").name,
+            DocType("Cycle").cycle_name,
+            DocType("Cycle").start_date,
+            DocType("Cycle").end_date,
+            DocType("Cycle").status,
+        ).where(
+            (DocType("Cycle").project == project) &
+            (DocType("Cycle").phase == phase["name"])
+        ).orderby(DocType("Cycle").start_date, order=frappe.qb.asc).run(as_dict=True)
+        cycles_by_phase[phase["name"]] = phase_cycles
+        tasks_by_phases[phase["name"]] = {
+            "phase": phase,
+            "tasks": phase_tasks
+        }
+    
+    cycles = frappe.qb.from_(DocType("Cycle")).select(
+        DocType("Cycle").name,
+        DocType("Cycle").cycle_name,
+        DocType("Cycle").start_date,
+        DocType("Cycle").end_date,
+        DocType("Cycle").status,
+    ).where(DocType("Cycle").project == project).orderby(DocType("Cycle").start_date, order=frappe.qb.asc).run(as_dict=True)
+    active_cycle = next((c for c in cycles if c["status"] == "Active"), None)
+    
+    cycles_by_tasks = {}
+    for task in all_tasks:
+        cycle = task.get("cycle")
+        if cycle:
+            if cycle not in cycles_by_tasks:
+                cycles_by_tasks[cycle] = []
+            cycles_by_tasks[cycle].append(task)
+    return {
+        "is_scrum": isScrum,
+        "active_phase": active_phase,
+        "phases": phases,
+        "tasks_by_phases": tasks_by_phases,
+        "cycles_by_phase": cycles_by_phase,
+        "all_tasks": all_tasks,
+        "cycles": cycles,
+        "active_cycle_name" : active_cycle["cycle_name"] if active_cycle else None,
+        "cycles_by_tasks": cycles_by_tasks,
+        "backlog_by_phase": {
+            phase["name"]: [t for t in tasks_by_phases[phase["name"]]["tasks"] if not t["cycle"]]
+            for phase in phases
+        }
+
+    }
+    # open_tasks =
+
+
+@frappe.whitelist()
+def backlog(project=None):
+    user = frappe.session.user
+    user_roles = frappe.get_roles(user)
+    is_admin = "Administrator" in user_roles
+    is_project_manager = "Project Manager" in user_roles
+
+    project_execution_mode = frappe.db.get_value(
+        "Project", project, "custom_execution_mode") or "Kanban"
+
+    isScrum = project_execution_mode == "Scrum"
+
+    filters = {"project": project}
+    if isScrum:
+        active_cycle = frappe.db.get_value(
+            "Cycle",
+            {"project": project, "status": "Active"},
+            "name"
+        )
+        filters.update({"custom_cycle": active_cycle})
+
+    Cycle = DocType("Cycle")
+    Task = DocType("Task")
+    ToDo = DocType("ToDo")
+    ProjectUser = DocType("Project User")
+
+    if isScrum:
+        cycles = (
+            frappe.qb.from_(Cycle)
+            .select(
+                Cycle.name,
+                Cycle.cycle_name,
+                Cycle.start_date,
+                Cycle.end_date,
+                Cycle.status,
+            )
+            .where(Cycle.project == project)
+            .orderby(Cycle.start_date, order=frappe.qb.desc)
+            .run(as_dict=True)
+        )
+
+        # Fetch tasks for each cycle
+        for cycle in cycles:
+            tasks = (
+                frappe.qb.from_(Task)
+                .select(
+                    Task.name,
+                    Task.name.as_("id"),
+                    Task.subject,
+                    Task.status,
+                    Task.priority,
+                    Task.modified,
+                    Task.type,
+                    fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+                )
+                .left_join(ToDo).on(
+                    (ToDo.reference_name == Task.name)
+                    & (ToDo.reference_type == "Task")
+                    & (ToDo.status == "Open")
+                )
+                .where(
+                    (Task.project == project)
+                    & (Task.custom_cycle == cycle["name"])
+                )
+                .groupby(Task.name)
+                .orderby(Task.modified, order=frappe.qb.desc)
+                # Only return parent tasks (exclude subtasks)
+                .where((Task.parent_task.isnull()))
+                .run(as_dict=True)
+            )
+            cycle["tasks"] = tasks
+    else:
+        cycles = None
+
+    # Fetch open tasks (backlog) not assigned to any cycle
+    if isScrum:
+        open_tasks = (
+            frappe.qb.from_(Task)
+            .select(
+                Task.name,
+                Task.name.as_("id"),
+                Task.subject,
+                Task.status,
+                Task.priority,
+                Task.modified,
+                Task.type,
+                fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+            )
+            .left_join(ToDo).on(
+                (ToDo.reference_name == Task.name)
+                & (ToDo.reference_type == "Task")
+                & (ToDo.status == "Open")
+            )
+            .where(
+                (Task.project == project)
+                & (Task.custom_cycle.isnull())
+                & (Task.status.isin(["Open"]))
+            )
+            .groupby(Task.name)
+            .orderby(Task.modified, order=frappe.qb.desc)
+            # Only return parent tasks (exclude subtasks)
+            .where((Task.parent_task.isnull()))
+            .run(as_dict=True)
+        )
+    else:
+        open_tasks = (
+            frappe.qb.from_(Task)
+            .select(
+                Task.name,
+                Task.name.as_("id"),
+                Task.subject,
+                Task.status,
+                Task.priority,
+                Task.modified,
+                Task.type,
+                fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+            )
+            .left_join(ToDo).on(
+                (ToDo.reference_name == Task.name)
+                & (ToDo.reference_type == "Task")
+                & (ToDo.status == "Open")
+            )
+            .where(
+                (Task.project == project)
+                & (Task.status == "Open")
+            )
+            .groupby(Task.name)
+            .orderby(Task.modified, order=frappe.qb.desc)
+            # Only return parent tasks (exclude subtasks)
+            .where(Task.parent_task.isnull())
+            .run(as_dict=True)
+        )
+
+    all_tasks = (
+        frappe.qb.from_(Task)
+        .select(
+            Task.name,
+            Task.name.as_("id"),
+            Task.subject,
+            Task.status,
+            Task.priority,
+            Task.modified,
+            Task.type,
+            fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
+        )
+        .left_join(ToDo).on(
+            (ToDo.reference_name == Task.name)
+            & (ToDo.reference_type == "Task")
+            & (ToDo.status == "Open")
+        )
+        .where(
+            (Task.project == project)
+        )
+        .groupby(Task.name)
+        .orderby(Task.modified, order=frappe.qb.desc)
+        .run(as_dict=True)
+    )
+
+    return {
+        "cycles": cycles,
+        "backlog": open_tasks,
+        "all_tasks": all_tasks,
+        "is_scrum": isScrum,
+        "active_cycle_name": frappe.db.get_value(
+            "Cycle",
+            {"project": project, "status": "Active"},
+            "name"
+        ) if isScrum else None,
+    }
+
+
+@frappe.whitelist()
+def get_watchers(doctype, docname):
+    Watcher = DocType("Watcher")
+    User = DocType("User")
+    watchers = (
+        frappe.qb.from_(Watcher)
+        .select(
+            Watcher.user,
+            Watcher.parent,
+            Watcher.parenttype,
+            User.full_name,
+            User.email,
+            User.enabled,
+            User.user_image
+        )
+        .left_join(User).on(User.name == Watcher.user)
+        .where(
+            (Watcher.parenttype == doctype)
+            & (Watcher.parent == docname)
+        )
+        .run(as_dict=True)
+    )
+    return watchers
+
+
+def watcher_exists(doctype, docname, user):
+    existing_watcher = frappe.db.sql(
+        """
+        SELECT name FROM `tabWatcher`
+        WHERE parent = %s AND parenttype = %s AND user = %s
+        LIMIT 1
+        """,
+        (docname, doctype, user),
+    )
+    return existing_watcher
+
+
+@frappe.whitelist()
+def add_watcher(doctype, docname, user):
+    try:
+        existing_watcher = watcher_exists(doctype, docname, user)
+
+        if existing_watcher:
+            return {"success": False, "message": f"User {user} is already a watcher"}
+
+        # Add watcher directly to child table
+        frappe.get_doc({
+            "doctype": "Watcher",
+            "parent": docname,
+            "parenttype": doctype,
+            # "parentfield": "watcher",
+            "user": user
+        }).insert(ignore_permissions=True)
+
+        # If doctype is Task, get the project and add user to project if not already there
+        if doctype == "Task":
+            task_doc = frappe.get_doc("Task", docname)
+            project = task_doc.project
+
+            if project:
+                existing_project_user = frappe.db.get_value(
+                    "Project User",
+                    {"parent": project, "user": user}
+                )
+
+                if not existing_project_user:
+                    frappe.get_doc({
+                        "doctype": "Project User",
+                        "parent": project,
+                        "parenttype": "Project",
+                        "parentfield": "users",
+                        "user": user
+                    }).insert()
+
+        frappe.db.commit()
+
+        if user is not frappe.session.user:
+            send_notification(
+                user=user,
+                subject=f"Watcher Added",
+                content=f"You have been added as a watcher to {doctype} '{docname}'.",
+                document_type=doctype,
+                document_name=docname,
+                icons='<i class="fa fa-eye"></i>',
+            )
+
+        return {"success": True, "message": f"User {user} added as watcher to {doctype} {docname}"}
+    except Exception as e:
+        frappe.log_error(f"Error adding watcher: {e}", "Add Watcher Error")
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def remove_watcher(doctype, docname, user):
+    try:
+        # Remove watcher directly from child table
+        frappe.db.sql("""
+            DELETE FROM `tabWatcher`
+            WHERE parent = %s AND parenttype = %s AND user = %s
+        """, (docname, doctype, user))
+
+        frappe.db.commit()
+
+        return {"success": True, "message": f"User {user} removed from watchers of {doctype} {docname}"}
+    except Exception as e:
+        frappe.log_error(
+            f"Error removing watcher: {e}", "Remove Watcher Error")
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def toggle_self_watch(doctype, docname):
+    user = frappe.session.user
+    existing_watcher = watcher_exists(doctype, docname, user)
+    if existing_watcher:
+        # Remove watcher
+        return remove_watcher(doctype, docname, user)
+    else:
+        # Add watcher
+        return add_watcher(doctype, docname, user)
+
+
+@frappe.whitelist()
+def current_user_is_watching(doctype, docname):
+    user = frappe.session.user
+
+    existing_watcher = frappe.db.get_value(
+        "Watcher",
+        {
+            "parent": docname,
+            "parenttype": doctype,
+            "user": user
+        }
+    )
+
+    return bool(existing_watcher)
+
+
+@frappe.whitelist()
+def recent_projects_with_activity_of_current_user(limit=5):
+    user = frappe.session.user
+
+    projects = frappe.db.sql(
+        """
+        SELECT DISTINCT p.name, p.project_name
+        FROM `tabProject` p
+        JOIN `tabTask` t ON t.project = p.name
+        JOIN `tabToDo` td ON td.reference_name = t.name AND td.reference_type = 'Task' AND td.allocated_to = %s
+        ORDER BY t.modified DESC
+        LIMIT %s
+        """,
+        (user, limit),
+        as_dict=True,
+    )
+    return projects
+
+
+@frappe.whitelist()
+def user_details(user=None):
+    if not user:
+        return None
+    details = frappe.db.get_value(
+        "User",
+        user,
+        ["full_name", "email", "user_image"],
+        as_dict=True
+    )
+    return details
+
+
+@frappe.whitelist()
+def toggle_archive_project(project):
+    try:
+        # project_doc = frappe.get_doc("Project", project)
+        current_status = frappe.db.get_value(
+            "Project", project, "custom_is_archived") or 0
+        new_status = 0 if current_status != 0 else 1
+        frappe.db.sql(
+            "UPDATE `tabProject` SET custom_is_archived = %s WHERE name = %s",
+            (new_status, project)
+        )
+        frappe.db.commit()
+        return {"success": True, "message": f"Project archived status toggled"}
+    except Exception as e:
+        frappe.log_error(
+            f"Error toggling archive status: {e}", "Toggle Archive Error")
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def remove_subtask(parent_task, subtask):
+    try:
+        # Remove entry from Task Depends On child table in parent task
+        frappe.db.sql(
+            "DELETE FROM `tabTask Depends On` WHERE parent = %s AND task = %s",
+            (parent_task, subtask)
+        )
+
+        # Delete the subtask document
+        frappe.delete_doc("Task", subtask)
+
+        frappe.db.commit()
+        return {"success": True, "message": f"Subtask {subtask} removed and deleted"}
+    except Exception as e:
+        frappe.log_error(
+            f"Error removing subtask: {e}", "Remove Subtask Error")
+        return {"success": False, "message": str(e)}
+
+
+def subtask_to_quill_html(data: dict) -> str:
+    def list_to_html(items):
+        if not items:
+            return "<p>None</p>"
+        return "<ul>" + "".join(f"<li>{item}</li>" for item in items) + "</ul>"
+
+    html = f"""
+
+    <p>{data.get("description", "")}</p>
+
+    <h3>Task Details</h3>
+    <ul>
+        <li><strong>Task Type:</strong> {data.get("task_type", "")}</li>
+        <li><strong>Priority:</strong> {data.get("priority", "")}</li>
+        <li><strong>Complexity:</strong> {data.get("complexity", "")}</li>
+        <li><strong>Estimated Effort:</strong> {data.get("estimated_effort", "")}</li>
+        <li><strong>Estimated Hours:</strong> {data.get("estimated_hours", "")}</li>
+        <li><strong>Execution Order:</strong> {data.get("execution_order", "")}</li>
+        <li><strong>Suggested Role:</strong> {data.get("suggested_role", "")}</li>
+        <li><strong>Risk Level:</strong> {data.get("risk_level", "")}</li>
+        <li><strong>Automatable:</strong> {"Yes" if data.get("automatable") else "No"}</li>
+    </ul>
+
+    <h3>Reason</h3>
+    <p>{data.get("reason", "")}</p>
+
+    <h3>Required Skills</h3>
+    {list_to_html(data.get("required_skills", []))}
+
+    <h3>Dependencies</h3>
+    {list_to_html(data.get("depends_on", []))}
+
+    <h3>Deliverables</h3>
+    {list_to_html(data.get("deliverables", []))}
+
+    <h3>Acceptance Criteria</h3>
+    {list_to_html(data.get("acceptance_criteria", []))}
+
+    <h3>Tags</h3>
+    {list_to_html(data.get("tags", []))}
+    """
+
+    return html.strip()
+
+
+@frappe.whitelist()
+def create_subtask_from_ai_session(subtask, message_id):
+    if not subtask or not message_id:
+        return {"success": False, "message": "Subtask and message_id are required"}
+    message_doc = frappe.get_doc("Copilot Message", message_id)
+    session_id = message_doc.session
+
+    session = frappe.get_doc("Copilot Session", session_id)
+
+    reference_doctype = session.reference_doctype
+    reference_name = session.reference_name
+
+    if reference_doctype != "Task":
+        return {"success": False, "message": "Subtasks can only be created for Tasks"}
+    task_doc = frappe.get_doc("Task", reference_name)
+
+    # Check if subtask with same subject already exists
+    existing_subtask = frappe.db.get_value(
+        "Task",
+        {
+            "subject": subtask.get("subject", "Subtask for " + task_doc.subject),
+            "parent_task": task_doc.name,
+        }
+    )
+
+    if existing_subtask:
+        return {
+            "success": False,
+            "message": f"Subtask with this subject already exists under Task '{task_doc.subject}'"
+        }
+
+    new_subtask = frappe.get_doc({
+        "doctype": "Task",
+        "subject": subtask.get("subject", "Subtask for " + task_doc.subject),
+        "description": subtask_to_quill_html(subtask),
+        "project": task_doc.project,
+        "parent_task": task_doc.name,
+        "priority": subtask.get("priority", "Medium"),
+    })
+
+    # new_subtask.tags = ",".join(subtask.get("tags", []))
+    new_subtask.insert(ignore_permissions=True)
+
+    frappe.db.commit()
+    for tag in subtask.get("tags", []):
+
+        add_tag(
+            dt="Task",
+            dn=new_subtask.name,
+            tag=tag)
+
+    return {
+        "success": True,
+        "message": f"Subtask '{new_subtask.subject}' created under Task '{task_doc.subject}'",
+        "subtask_id": new_subtask.name
+    }
+
+
+@frappe.whitelist()
+def check_subtask_exists(message_id, subject):
+    message_doc = frappe.get_doc("Copilot Message", message_id)
+    session_id = message_doc.session
+
+    session = frappe.get_doc("Copilot Session", session_id)
+
+    reference_doctype = session.reference_doctype
+    reference_name = session.reference_name
+
+    if reference_doctype != "Task":
+        return False
+
+    existing_subtask = frappe.db.get_value(
+        "Task",
+        {
+            "subject": subject,
+            "parent_task": reference_name,
+            # "docstatus": ["!=", 2]
+        }
+    )
+    return bool(existing_subtask)
+
+
+@frappe.whitelist()
+def remove_task(task_name):
+    try:
+        frappe.delete_doc("Task", task_name)
+        frappe.db.commit()
+
+        return {"success": True, "message": f"Task {task_name} removed and deleted"}
+    except Exception as e:
+        frappe.log_error(
+            f"Error removing task: {e}", "Remove Task Error")
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def set_cycle_for_task(task_name, cycle_name):
+    try:
+        task_doc = frappe.get_doc("Task", task_name)
+        project_doc = frappe.get_doc("Project", task_doc.project)
+        if cycle_name:
+            cycle_doc = frappe.get_doc("Cycle", cycle_name)
+        else:
+            cycle_doc = None
+
+        # Validate project is in Scrum mode
+        if project_doc.custom_execution_mode != "Scrum":
+            return {"success": False, "message": f"Project '{project_doc.project_name}' is not in Scrum mode"}
+
+        # Task already in target cycle
+        if task_doc.custom_cycle == cycle_name:
+            return {"success": False, "message": f"Task '{task_doc.subject}' is already in cycle '{cycle_name}'"}
+
+        # Check if moving out of active cycle
+        active_cycle = frappe.db.get_value(
+            "Cycle",
+            {"project": project_doc.name, "status": "Active"},
+            "name"
+        )
+
+        if active_cycle and task_doc.custom_cycle == active_cycle and cycle_name != active_cycle:
+            return {"success": False, "message": f"Cannot move tasks out of active cycle '{active_cycle}'. Please complete it first."}
+
+        if task_doc.custom_cycle:
+            current_cycle = frappe.get_doc("Cycle", task_doc.custom_cycle)
+            if current_cycle.status == "Completed":
+                return {"success": False, "message": f"Cannot move tasks out of completed cycle '{current_cycle.cycle_name}'."}
+        # Validate cycle belongs to the same project
+
+        if cycle_doc:
+
+            if cycle_doc.project != project_doc.name:
+                return {"success": False, "message": f"Cycle '{cycle_doc.cycle_name}' does not belong to project '{project_doc.project_name}'"}
+
+            # Check if moving into or out of completed cycle
+            if cycle_doc.status == "Completed":
+                return {"success": False, "message": f"Cannot move tasks into completed cycle '{cycle_doc.cycle_name}'."}
+
+        # Update and save
+        task_doc.custom_cycle = cycle_name
+        task_doc.save()
+        frappe.db.commit()
+
+        return {
+            "success": True,
+            "message": f"Task '{task_doc.subject}' moved to '{cycle_name or 'Backlog'}'"
+        }
+    except Exception as e:
+        frappe.log_error(
+            f"Error setting cycle for task: {e}", "Set Cycle Error")
+        return {"success": False, "message": str(e)}
+
+
+def set_task_status(task_name, new_status):
+    try:
+        task_doc = frappe.get_doc("Task", task_name)
+        old_status = task_doc.status
+        if old_status == new_status:
+            return {"success": False, "message": f"Task '{task_doc.subject}' is already in status '{new_status}'"}
+
+        task_doc.status = new_status
+        task_doc.save()
+        frappe.db.commit()
+
+        return {"success": True, "message": f"Task '{task_doc.subject}' status changed from '{old_status}' to '{new_status}'"}
+    except Exception as e:
+        frappe.log_error(
+            f"Error setting task status: {e}", "Set Task Status Error")
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def create_phases_for_project(project_name, phase_template_name):
+    try:
+        project_doc = frappe.get_doc("Project", project_name)
+        if project_doc.custom_execution_mode != "Scrum":
+            return {"success": False, "message": f"Project '{project_doc.project_name}' is not in Scrum mode"}
+
+        template_doc = frappe.get_doc("Phase Template", phase_template_name)
+        if not template_doc:
+            return {"success": False, "message": f"Phase Template '{phase_template_name}' not found"}
+
+        for phase in template_doc.phases:
+            new_cycle = frappe.get_doc({
+                "doctype": "Cycle",
+                "cycle_name": phase.phase_name,
+                "project": project_name,
+                "start_date": phase.start_date,
+                "end_date": phase.end_date,
+                "status": "Planned"
+            })
+            new_cycle.insert()
+
+        frappe.db.commit()
+        return {"success": True, "message": f"Phases from template '{phase_template_name}' created for project '{project_doc.project_name}'"}
+    except Exception as e:
+        frappe.log_error(
+            f"Error creating phases from template: {e}", "Create Phases Error")
+        return {"success": False, "message": str(e)}

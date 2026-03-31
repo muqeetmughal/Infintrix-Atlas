@@ -174,9 +174,10 @@ const Team = () => {
           />
         </div>
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
-          {depts.map((dept) => (
+          {depts.map((dept, index) => (
             <button
-              key={dept}
+
+              key={index}
               onClick={() => setFilterDept(dept)}
               className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                 filterDept === dept
@@ -191,8 +192,8 @@ const Team = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredTeam.map((member) => (
-          <TeamMemberCard key={member.name} member={member} />
+        {filteredTeam.map((member, index) => (
+          <TeamMemberCard key={index} member={member} />
         ))}
       </div>
 

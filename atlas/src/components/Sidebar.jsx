@@ -5,26 +5,31 @@ import { useQueryParams } from "../hooks/useQueryParams";
 import { menuItems } from "../data/menu";
 import logo from "../assets/logo.png";
 import { useFrappeGetCall } from "frappe-react-sdk";
+import { useAuth } from "../hooks/query";
 
 import Logo from "./Logo";
 import { Dropdown, Typography } from "antd";
-import { Info, LayoutDashboard, LogOut, Menu, Settings } from "lucide-react";
+import {
+  ChevronDown,
+  Info,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Settings,
+} from "lucide-react";
 const Sidebar = () => {
   const qp = useQueryParams();
+  const auth = useAuth();
+
   const currentProject = qp.get("project");
 
-  const projectsQuery = useFrappeGetDocList("Project", {
-    fields: ["name as value", "project_name as label"],
-    limit_page_length: 100,
-  });
+  const projectsQuery = useFrappeGetCall("infintrix_atlas.api.v1.recent_projects_with_activity_of_current_user");
   const location = useLocation();
 
-  const installed_apps_query = useFrappeGetCall("frappe.apps.get_apps");
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     const saved = localStorage.getItem("sidebarOpen");
     return saved !== null ? JSON.parse(saved) : false;
   });
-  const installed_apps = installed_apps_query.data?.message || [];
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => {
@@ -43,65 +48,16 @@ const Sidebar = () => {
           isSidebarOpen ? "w-72" : "w-24"
         }`}
       >
-        <Dropdown
-          trigger={"click"}
-          menu={{
-            items: [
-              {
-                icon: <LayoutDashboard />,
-                key: "apps",
-                label: "Apps",
-                children: installed_apps.map((app) => ({
-                  key: app.name,
-                  label: (
-                    <div
-                      className="flex items-center space-x-2 cursor-pointer"
-                      onClick={() =>{
-                        window.location.href = app.route;
-                      }}
-                    >
-                      <img src={app.logo} alt={app.title} className="w- h-5" />
-                      <span>{app.title}</span>
-                    </div>
-                  ),
-                })),
-              },
-              {
-                icon: <Settings />,
-                key: "settings",
-                label: "Settings",
-              },
-              {
-                key: "about",
-                label: "About",
-                icon: <Info />,
-              },
-              {
-                key: "logout",
-                label: "Logout",
-                icon: <LogOut />,
-              },
-            ],
-          }}
-        >
-          <div className="flex justify-start items-center p-4 mb-4 hover:cursor-pointer">
-            <div>
-              <Logo fullLogo={false} />
-            </div>
+       <div className="flex justify-between items-center p-4 mb-4 hover:cursor-pointer">
+            <div className="flex items-center">
+              <div>
+                <Logo fullLogo={isSidebarOpen} />
+              </div>
 
-            <div>
-              <div level={4} className="font-bold mb-0 ml-2">
-                Atlas
-              </div>
-              <div className="mb-0 ml-2 text-sm text-slate-500 dark:text-slate-400">
-                Muqeet Mughal
-              </div>
+             
             </div>
+         
           </div>
-        </Dropdown>
-        {/* <div className="p-8 mb-4 flex items-center justify-between">
-          <Logo fullLogo={isSidebarOpen} />
-        </div> */}
 
         <nav className="px-4 space-y-2">
           {menuItems.map((item) => (
@@ -142,30 +98,33 @@ const Sidebar = () => {
           ))}
         </nav>
 
-        {/* project selector when viewing tasks */}
-        {location.pathname.includes("/tasks") && isSidebarOpen && (
-          <div className="px-4 mt-6">
-            <h4 className="text-xs font-semibold uppercase text-slate-400 mb-2">
-              Projects
+        {/* project selector */}
+        {isSidebarOpen && (projectsQuery?.data?.message||[]).length > 0 && (
+          <div className="px-4 mt-6 border-t border-slate-200 dark:border-slate-700 pt-4">
+            <h4 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-3 flex items-center space-x-2">
+              <span>Projects</span>
+              <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                {(projectsQuery?.data?.message || []).length}
+              </span>
             </h4>
-            <div className="space-y-1">
-              {(projectsQuery.data || []).map((p) => (
+            <div className="space-y-2 ">
+              {projectsQuery.isLoading && (
+                <p className="text-xs text-slate-400">Loading projects...</p>
+              )}
+              {(projectsQuery?.data?.message || []).map((p) => (
                 <button
-                  key={p.value}
+                  key={p.name}
                   onClick={() => {
-                    if (currentProject === p.value) {
-                      qp.set("project", "");
-                    } else {
-                      qp.set("project", p.value);
-                    }
+                    navigate(`/tasks/kanban?project=${p.name}`);
                   }}
-                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
-                    currentProject === p.value
-                      ? "bg-indigo-600 text-white"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className={`cursor-pointer w-full text-left px-3 py-2 rounded-lg transition-all text-sm font-medium truncate ${
+                    currentProject === p.name
+                      ? "bg-indigo-600 dark:bg-indigo-500 text-white shadow-md shadow-indigo-200 dark:shadow-indigo-900/50"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400"
                   }`}
+                  title={p.project_name}
                 >
-                  {p.label}
+                  {p.project_name}
                 </button>
               ))}
             </div>
@@ -205,7 +164,7 @@ const Sidebar = () => {
               <button
                 key={item.id}
                 onClick={() => navigate(`/${item.id}`)}
-                className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-xl transition-all duration-200 ${
+                className={`cursor-pointer flex flex-col items-center space-y-1 px-4 py-2 rounded-xl transition-all duration-200 ${
                   location.pathname.includes(item.id)
                     ? "text-indigo-600 dark:text-indigo-400"
                     : "text-slate-600 dark:text-slate-400"

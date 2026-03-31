@@ -20,7 +20,7 @@ add_to_apps_screen = [
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = ["erpnext","hrms"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -258,22 +258,23 @@ doc_events = {
 # ignore_translatable_strings_from = []
 
 doc_events = {
-    "Task": {
-        "validate": "infintrix_atlas.events.task.validate_task_hierarchy",
-        "before_save": "infintrix_atlas.events.task.before_task_save",
-        "after_save": "infintrix_atlas.events.task.after_task_save",
-        # "has_permission": "infintrix_atlas.permissions.task_has_permission"
-    },
-    #  "Project": {
-    #     "before_insert": "infintrix_atlas.events.project.add_creator_to_users"
-    #     # "before_save": "infintrix_atlas.events.task.before_task_save"
+    # "Task": {
+    #     "validate": "infintrix_atlas.events.task.validate_task_hierarchy",
+    #     "before_save": "infintrix_atlas.events.task.before_task_save",
+    #     "after_save": "infintrix_atlas.events.task.after_task_save",
+    #     # "has_permission": "infintrix_atlas.permissions.task_has_permission"
     # },
+     "Project": {
+         "after_insert": "infintrix_atlas.events.project.after_insert",
+        # "before_insert": "infintrix_atlas.events.project.add_creator_to_users"
+        # "before_save": "infintrix_atlas.events.task.before_task_save"
+    },
 }
 fixtures = [
     {"dt": "Custom Field", "filters": [["module", "in", ["Infintrix Atlas"]]]},
     {"dt": "Property Setter", "filters": [["module", "in", ["Infintrix Atlas"]]]},
     {"dt": "Task Type"},
-    {"dt": "Cycle Template"},
+    {"dt": "Phase Template"},
     {
         "dt": "Custom DocPerm",
         "filters": [
@@ -282,12 +283,13 @@ fixtures = [
                 "in",
                 [
                     "Task",
-                    "Cycle Template",
+                    "Phase Template",
                     "Cycle",
                     "Customer",
                     "Comment",
                     "Version",
                     "User",
+                    "Project Phase"
                 ],
             ]
         ],
@@ -304,9 +306,12 @@ permission_query_conditions = {
     "Project": "infintrix_atlas.permissions.project_permission_query",
     "Task": "infintrix_atlas.permissions.task_permission_query",
 }
-
+# has_permission = {
+#     "Project": "infintrix_atlas.permissions.has_project_permission",
+#     "Task": "infintrix_atlas.permissions.has_task_permission",
+# }
 
 override_doctype_class = {
     "Task": "infintrix_atlas.overrides.task.TaskOverride",
-    "Project": "infintrix_atlas.overrides.project.ProjectOverride",
+    "Project": "infintrix_atlas.overrides.project.Project",
 }

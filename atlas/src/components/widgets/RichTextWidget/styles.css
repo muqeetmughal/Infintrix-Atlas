@@ -1,0 +1,9 @@
+.ql-readonly .ql-container {
+  border: none;
+}
+
+.ql-editing .ql-container {
+  border: 1px solid #d9d9d9; /* or tailwind gray */
+  
+  border-radius: 6px;
+}

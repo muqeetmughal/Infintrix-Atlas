@@ -1,0 +1,66 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Phase Template",
+  "modified": "2026-01-27 18:54:33.843470",
+  "name": "ERP IMPLEMENTATION – CONTROLLED",
+  "phases": [
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "phases",
+    "parenttype": "Phase Template",
+    "phase_name": "Pre-Sales Qualification",
+    "sequence": 0
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "phases",
+    "parenttype": "Phase Template",
+    "phase_name": "Discovery & Process Freeze",
+    "sequence": 0
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "phases",
+    "parenttype": "Phase Template",
+    "phase_name": "Scope Lock",
+    "sequence": 0
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "phases",
+    "parenttype": "Phase Template",
+    "phase_name": "Build & Configuration",
+    "sequence": 0
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "phases",
+    "parenttype": "Phase Template",
+    "phase_name": "Data Migration",
+    "sequence": 0
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "phases",
+    "parenttype": "Phase Template",
+    "phase_name": "UAT",
+    "sequence": 0
+   },
+   {
+    "description": null,
+    "parent": "ERP IMPLEMENTATION – CONTROLLED",
+    "parentfield": "phases",
+    "parenttype": "Phase Template",
+    "phase_name": "Go-Live & Hypercare",
+    "sequence": 0
+   }
+  ]
+ }
+]

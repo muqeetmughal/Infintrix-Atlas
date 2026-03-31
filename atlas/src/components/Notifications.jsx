@@ -54,7 +54,6 @@ const Notifications = () => {
   }, []);
 
   useFrappeEventListener("update_system_notifications", (data) => {
-    console.log("Realtime notification received:", data);
     soundManager.play("ALERT");
 
     const key = `notif-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -166,7 +165,7 @@ const Notifications = () => {
       </Badge>
 
       {showNotifications && (
-        <div className="absolute right-0 top-14 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 z-99999 overflow-hidden">
+        <div className="absolute right-0 top-14 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 z-15 overflow-hidden">
           <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-linear-to-r from-blue-50 to-blue-100/50 dark:from-slate-700 dark:to-slate-600">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-slate-900 dark:text-slate-100">
