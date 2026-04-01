@@ -1520,7 +1520,7 @@ def backlog_with_phases(project=None):
         "active_cycle_name" : active_cycle["cycle_name"] if active_cycle else None,
         "cycles_by_tasks": cycles_by_tasks,
         "backlog_by_phase": {
-            phase["name"]: [t for t in tasks_by_phases[phase["name"]]["tasks"] if not t["cycle"]]
+            phase["name"]: [t for t in tasks_by_phases[phase["name"]]["tasks"] if not t["cycle"] and t["status"] == "Open"]
             for phase in phases
         }
 

@@ -544,10 +544,14 @@ export default function KanbanView() {
           );
 
           if (newStatus !== oldStatus) {
-            await updateTaskMutation.updateDoc("Task", activeTask.name, {
+            updateTaskMutation.updateDoc("Task", activeTask.name, {
               status: newStatus,
+            }).then(() => {
+            
+              project_query.mutate();
+              tasks_list_query.mutate();
+              active_cycle_query.mutate();
             });
-            mutate(["Project", project]);
           
           }
 

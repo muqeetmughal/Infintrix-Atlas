@@ -2,7 +2,7 @@
 
 import frappe
 from erpnext.projects.doctype.task.task import Task
-
+from infintrix_atlas.api.v1 import switch_assignee_of_task
 print("ATLAS TASK OVERRIDE LOADED")
 class TaskOverride(Task):
 
@@ -44,6 +44,10 @@ class TaskOverride(Task):
             parent = frappe.get_doc("Task", self.parent_task)
             if parent.project:
                 self.project = parent.project
+                
+    def before_save(self):
+        # Auto-assign when status changes to Open
+        self.set_auto_assignee_when_status_changed()
 
     def validate_task_type_hierarchy(self):
         if not self.parent_task or not self.type:
@@ -132,7 +136,29 @@ class TaskOverride(Task):
                 return True
 
         return False
-
+    def set_auto_assignee_when_status_changed(self):
+        # Only auto-assign if status changed to Working, Completed, or Pending Review
+        allowed_statuses = ["Working", "Completed", "Pending Review"]
+        if self.status not in allowed_statuses:
+            return
+        
+        existing_todo = frappe.db.exists(
+            "ToDo",
+            {
+                "reference_type": "Task",
+                "reference_name": self.name,
+                "status": "Open"
+            }
+        )
+        if existing_todo:
+            print(f"Task {self.name} already has a ToDo assigned, skipping auto-assign")
+            return
+        
+        # Auto-assign without checking previous status
+        if self.has_value_changed("status"):
+            current_user = frappe.session.user
+            print(f"Auto-assigning task {self.name} to {current_user}")
+            switch_assignee_of_task(self.name, current_user)
 
 # # your_app/overrides/task.py
 

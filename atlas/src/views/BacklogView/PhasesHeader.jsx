@@ -64,11 +64,11 @@ const PhasesHeader = ({ phases }) => {
                 ref={isSelected ? selectedPhaseRef : null}
                 key={phase.name || idx}
                 onClick={() => qp.set("custom_phase", phase.name)}
-                className={`flex-shrink-0 w-80 p-4 rounded-lg border bg-white dark:bg-slate-900 cursor-pointer transition-all hover:shadow-lg ${isSelected ? "scale-105 shadow-lg ring-2 ring-indigo-500" : "hover:border-slate-200 dark:hover:border-slate-700"} ${config.border}`}
+                className={`ml-2 shrink-0 w-80 p-4 rounded-lg border bg-white dark:bg-slate-900 cursor-pointer transition-all hover:shadow-lg ${isSelected ? "scale-105 shadow-lg ring-2 ring-indigo-500" : "hover:border-slate-200 dark:hover:border-slate-700"} ${config.border}`}
               >
                 <div className="flex items-start gap-3 mb-3">
                   <div
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${config.bg} ${config.color}`}
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${config.bg} ${config.color}`}
                   >
                     {phase.status === "Active" ? (
                       <Activity size={18} className="animate-pulse" />

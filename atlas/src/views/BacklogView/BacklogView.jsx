@@ -297,13 +297,19 @@ const BacklogView = () => {
     return cycles_query3?.data?.message?.active_phase || null;
   }, [cycles_query3.data]);
 
+  useEffect(() => {
+    if (!custom_phase && activePhase) {
+      qp.set("custom_phase", activePhase.name);
+    }
+  }, [activePhase, custom_phase]);
+
   const all_tasks = useMemo(() => {
     return cycles_query3?.data?.message?.all_tasks || [];
   }, [cycles_query3.data]);
   const cycles = useMemo(() => {
     return (
       cycles_query3?.data?.message?.cycles_by_phase[
-        custom_phase || activePhase?.name
+        custom_phase
       ] || []
     );
   }, [cycles_query3.data, custom_phase, activePhase]);
@@ -320,10 +326,10 @@ const BacklogView = () => {
   const backlogTasks = useMemo(() => {
     return (
       cycles_query3?.data?.message?.backlog_by_phase[
-        custom_phase || activePhase?.name
+        custom_phase
       ] || []
     );
-  }, [cycles_query3.data, custom_phase, activePhase]);
+  }, [cycles_query3.data, custom_phase]);
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
