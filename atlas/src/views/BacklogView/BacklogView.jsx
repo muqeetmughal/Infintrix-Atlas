@@ -40,6 +40,7 @@ import {
   ArrowUpRight,
   X,
   TrendingUp,
+  Edit2
 } from "lucide-react";
 import {
   useFrappeCreateDoc,
@@ -203,7 +204,7 @@ const InlineTaskCreator = ({
       const doc = await createMutation.createDoc("Task", {
         subject: value,
         project: project_id,
-        custom_phase: phase_id,
+        custom_phase: phase_id || undefined,
         custom_cycle: cycle ? cycle : undefined,
         status: "Open",
       });
@@ -244,6 +245,11 @@ const BacklogView = () => {
   // const [selectedPhase, setSelectedPhase] = useState(null);
   const [showBacklogCreator, setShowBacklogCreator] = useState(false);
   const [setCycleModal] = useState(null);
+  // edit button logic
+const [isEditingPhase, setIsEditingPhase] = useState(false);
+const [phaseTitle, setPhaseTitle] = useState("");
+const phaseInputRef = useRef(null);
+
   const { mutate } = useSWRConfig();
   const project_id = qp.get("project") || null;
   const statusFilter = qp.getArray("status");
@@ -559,6 +565,34 @@ const BacklogView = () => {
     return phases.find((p) => p.name === custom_phase) || activePhase;
   }, [phases, custom_phase, activePhase]);
 
+
+
+
+useEffect(() => {
+  if (isEditingPhase) {
+    phaseInputRef.current?.focus();
+  }
+}, [isEditingPhase]);
+
+const handlePhaseUpdate = async () => {
+  if (!phaseTitle.trim() || phaseTitle === selectedPhase?.title) {
+    setIsEditingPhase(false);
+    return;
+  }
+  try {
+    await updateMutation.updateDoc("Project Phase", selectedPhase.name, {
+      title: phaseTitle,
+    });
+    await cycles_query3.mutate();
+    setIsEditingPhase(false);
+  } catch (error) {
+    message.error("Failed to update phase title");
+  }
+};
+
+
+
+
   if (cycles_query3.isLoading) return <div>Loading...</div>;
 
   return (
@@ -588,9 +622,40 @@ const BacklogView = () => {
                     >
                       Phase {selectedPhase?.sequence}
                     </Badge>
-                    <h3 className="text-lg sm:text-xl font-black tracking-tight mt-2 truncate">
-                      {selectedPhase?.title}
-                    </h3>
+
+
+                    <div className="flex items-center justify-between mt-2">
+                      {isEditingPhase ? (
+                        <Input
+                          ref={phaseInputRef}
+                          size="small"
+                          value={phaseTitle}
+                          onChange={(e) => setPhaseTitle(e.target.value)}
+                          onPressEnter={handlePhaseUpdate}
+                          onBlur={handlePhaseUpdate}
+                          className="text-lg font-black tracking-tight"
+                        />
+                      ) : (
+                        <>
+                          <h3 className="text-lg sm:text-xl font-black tracking-tight truncate">
+                            {selectedPhase?.title}
+                          </h3>
+                          <Button
+                            type="text"
+                            size="small"
+                            className="text-slate-400 hover:text-indigo-600 transition-colors"
+                            icon={<Edit2 size={14} />}
+                            onClick={() => {
+                              setPhaseTitle(selectedPhase?.title || "");
+                              setIsEditingPhase(true);
+                            }}
+                          />
+                        </>
+                      )}
+                    </div>
+
+
+
                   </div>
                 </div>
 
