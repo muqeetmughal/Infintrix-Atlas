@@ -449,6 +449,36 @@ def get_project_user_stats(user=None, activity_limit=5):
         {"projects": tuple(project_names)},
     )[0][0]
 
+    # TODAY'S TASKS
+    today = frappe.utils.nowdate()
+    today_tasks = frappe.db.sql(
+        """
+        SELECT
+            td.name,
+            td.description,
+            td.status,
+            td.date,
+            td.priority,
+            td.reference_name,
+            td.allocated_to AS assignee,
+            u.full_name AS assignee_full_name,
+            t.subject AS task_subject
+        FROM `tabToDo` td
+        LEFT JOIN `tabTask` t
+            ON t.name = td.reference_name
+            AND td.reference_type = 'Task'
+        LEFT JOIN `tabUser` u
+            ON u.name = td.allocated_to
+        WHERE td.allocated_to = %(user)s
+            AND td.date = %(today)s
+            AND td.status != 'Closed'
+            AND td.status != 'Cancelled'
+        ORDER BY td.date ASC, td.modified DESC
+        """,
+        {"user": user, "today": today},
+        as_dict=True,
+    )
+
     projects_list = []
     for p in projects:
         try:
@@ -555,6 +585,7 @@ def get_project_user_stats(user=None, activity_limit=5):
         "team_members": team_members,
         "projects": projects_list,
         "recent_activities": recent_activities,
+        "today_tasks": today_tasks,
     }
 
 
