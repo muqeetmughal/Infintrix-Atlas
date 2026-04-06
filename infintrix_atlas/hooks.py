@@ -95,7 +95,7 @@ required_apps = ["erpnext","hrms"]
 # ------------
 
 # before_install = "infintrix_atlas.install.before_install"
-# after_install = "infintrix_atlas.install.after_install"
+after_migrate = "infintrix_atlas.install.after_install"
 
 # Uninstallation
 # ------------

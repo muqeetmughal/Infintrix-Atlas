@@ -1,15 +1,15 @@
 # your_app/overrides/task.py
 
 import frappe
+from frappe import _
 from erpnext.projects.doctype.task.task import Task
 from infintrix_atlas.api.v1 import switch_assignee_of_task
 print("ATLAS TASK OVERRIDE LOADED")
 class TaskOverride(Task):
 
     def validate(self):
-        # Validate cycle belongs to same phase as task
         if self.is_new():
-            
+            self._set_default_phase_if_missing()
             self.validate_cycle_phase()
             self.validate_task_allowed()
         # self.validate_task_type_hierarchy()
@@ -17,8 +17,21 @@ class TaskOverride(Task):
         # ALWAYS call core validation
         super().validate()
 
-        # Your custom hierarchy + business rules
     
+    def _set_default_phase_if_missing(self):
+        if self.custom_phase or not self.project:
+            return
+
+        latest_phase = frappe.db.get_value(
+            "Project Phase",
+            {"project": self.project},
+            "name",
+            order_by="creation desc",
+        )
+        if not latest_phase:
+            frappe.throw(_("Please create a phase before creating a task."))
+
+        self.custom_phase = latest_phase
         
     def validate_cycle_phase(self):
          if self.custom_cycle and self.custom_phase:
