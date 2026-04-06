@@ -1,4 +1,4 @@
-import { INITIAL_PROJECTS, INITIAL_TASKS, PROJECT_STATUS_COLORS, TEAM_MEMBERS } from '../data/constants'
+import { INITIAL_PROJECTS, PROJECT_STATUS_COLORS, TEAM_MEMBERS } from '../data/constants'
 import { useState, useMemo } from 'react';
 import {
     Briefcase,
@@ -13,14 +13,13 @@ import { Spin } from 'antd';
 import Accountability from '../components/Accountability';
 
 const Dashboard = () => {
-    const [tasks] = useState(INITIAL_TASKS);
 
     const dashboard_stats_query = useFrappeGetCall(
         "infintrix_atlas.api.v1.get_project_user_stats",
         { activity_limit: 5 }
     );
 
-    const { stats, recentActivities, projects } = useMemo(() => {
+    const { stats, recentActivities, projects, todayTasks } = useMemo(() => {
         const data = dashboard_stats_query.data?.message ?? dashboard_stats_query.data;
 
         const loadingStats = {
@@ -45,16 +44,18 @@ const Dashboard = () => {
                 stats: loadingStats,
                 recentActivities: [{ text: "Error loading data", time_display: "" }],
                 projects: [],
+                todayTasks: [],
             };
         }
 
         const activities = Array.isArray(data.recent_activities)
             ? data.recent_activities
             : data.recent_activities
-            ? [data.recent_activities]
-            : [];
+                ? [data.recent_activities]
+                : [];
 
         const projectsArr = Array.isArray(data.projects) ? data.projects : [];
+        const todayTasksArr = Array.isArray(data.today_tasks) ? data.today_tasks : [];
 
         return {
             stats: {
@@ -65,9 +66,10 @@ const Dashboard = () => {
             },
             recentActivities: activities,
             projects: projectsArr,
+            todayTasks: todayTasksArr,
         };
     }, [dashboard_stats_query.data, dashboard_stats_query.isLoading, dashboard_stats_query.loading, dashboard_stats_query.error, dashboard_stats_query.isError]);
-    
+
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
             {/* Stats Grid */}
@@ -112,7 +114,82 @@ const Dashboard = () => {
                     </div>
                 </div>
             </div>
+            <Card title="My Tasks" className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <div className="max-h-80 overflow-y-auto rounded-2xl">
+                    <table className="w-full">
+                        <thead className="sticky top-0 bg-white dark:bg-slate-800 z-10 border-b border-slate-200 dark:border-slate-700">
+                            <tr>
+                                <th className="text-left text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-4 py-3">
+                                    Task ID
+                                </th>
+                                <th className="text-left text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-4 py-3">
+                                    Subject
+                                </th>
+                                <th className="text-left text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-4 py-3">
+                                    Assignee
+                                </th>
+                                <th className="text-left text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-4 py-3">
+                                    Status
+                                </th>                    <th className="text-left text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-4 py-3">
+                                    Due Date
+                                </th>
+                            </tr>
+                        </thead>
 
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {todayTasks.map((task, index) => (
+                                <tr
+                                    key={task.name || index}
+                                    className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+                                >
+                                    <td className="px-4 py-4 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                        <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                                            {task.reference_name || task.name}
+                                        </span>
+                                    </td>
+
+                                    <td className="px-4 py-4 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                        <span className="block truncate max-w-[320px]">
+                                            {task.task_subject || task.description || "-"}
+                                        </span>
+                                    </td>
+
+                                    <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300 font-medium">
+                                        {task.assignee_full_name || task.assignee || "-"}
+                                    </td>
+
+                                    <td className="px-4 py-4">
+                                        <Badge
+                                            className={
+                                                task.status === "Completed"
+                                                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
+                                                    : task.status === "Open"
+                                                        ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                                                        : task.status === "Working"
+                                                            ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400"
+                                                            : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                                            }
+                                        >
+                                            {task.status}
+                                        </Badge>
+                                    </td>
+
+                                    <td className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400 font-medium">
+                                        {task.date}
+                                    </td>
+                                </tr>
+                            ))}
+                            {todayTasks.length === 0 && (
+                                <tr>
+                                    <td colSpan="5" className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                                        No tasks due today
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
             {/* Overview and Activity Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Quick Overview */}
@@ -165,7 +242,7 @@ const Dashboard = () => {
                 </Card>
             </div>
 
-            <Accountability/>
+            <Accountability />
         </div>
     );
 }
