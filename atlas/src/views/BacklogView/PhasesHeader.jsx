@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { useQueryParams } from "../../hooks/useQueryParams";
-import { Check, ChevronRight, Circle, Activity } from "lucide-react";
+import { Check, Circle, Activity } from "lucide-react";
+import DroppableZone from "./DroppableZone";
 
 const STATUS_CONFIG = {
   Completed: {
@@ -28,7 +29,6 @@ const PhasesHeader = ({ phases }) => {
   const selected_phase_qp = qp.get("custom_phase");
   const scrollContainerRef = useRef(null);
   const selectedPhaseRef = useRef(null);
-  
 
   useEffect(() => {
     if (selected_phase_qp && selectedPhaseRef.current) {
@@ -60,58 +60,64 @@ const PhasesHeader = ({ phases }) => {
             const isSelected = selected_phase_qp === phase.name;
 
             return (
-              <div
-                ref={isSelected ? selectedPhaseRef : null}
+              <DroppableZone
                 key={phase.name || idx}
-                onClick={() => qp.set("custom_phase", phase.name)}
-                className={`flex-shrink-0 w-80 p-4 rounded-lg border bg-white dark:bg-slate-900 cursor-pointer transition-all hover:shadow-lg ${isSelected ? "scale-105 shadow-lg ring-2 ring-indigo-500" : "hover:border-slate-200 dark:hover:border-slate-700"} ${config.border}`}
+                id={phase.name}
+                data={"phase"}
+                isOverColor="bg-indigo-50 dark:bg-indigo-900/20 ring-2 ring-indigo-400 dark:ring-indigo-500"
               >
-                <div className="flex items-start gap-3 mb-3">
-                  <div
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${config.bg} ${config.color}`}
-                  >
-                    {phase.status === "Active" ? (
-                      <Activity size={18} className="animate-pulse" />
-                    ) : (
-                      <Icon size={18} />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h4
-                      className={`text-sm font-bold truncate ${selected_phase_qp === phase.name ? (phase.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" : "text-indigo-600 dark:text-indigo-400") : "text-slate-900 dark:text-white"}`}
+                <div
+                  ref={isSelected ? selectedPhaseRef : null}
+                  onClick={() => qp.set("custom_phase", phase.name)}
+                  className={`ml-2 shrink-0 w-80 p-4 rounded-lg border bg-white dark:bg-slate-900 cursor-pointer transition-all hover:shadow-lg ${isSelected ? "scale-105 shadow-lg ring-2 ring-indigo-500" : "hover:border-slate-200 dark:hover:border-slate-700"} ${config.border}`}
+                >
+                  <div className="flex items-start gap-3 mb-3">
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${config.bg} ${config.color}`}
                     >
-                      {phase.title}
-                    </h4>
-                    <span
-                      className={`inline-block mt-1 px-2 py-1 text-xs font-bold rounded ${config.bg} ${config.color}`}
-                    >
-                      {phase.status}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
-                  <div className="flex justify-between">
-                    <span className="font-semibold">Start:</span>{" "}
-                    <span>{phase.start_date}</span>
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-semibold">Progress</span>
-                      <span
-                        className={`font-bold ${phase.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" : "text-indigo-600 dark:text-indigo-400"}`}
+                      {phase.status === "Active" ? (
+                        <Activity size={18} className="animate-pulse" />
+                      ) : (
+                        <Icon size={18} />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4
+                        className={`text-sm font-bold truncate ${selected_phase_qp === phase.name ? (phase.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" : "text-indigo-600 dark:text-indigo-400") : "text-slate-900 dark:text-white"}`}
                       >
-                        {phase.phase_progress || 0}%
+                        {phase.title}
+                      </h4>
+                      <span
+                        className={`inline-block mt-1 px-2 py-1 text-xs font-bold rounded ${config.bg} ${config.color}`}
+                      >
+                        {phase.status}
                       </span>
                     </div>
-                    <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${phase.status === "Completed" ? "bg-gradient-to-r from-emerald-500 to-emerald-600" : "bg-gradient-to-r from-indigo-500 to-indigo-600"}`}
-                        style={{ width: `${phase.phase_progress || 0}%` }}
-                      />
+                  </div>
+                  <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Start:</span>{" "}
+                      <span>{phase.start_date}</span>
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold">Progress</span>
+                        <span
+                          className={`font-bold ${phase.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" : "text-indigo-600 dark:text-indigo-400"}`}
+                        >
+                          {phase.phase_progress || 0}%
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${phase.status === "Completed" ? "bg-linear-to-r from-emerald-500 to-emerald-600" : "bg-linear-to-r from-indigo-500 to-indigo-600"}`}
+                          style={{ width: `${phase.phase_progress || 0}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </DroppableZone>
             );
           })}
         </div>
