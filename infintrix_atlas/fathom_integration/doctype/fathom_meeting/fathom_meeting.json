@@ -1,0 +1,131 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-08 17:59:42.846373",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "account",
+  "meeting_title",
+  "recording_id",
+  "recorded_by",
+  "recording_start_date",
+  "recording_end_date",
+  "column_break_wwum",
+  "meeting_url",
+  "scheduled_start_time",
+  "scheduled_end_time",
+  "share_url",
+  "summary",
+  "section_break_sxgv",
+  "invitees",
+  "transcript"
+ ],
+ "fields": [
+  {
+   "fieldname": "account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Account",
+   "options": "Fathom Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "meeting_title",
+   "fieldtype": "Data",
+   "label": "Meeting Title"
+  },
+  {
+   "fieldname": "invitees",
+   "fieldtype": "Table",
+   "label": "invitees",
+   "options": "Fathom Meeting Invitee"
+  },
+  {
+   "fieldname": "transcript",
+   "fieldtype": "Table",
+   "label": "Transcript",
+   "options": "Fathom Meeting Transcript"
+  },
+  {
+   "fieldname": "recording_id",
+   "fieldtype": "Data",
+   "label": "Recording ID"
+  },
+  {
+   "fieldname": "recorded_by",
+   "fieldtype": "Data",
+   "label": "Recorded By"
+  },
+  {
+   "fieldname": "recording_start_date",
+   "fieldtype": "Date",
+   "label": "Recording Start Date"
+  },
+  {
+   "fieldname": "recording_end_date",
+   "fieldtype": "Date",
+   "label": "Recording End Date"
+  },
+  {
+   "fieldname": "column_break_wwum",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "meeting_url",
+   "fieldtype": "Data",
+   "label": "Meeting URL"
+  },
+  {
+   "fieldname": "scheduled_start_time",
+   "fieldtype": "Datetime",
+   "label": "Scheduled Start Time"
+  },
+  {
+   "fieldname": "scheduled_end_time",
+   "fieldtype": "Datetime",
+   "label": "Scheduled End Time"
+  },
+  {
+   "fieldname": "share_url",
+   "fieldtype": "Data",
+   "label": "Share URL"
+  },
+  {
+   "fieldname": "summary",
+   "fieldtype": "Text",
+   "label": "Summary"
+  },
+  {
+   "fieldname": "section_break_sxgv",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-08 18:38:58.990518",
+ "modified_by": "Administrator",
+ "module": "Fathom Integration",
+ "name": "Fathom Meeting",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
