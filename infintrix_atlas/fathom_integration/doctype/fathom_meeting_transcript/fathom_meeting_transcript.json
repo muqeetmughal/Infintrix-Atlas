@@ -1,0 +1,62 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-08 18:18:58.084235",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "recording_id",
+  "speaker_calender_email",
+  "timestamp",
+  "column_break_mhlh",
+  "speaker_name",
+  "text"
+ ],
+ "fields": [
+  {
+   "fieldname": "recording_id",
+   "fieldtype": "Data",
+   "label": "Recording ID"
+  },
+  {
+   "fieldname": "speaker_calender_email",
+   "fieldtype": "Data",
+   "label": "Speaker Calender Email"
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Data",
+   "label": "Timestamp"
+  },
+  {
+   "fieldname": "column_break_mhlh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "speaker_name",
+   "fieldtype": "Data",
+   "label": "Speaker Name"
+  },
+  {
+   "fieldname": "text",
+   "fieldtype": "Text",
+   "label": "Text"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-08 18:42:25.030005",
+ "modified_by": "Administrator",
+ "module": "Fathom Integration",
+ "name": "Fathom Meeting Transcript",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

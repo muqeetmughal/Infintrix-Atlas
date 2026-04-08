@@ -176,6 +176,12 @@ doc_events = {
 # 	],
 # }
 
+scheduler_events = {
+    "daily": [
+        "infintrix_atlas.fathom_integration.api.sync_accounts",
+    ]
+}
+
 # Testing
 # -------
 
