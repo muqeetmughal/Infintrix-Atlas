@@ -21,7 +21,7 @@ const Dashboard = () => {
     );
 
     const { stats, recentActivities, projects, todayTasks } = useMemo(() => {
-        const data = dashboard_stats_query.data?.message ?? dashboard_stats_query.data;
+        const data = dashboard_stats_query.data?.message|| [];
 
         const loadingStats = {
             total_projects: <Spin size="small" />,
