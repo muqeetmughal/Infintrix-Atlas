@@ -2,8 +2,8 @@
 set -e  # Stop on first error
 
 # Variables
-APP_DIR=~/infintrix-erp/apps/infintrix_atlas
-BENCH_DIR=~/infintrix-erp
+APP_DIR=~/frappe-bench/apps/infintrix_atlas
+BENCH_DIR=~/frappe-bench
 SITE_NAME=$1  # pass the site name as argument
 NODE_VERSION=20
 echo "🚀 ==> Pulling latest code..."
