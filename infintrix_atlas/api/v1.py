@@ -462,11 +462,15 @@ def get_project_user_stats(user=None, activity_limit=5):
             td.reference_name,
             td.allocated_to AS assignee,
             u.full_name AS assignee_full_name,
-            t.subject AS task_subject
+            t.subject AS task_subject,
+            t.project AS task_project,
+            p.project_name AS task_project_name
         FROM `tabToDo` td
         LEFT JOIN `tabTask` t
             ON t.name = td.reference_name
             AND td.reference_type = 'Task'
+        LEFT JOIN `tabProject` p
+            ON p.name = t.project
         LEFT JOIN `tabUser` u
             ON u.name = td.allocated_to
         WHERE td.allocated_to = %(user)s

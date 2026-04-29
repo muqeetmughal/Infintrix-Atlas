@@ -32,6 +32,65 @@ const FileAttachment = ({ doctype = "Task", docname = null }) => {
     const [previewFile, setPreviewFile] = useState("");
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    // Paste screenshots (Ctrl+V) into attachments.
+    useEffect(() => {
+        if (!doctype || !docname) return;
+
+        const onPaste = (e) => {
+            try {
+                // Don't hijack paste while typing in inputs/editors.
+                const active = document.activeElement;
+                const tag = (active?.tagName || "").toLowerCase();
+                const isTypingTarget =
+                    tag === "input" ||
+                    tag === "textarea" ||
+                    active?.isContentEditable === true;
+                if (isTypingTarget) return;
+
+                const items = e.clipboardData?.items || [];
+                const imageItem = Array.from(items).find(
+                    (it) => it.kind === "file" && (it.type || "").startsWith("image/"),
+                );
+                if (!imageItem) return;
+
+                const blob = imageItem.getAsFile();
+                if (!(blob instanceof File)) return;
+                if (!ALLOWED_TYPES.includes(blob.type)) {
+                    message.error("Only images, PDF, Word, or Excel files allowed");
+                    return;
+                }
+
+                const ext =
+                    blob.type === "image/png"
+                        ? "png"
+                        : blob.type === "image/jpeg"
+                            ? "jpg"
+                            : "img";
+                const filename = `screenshot-${new Date()
+                    .toISOString()
+                    .replace(/[:.]/g, "-")}.${ext}`;
+
+                const file = new File([blob], filename, { type: blob.type });
+
+                setLocalFiles((prev) => [
+                    ...prev,
+                    {
+                        uid: `paste-${Date.now()}`,
+                        name: file.name,
+                        originFileObj: file,
+                    },
+                ]);
+                message.success("Screenshot added to attachments");
+            } catch (err) {
+                // Silent fail; keep UX smooth.
+                console.error("Paste upload failed:", err);
+            }
+        };
+
+        window.addEventListener("paste", onPaste);
+        return () => window.removeEventListener("paste", onPaste);
+    }, [doctype, docname]);
+
     useEffect(() => {
         if (!files_query.data) return;
 

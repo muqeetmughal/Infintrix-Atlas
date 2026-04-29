@@ -1,5 +1,6 @@
 import { INITIAL_PROJECTS, PROJECT_STATUS_COLORS, TEAM_MEMBERS } from '../data/constants'
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
     Briefcase,
     CheckSquare,
@@ -20,7 +21,7 @@ const Dashboard = () => {
     );
 
     const { stats, recentActivities, projects, todayTasks } = useMemo(() => {
-        const data = dashboard_stats_query.data?.message ?? dashboard_stats_query.data;
+        const data = dashboard_stats_query.data?.message|| [];
 
         const loadingStats = {
             total_projects: <Spin size="small" />,
@@ -144,7 +145,19 @@ const Dashboard = () => {
                                 >
                                     <td className="px-4 py-4 text-sm font-semibold text-slate-800 dark:text-slate-100">
                                         <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                                            {task.reference_name || task.name}
+                                            {(() => {
+                                                const taskId = task.reference_name || task.name;
+                                                const selectedTask = encodeURIComponent(taskId);
+                                                const project = task.task_project ? `&project=${encodeURIComponent(task.task_project)}` : "";
+                                                return (
+                                                    <Link
+                                                        to={`/tasks/kanban?selected_task=${selectedTask}${project}`}
+                                                        className="hover:underline text-indigo-700 dark:text-indigo-300"
+                                                    >
+                                                        {taskId}
+                                                    </Link>
+                                                );
+                                            })()}
                                         </span>
                                     </td>
 
