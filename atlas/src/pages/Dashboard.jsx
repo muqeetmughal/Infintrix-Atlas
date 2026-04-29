@@ -37,6 +37,8 @@ const Dashboard = () => {
             return {
                 stats: loadingStats,
                 recentActivities: [{ text: "Loading activities...", time_display: "" }],
+                projects: [],
+                todayTasks: [],
             };
         }
 
@@ -244,7 +246,7 @@ const Dashboard = () => {
                     <div className="space-y-6">
                         {recentActivities.map((act, i) => (
                             <div key={i} className="flex items-start space-x-3">
-                                <div className="w-2 h-2 rounded-full bg-indigo-400 dark:bg-indigo-500 mt-1.5 flex-shrink-0" />
+                                <div className="w-2 h-2 rounded-full bg-indigo-400 dark:bg-indigo-500 mt-1.5 shrink-0" />
                                 <div>
                                     <div className="text-sm font-medium text-slate-700 dark:text-slate-100">{act.text}</div>
                                     <div className="text-[10px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest">{act.time_display}</div>
