@@ -5,7 +5,7 @@ set -e  # Stop on first error
 APP_DIR=~/frappe-bench/apps/infintrix_atlas
 BENCH_DIR=~/frappe-bench
 SITE_NAME=$1  # pass the site name as argument
-NODE_VERSION=20
+NODE_VERSION=22
 echo "🚀 ==> Pulling latest code..."
 cd $APP_DIR
 git reset --hard
