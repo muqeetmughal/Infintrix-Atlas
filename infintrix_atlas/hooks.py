@@ -20,7 +20,7 @@ add_to_apps_screen = [
 # Apps
 # ------------------
 
-required_apps = ["erpnext","hrms"]
+required_apps = ["erpnext", "hrms"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -150,9 +150,9 @@ after_migrate = "infintrix_atlas.install.after_install"
 # Hook on document methods and events
 
 doc_events = {
-	"File": {
-		"after_insert": "infintrix_atlas.events.file.on_file_insert",
-	},
+    "File": {
+        "after_insert": "infintrix_atlas.events.file.on_file_insert",
+    },
 }
 
 # Scheduled Tasks
@@ -177,7 +177,7 @@ doc_events = {
 # }
 
 scheduler_events = {
-    "daily": [
+    "hourly": [
         "infintrix_atlas.fathom_integration.api.sync_accounts",
     ]
 }
@@ -270,15 +270,16 @@ doc_events = {
     #     "after_save": "infintrix_atlas.events.task.after_task_save",
     #     # "has_permission": "infintrix_atlas.permissions.task_has_permission"
     # },
-     "Project": {
-         "after_insert": "infintrix_atlas.events.project.after_insert",
+    "Project": {
+        "after_insert": "infintrix_atlas.events.project.after_insert",
         # "before_insert": "infintrix_atlas.events.project.add_creator_to_users"
         # "before_save": "infintrix_atlas.events.task.before_task_save"
     },
 }
 fixtures = [
     {"dt": "Custom Field", "filters": [["module", "in", ["Infintrix Atlas"]]]},
-    {"dt": "Property Setter", "filters": [["module", "in", ["Infintrix Atlas"]]]},
+    {"dt": "Property Setter", "filters": [
+        ["module", "in", ["Infintrix Atlas"]]]},
     {"dt": "Task Type"},
     {"dt": "Phase Template"},
     {
@@ -311,6 +312,13 @@ website_route_rules = [
 permission_query_conditions = {
     "Project": "infintrix_atlas.permissions.project_permission_query",
     "Task": "infintrix_atlas.permissions.task_permission_query",
+    "Fathom Meeting": "infintrix_atlas.permissions.fathom_meeting_permission_query_conditions",
+    "Fathom Account": "infintrix_atlas.permissions.fathom_account_permission_query_conditions",
+}
+
+has_permission = {
+    "Fathom Meeting": "infintrix_atlas.permissions.fathom_meeting_has_permission",
+    "Fathom Account": "infintrix_atlas.permissions.fathom_account_has_permission",
 }
 # has_permission = {
 #     "Project": "infintrix_atlas.permissions.has_project_permission",

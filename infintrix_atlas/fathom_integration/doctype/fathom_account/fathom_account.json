@@ -6,9 +6,11 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "user",
   "account_name",
   "api_key",
-  "webhook"
+  "webhook",
+  "last_sync"
  ],
  "fields": [
   {
@@ -26,12 +28,25 @@
    "fieldtype": "Data",
    "label": "Account Name",
    "unique": 1
+  },
+  {
+   "fieldname": "last_sync",
+   "fieldtype": "Datetime",
+   "label": "Last Sync"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "User",
+   "options": "User",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-08 17:39:25.846614",
+ "modified": "2026-04-09 19:25:44.259775",
  "modified_by": "Administrator",
  "module": "Fathom Integration",
  "name": "Fathom Account",
@@ -47,6 +62,18 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects Manager",
    "share": 1,
    "write": 1
   }
