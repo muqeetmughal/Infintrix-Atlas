@@ -31,7 +31,7 @@ import {
   useSWRConfig,
 } from "frappe-react-sdk";
 import { useParams } from "react-router-dom";
-import { Button, Input, message, Select, Space, Spin } from "antd";
+import { Button, Input, message, Select, Space, Spin, Tooltip } from "antd";
 import { useQueryParams } from "../../hooks/useQueryParams";
 import { useProjectDetailsQuery } from "../../hooks/query";
 import PhasesHeader from "./PhasesHeader";
@@ -114,26 +114,28 @@ const phaseInputRef = useRef(null);
   // const backlogTasks = useMemo(() => {
   //   return cycles_query3?.data?.message?.backlog || [];
   // }, [cycles_query3.data]);
-  const activePhase = useMemo(() => {
-    return cycles_query3?.data?.message?.active_phase || null;
+  const phases = useMemo(() => {
+    return cycles_query3?.data?.message?.phases || [];
   }, [cycles_query3.data]);
 
+  const defaultPhase = useMemo(() => {
+    const active = cycles_query3?.data?.message?.active_phase || null;
+    if (active) return active
+    return phases.length > 0 ? phases[phases.length - 1] : null
+  }, [cycles_query3.data, phases]);
+
   useEffect(() => {
-    if (!custom_phase && activePhase) {
-      qp.set("custom_phase", activePhase.name);
+    if (!custom_phase && defaultPhase) {
+      qp.set("custom_phase", defaultPhase.name);
     }
-  }, [activePhase, custom_phase]);
+  }, [defaultPhase, custom_phase]);
 
   const all_tasks = useMemo(() => {
     return cycles_query3?.data?.message?.all_tasks || [];
   }, [cycles_query3.data]);
   const cycles = useMemo(() => {
     return cycles_query3?.data?.message?.cycles_by_phase[custom_phase] || [];
-  }, [cycles_query3.data, custom_phase, activePhase]);
-
-  const phases = useMemo(() => {
-    return cycles_query3?.data?.message?.phases || [];
-  }, [cycles_query3.data, custom_phase, activePhase]);
+  }, [cycles_query3.data, custom_phase, defaultPhase]);
 
   const handleDragStart = (event) => {
     console.log("Drag started:", event);
@@ -226,8 +228,8 @@ const phaseInputRef = useRef(null);
     [all_tasks, activeId],
   );
   const selectedPhase = useMemo(() => {
-    return phases.find((p) => p.name === custom_phase) || activePhase;
-  }, [phases, custom_phase, activePhase]);
+    return phases.find((p) => p.name === custom_phase) || defaultPhase;
+  }, [phases, custom_phase, defaultPhase]);
 
 
 
@@ -266,7 +268,13 @@ const handlePhaseUpdate = async () => {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <PhasesHeader phases={phases} />
+        <PhasesHeader
+          phases={phases}
+          onPhaseTitleUpdate={async (phaseName, newTitle) => {
+            await updateMutation.updateDoc("Project Phase", phaseName, { title: newTitle })
+            await cycles_query3.mutate()
+          }}
+        />
 
         {phases.length !== 0 && selectedPhase && (
           <div className="flex flex-col lg:flex-row gap-6 p-4 sm:p-6 h-full">
@@ -337,60 +345,74 @@ const handlePhaseUpdate = async () => {
                     >
                       <ArrowUpRight size={16} />
                     </Button>
-                    <Button
-                      disabled={
-                        deleteMutation.loading ||
-                        backlogTasks.length > 0 ||
-                        cycles.length > 0
+                    <Tooltip
+                      title={
+                        !deleteMutation.loading && (backlogTasks.length > 0 || cycles.length > 0)
+                          ? "Remove all tasks and cycles before deleting"
+                          : undefined
                       }
-                      type="text"
-                      size="small"
-                      danger
-                      icon={<Trash size={16} />}
-                      onClick={() => {
-                        // const currentPhase = selectedPhase;
-                        const previousPhase = phases.find(
-                          (p) =>
-                            phases.indexOf(p) ===
-                            phases.indexOf(selectedPhase) - 1,
-                        );
-                        console.log(" previousPhase:", previousPhase);
-
-                        deleteMutation
-                          .deleteDoc("Project Phase", selectedPhase.name)
-                          .then(() => {
-                            cycles_query3.mutate().then(() => {
-                              if (previousPhase) {
-                                qp.set("custom_phase", previousPhase.name);
-                              }
-                            });
-                          });
-                      }}
                     >
-                      Delete
-                    </Button>
-                    <Select
-                      disabled={backlogTasks.length > 0 || cycles.length > 0}
-                      value={selectedPhase?.status || "Planned"}
-                      variant="borderless"
-                      size="small"
-                      popupMatchSelectWidth={false}
-                      style={{ width: "100%" }}
-                      options={[
-                        { value: "Planned", label: "Planned" },
-                        { value: "Active", label: "Active" },
-                        { value: "Completed", label: "Completed" },
-                      ]}
-                      onChange={(value) => {
-                        updateMutation
-                          .updateDoc("Project Phase", selectedPhase.name, {
-                            status: value,
-                          })
-                          .then(() => {
-                            cycles_query3.mutate();
-                          });
-                      }}
-                    />
+                      <Button
+                        disabled={
+                          deleteMutation.loading ||
+                          backlogTasks.length > 0 ||
+                          cycles.length > 0
+                        }
+                        type="text"
+                        size="small"
+                        danger
+                        icon={<Trash size={16} />}
+                        onClick={() => {
+                          const previousPhase = phases.find(
+                            (p) =>
+                              phases.indexOf(p) ===
+                              phases.indexOf(selectedPhase) - 1,
+                          );
+
+                          deleteMutation
+                            .deleteDoc("Project Phase", selectedPhase.name)
+                            .then(() => {
+                              cycles_query3.mutate().then(() => {
+                                if (previousPhase) {
+                                  qp.set("custom_phase", previousPhase.name);
+                                }
+                              });
+                            });
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </Tooltip>
+                    <Tooltip
+                      title={
+                        backlogTasks.length > 0 || cycles.length > 0
+                          ? "Remove all tasks and cycles before changing status"
+                          : undefined
+                      }
+                    >
+                      <Select
+                        disabled={backlogTasks.length > 0 || cycles.length > 0}
+                        value={selectedPhase?.status || "Planned"}
+                        variant="borderless"
+                        size="small"
+                        popupMatchSelectWidth={false}
+                        style={{ width: "100%" }}
+                        options={[
+                          { value: "Planned", label: "Planned" },
+                          { value: "Active", label: "Active" },
+                          { value: "Completed", label: "Completed" },
+                        ]}
+                        onChange={(value) => {
+                          updateMutation
+                            .updateDoc("Project Phase", selectedPhase.name, {
+                              status: value,
+                            })
+                            .then(() => {
+                              cycles_query3.mutate();
+                            });
+                        }}
+                      />
+                    </Tooltip>
                   </Space>
 
                   {/* Phase Progress */}
