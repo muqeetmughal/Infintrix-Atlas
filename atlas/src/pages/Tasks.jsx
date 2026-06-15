@@ -9,15 +9,16 @@ import {
   useFrappeUpdateDoc,
   useSWRConfig,
 } from "frappe-react-sdk";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import TaskDetail from "../modals/TaskDetail";
 import TableView from "../views/TableView";
 import KanbanView from "../views/KanbanView";
-import { Button, Dropdown, Input, Select, message } from "antd";
+import { Button, Dropdown, Input, Select, Tag, message } from "antd";
 import BacklogView from "../views/BacklogView/BacklogView";
 import CycleModal from "../components/custom/CycleModal";
 import CompleteCycleModal from "../components/custom/CompleteCycleModal";
 import { useQueryParams } from "../hooks/useQueryParams";
+import { RequireRole } from "../components/auth/RequireRole";
 import ProjectHealth from "../components/ProjectHealth";
 import ManageProjectPeople from "../modals/ManageProjectPeople";
 import TreeView from "../views/TreeView";
@@ -33,17 +34,28 @@ const Tasks = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
   const qp = useQueryParams();
+  const navigate = useNavigate();
   const [showFilters, setShowFilters] = React.useState(false);
   const filtersRef = React.useRef(null);
 
   const view = params.view || "table";
   const project = qp.get("project") || null;
   const custom_phase = qp.get("custom_phase") || null;
+
+  if (!project) {
+    return <Navigate to="/projects" replace />;
+  }
+  const project_query = useFrappeGetDoc(
+    "Project",
+    project,
+    project ? ["Project", project] : null,
+  );
+  const project_data = project_query?.data || {};
+  const [pendingMode, setPendingMode] = React.useState(null);
+
   const statusFilter = qp.getArray("status");
   const priorityFilter = qp.getArray("priority");
   const { mutate } = useSWRConfig();
-
-  const navigate = useNavigate();
   const createMutation = useFrappeCreateDoc();
   const updateMutation = useFrappeUpdateDoc();
   const change_mode_mutation = useFrappePostCall(
@@ -52,11 +64,6 @@ const Tasks = () => {
 
   const create_cycles_for_project_mutatation = useFrappePostCall(
     "infintrix_atlas.api.v1.create_cycles_for_project",
-  );
-  const project_query = useFrappeGetDoc(
-    "Project",
-    project,
-    project ? ["Project", project] : null,
   );
   const active_cycle_query = useFrappeGetDocList("Cycle", {
     filters: { project: project, status: "Active" },
@@ -86,7 +93,6 @@ const Tasks = () => {
     // { id: "kanban2", label: "Kanban 2" },
   ];
 
-  const project_data = project_query?.data || {};
   const assignees = (project_data?.users || []).map((u) => u.user);
 
   const hasActiveFilters =
@@ -123,52 +129,46 @@ const Tasks = () => {
             )}
           </div>
           {project_data.project_name && (
-            <Select
-              variant="borderless"
-              placeholder="Execution Mode"
-              style={{
-                // width: "100%",
-                size: "large",
-                fontSize: "14px",
-                fontWeight: "600",
-              }}
-              defaultValue={project_data.custom_execution_mode || "Kanban"}
-              value={project_data.custom_execution_mode || "Kanban"}
-              onChange={(value) => {
-                change_mode_mutation
-                  .call({
-                    mode: value,
-                    project: project,
-                  })
-                  .then((response) => {
-                     if (response?.message?.success) {
-                      window.location.reload()
-                      message.success("Project mode updated successfully")
-                    }else{
-                      message.error(response?.message?.message)
-                    }
-                    
-                  });
-                // updateMutation
-                //   .updateDoc("Project", project, {
-                //     custom_execution_mode: value,
-                //   })
-                //   .then(() => {
-                //     project_query.mutate();
-                //     projects_options_query.mutate();
-                //   });
-              }}
-              options={[
-                {
-                  label: "Scrum",
-                  value: "Scrum",
-                },
-                {
-                  label: "Kanban",
-                  value: "Kanban",
-                },
-              ]}
-            />
+            <RequireRole
+              role="Project Manager"
+              fallback={
+                <Tag color="default" style={{ fontSize: "14px", fontWeight: 600, padding: "4px 12px" }}>
+                  {project_data.custom_execution_mode || "Kanban"}
+                </Tag>
+              }
+            >
+              <Select
+                variant="borderless"
+                placeholder="Execution Mode"
+                style={{
+                  size: "large",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+                value={pendingMode || project_data.custom_execution_mode || "Kanban"}
+                onChange={(value) => {
+                  setPendingMode(value)
+                  change_mode_mutation
+                    .call({
+                      mode: value,
+                      project: project,
+                    })
+                    .then((response) => {
+                      if (response?.message?.success) {
+                        window.location.reload()
+                        message.success("Project mode updated successfully")
+                      } else {
+                        setPendingMode(null)
+                        message.error(response?.message?.message)
+                      }
+                    });
+                }}
+                options={[
+                  { label: "Scrum", value: "Scrum" },
+                  { label: "Kanban", value: "Kanban" },
+                ]}
+              />
+            </RequireRole>
           )}
         </div>
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">

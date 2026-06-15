@@ -8,6 +8,7 @@ import {
   Button,
   Row,
   Col,
+  Tooltip,
   message,
 } from "antd";
 import { useSearchParams } from "react-router-dom";
@@ -18,11 +19,13 @@ import {
   useFrappeUpdateDoc,
   useSWRConfig,
 } from "frappe-react-sdk";
+import { useHasRole } from "../../hooks/useRole";
 
 export default function ProjectModal() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [form] = Form.useForm();
   const { mutate } = useSWRConfig();
+  const { has: isProjectManager } = useHasRole("Project Manager");
 
   const projectParam = searchParams.get("project_modal");
   const isCreate = projectParam === "create";
@@ -127,7 +130,11 @@ export default function ProjectModal() {
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item label="Execution Mode" name="custom_execution_mode">
-              <Select size="large" placeholder="Select mode">
+              <Select
+                size="large"
+                placeholder="Select mode"
+                disabled={!isCreate && !isProjectManager}
+              >
                 <Select.Option value="Kanban">Kanban</Select.Option>
                 <Select.Option value="Scrum">Scrum</Select.Option>
               </Select>
