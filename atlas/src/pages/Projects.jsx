@@ -17,9 +17,8 @@ import {
   useSWRConfig,
 } from "frappe-react-sdk";
 import Assignee from "../components/widgets/Assignee";
-import DocModal from "../components/form/FormRender";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { useDoctypeSchema, useGetDoctypeField } from "../hooks/doctype";
+import { useGetDoctypeField } from "../hooks/doctype";
 import { Button, Checkbox, Progress } from "antd";
 
 const ProjectCard = ({ project: p }) => {
@@ -238,8 +237,7 @@ const Projects = () => {
           </Checkbox>
           <button
             onClick={() => {
-              searchParams.set("doctype", "Project");
-              searchParams.set("mode", "create");
+              searchParams.set("project_modal", "create");
               setSearchParams(searchParams);
             }}
             className="bg-gradient-to-r from-indigo-600 to-indigo-500 dark:from-indigo-500 dark:to-indigo-400 text-white px-6 py-3 rounded-xl font-semibold flex items-center space-x-2 shadow-lg shadow-indigo-200/50 dark:shadow-indigo-900/50 hover:shadow-xl hover:shadow-indigo-300/60 dark:hover:shadow-indigo-800/60 hover:scale-105 active:scale-95 transition-all duration-200"

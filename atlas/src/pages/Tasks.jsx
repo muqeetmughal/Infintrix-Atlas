@@ -289,7 +289,7 @@ const Tasks = () => {
                     label: "Edit Project",
                     icon : <Edit size={14} />,
                     onClick: () => {
-                      qp.set("edit_project", project);
+                      qp.set("project_modal", project);
                     },
                   },
                 ],
