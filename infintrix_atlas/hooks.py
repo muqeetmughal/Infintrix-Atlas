@@ -153,6 +153,11 @@ doc_events = {
     "File": {
         "after_insert": "infintrix_atlas.events.file.on_file_insert",
     },
+    "Project": {
+        "after_insert": "infintrix_atlas.events.project.after_insert",
+        "before_insert": "infintrix_atlas.events.project.before_insert",
+        "validate": "infintrix_atlas.events.project.validate",
+    },
 }
 
 # Scheduled Tasks
@@ -263,19 +268,7 @@ scheduler_events = {
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
-doc_events = {
-    # "Task": {
-    #     "validate": "infintrix_atlas.events.task.validate_task_hierarchy",
-    #     "before_save": "infintrix_atlas.events.task.before_task_save",
-    #     "after_save": "infintrix_atlas.events.task.after_task_save",
-    #     # "has_permission": "infintrix_atlas.permissions.task_has_permission"
-    # },
-    "Project": {
-        "after_insert": "infintrix_atlas.events.project.after_insert",
-        # "before_insert": "infintrix_atlas.events.project.add_creator_to_users"
-        # "before_save": "infintrix_atlas.events.task.before_task_save"
-    },
-}
+
 fixtures = [
     {"dt": "Custom Field", "filters": [["module", "in", ["Infintrix Atlas"]]]},
     {"dt": "Property Setter", "filters": [
@@ -327,5 +320,4 @@ has_permission = {
 
 override_doctype_class = {
     "Task": "infintrix_atlas.overrides.task.TaskOverride",
-    "Project": "infintrix_atlas.overrides.project.Project",
 }
