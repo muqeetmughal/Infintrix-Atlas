@@ -1244,13 +1244,23 @@ def list_projects(filters={}, limit=20, offset=0):
         # Administrators see all projects
         pass
     elif is_project_manager:
-        # Project Managers see projects they created OR projects they're added to in Project User
+        # Project Managers see projects they created, OR projects they're added to in Project User,
+        # OR projects where they're assigned to any task
         query = query.where(
             (Project.owner == user) |
             (Project.name.isin(
                 frappe.qb.from_(ProjectUser)
                 .select(ProjectUser.parent)
                 .where(ProjectUser.user == user)
+            )) |
+            (Project.name.isin(
+                frappe.qb.from_(Task)
+                .inner_join(ToDo).on(
+                    (ToDo.reference_name == Task.name) &
+                    (ToDo.reference_type == "Task") &
+                    (ToDo.allocated_to == user)
+                )
+                .select(Task.project)
             ))
         )
     else:
