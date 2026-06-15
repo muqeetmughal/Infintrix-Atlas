@@ -209,7 +209,7 @@ def get_project_flow_metrics(project):
     tasks = frappe.get_all(
         "Task",
         filters={"project": project},
-        fields=["status", "custom_cycle as cucle", "modified", "creation"],
+        fields=["status", "custom_cycle as cycle", "modified", "creation"],
     )
 
     open_tasks = []
