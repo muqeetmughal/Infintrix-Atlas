@@ -59,7 +59,7 @@ const BacklogView = () => {
   const custom_phase = qp.get("custom_phase") || null;
   // const [selectedPhase, setSelectedPhase] = useState(null);
   const [showBacklogCreator, setShowBacklogCreator] = useState(false);
-  const [setCycleModal] = useState(null);
+  const [cycleModal, setCycleModal] = useState(null);
   // edit button logic
 const [isEditingPhase, setIsEditingPhase] = useState(false);
 const [phaseTitle, setPhaseTitle] = useState("");
@@ -80,7 +80,24 @@ const phaseInputRef = useRef(null);
     "infintrix_atlas.api.v1.complete_cycle",
   );
   const [activeId, setActiveId] = useState(null);
+  const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [isBacklogExpanded, setIsBacklogExpanded] = useState(true);
+
+  const toggleTaskSelection = useCallback((taskId, ctrlKey) => {
+    if (!ctrlKey) {
+      setSelectedTasks(new Set());
+      return;
+    }
+    setSelectedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  }, []);
   const project_query = useProjectDetailsQuery(project_id);
 
   const cycles_query3 = useFrappeGetCall(
@@ -138,8 +155,10 @@ const phaseInputRef = useRef(null);
   }, [cycles_query3.data, custom_phase, defaultPhase]);
 
   const handleDragStart = (event) => {
-    console.log("Drag started:", event);
     setActiveId(event.active.id);
+    if (!selectedTasks.has(event.active.id)) {
+      setSelectedTasks(new Set());
+    }
   };
 
   const backlogTasks = useMemo(() => {
@@ -148,25 +167,21 @@ const phaseInputRef = useRef(null);
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
-    console.log("Drag ended:", );
-
     const type = over?.data?.current || null;
 
     if (over) {
-      handleMoveTask(active.id, over.id, type);
+      const taskIds = selectedTasks.has(active.id)
+        ? Array.from(selectedTasks)
+        : [active.id];
+      handleMoveTask(taskIds, over.id, type);
     }
     setActiveId(null);
+    setSelectedTasks(new Set());
   };
 
   const handleMoveTask = useCallback(
-    (taskId, targetId, type) => {
-      console.log("Moving task", taskId, "to", targetId, "of type", type);
-      // if (isScrum && hasActiveCycle && targetId === active_cycle_name) {
-      //   message.error(
-      //     "Cannot move task to active cycle. Please complete the active cycle before moving tasks into it.",
-      //   );
-      //   return;
-      // }
+    (taskIds, targetId, type) => {
+      const isMulti = taskIds.length > 1;
 
       if (type === "cycle" && targetId === active_cycle_name) {
         message.error(
@@ -183,15 +198,14 @@ const phaseInputRef = useRef(null);
         }
       }
 
-
       set_backlog_position
         .call({
           type: type,
-          task_name: taskId,
+          task_name: taskIds[0],
+          task_names: isMulti ? JSON.stringify(taskIds) : undefined,
           target_id: targetId === "Open" ? null : targetId,
         })
         .then((response) => {
-          console.log("Set cycle response:", response);
           if (response?.message?.success) {
             message.success(response?.message?.message);
             cycles_query3.mutate();
@@ -226,6 +240,10 @@ const phaseInputRef = useRef(null);
   const activeTask = useMemo(
     () => all_tasks.find((t) => t.id === activeId),
     [all_tasks, activeId],
+  );
+  const activeSelection = useMemo(
+    () => all_tasks.filter((t) => selectedTasks.has(t.id)),
+    [all_tasks, selectedTasks],
   );
   const selectedPhase = useMemo(() => {
     return phases.find((p) => p.name === custom_phase) || defaultPhase;
@@ -383,36 +401,27 @@ const handlePhaseUpdate = async () => {
                         Delete
                       </Button>
                     </Tooltip>
-                    <Tooltip
-                      title={
-                        backlogTasks.length > 0 || cycles.length > 0
-                          ? "Remove all tasks and cycles before changing status"
-                          : undefined
-                      }
-                    >
                       <Select
-                        disabled={backlogTasks.length > 0 || cycles.length > 0}
                         value={selectedPhase?.status || "Planned"}
-                        variant="borderless"
-                        size="small"
-                        popupMatchSelectWidth={false}
-                        style={{ width: "100%" }}
-                        options={[
-                          { value: "Planned", label: "Planned" },
-                          { value: "Active", label: "Active" },
-                          { value: "Completed", label: "Completed" },
-                        ]}
-                        onChange={(value) => {
-                          updateMutation
-                            .updateDoc("Project Phase", selectedPhase.name, {
-                              status: value,
-                            })
-                            .then(() => {
-                              cycles_query3.mutate();
-                            });
-                        }}
-                      />
-                    </Tooltip>
+                      variant="borderless"
+                      size="small"
+                      popupMatchSelectWidth={false}
+                      style={{ width: "100%" }}
+                      options={[
+                        { value: "Planned", label: "Planned" },
+                        { value: "Active", label: "Active" },
+                        { value: "Completed", label: "Completed" },
+                      ]}
+                      onChange={(value) => {
+                        updateMutation
+                          .updateDoc("Project Phase", selectedPhase.name, {
+                            status: value,
+                          })
+                          .then(() => {
+                            cycles_query3.mutate();
+                          });
+                      }}
+                    />
                   </Space>
 
                   {/* Phase Progress */}
@@ -476,7 +485,7 @@ const handlePhaseUpdate = async () => {
                 {isScrum && (
                   <div className="space-y-3">
                     {cycles.map((cycle) => (
-                      <Cycle key={cycle.name} cycle={cycle} />
+                      <Cycle key={cycle.name} cycle={cycle} deleteMutation={deleteMutation} cycles_query3={cycles_query3} setCycleModal={setCycleModal} selectedTasks={selectedTasks} toggleTaskSelection={toggleTaskSelection} />
                     ))}
                   </div>
                 )}
@@ -539,7 +548,7 @@ const handlePhaseUpdate = async () => {
                       )}
 
                       {backlogTasks.map((t) => (
-                        <TaskCard key={t.id} task={t} />
+                        <TaskCard key={t.id} task={t} selectedTasks={selectedTasks} toggleTaskSelection={toggleTaskSelection} />
                       ))}
                     </div>
                   )}
@@ -547,7 +556,16 @@ const handlePhaseUpdate = async () => {
               </div>
 
               <DragOverlay>
-                {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+                {activeTask ? (
+                  <div className="relative">
+                    <TaskCard task={activeTask} isOverlay />
+                    {selectedTasks.size > 1 && (
+                      <div className="absolute -top-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                        {selectedTasks.size}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </DragOverlay>
             </div>
           </div>

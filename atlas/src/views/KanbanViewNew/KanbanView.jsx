@@ -44,6 +44,16 @@ import { useQueryParams } from "../../hooks/useQueryParams";
 import SubjectWidget from "../../components/widgets/SubjectWidget";
 import { TASK_STATUS_COLORS, TASK_STATUS_ICONS } from "../../data/constants";
 
+const dropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: {
+      active: {
+        opacity: "0.5",
+      },
+    },
+  }),
+};
+
 const IssueCard = React.forwardRef(
   (
     { issue, isDragging, isOverlay, listeners, attributes, style, ...props },
@@ -437,11 +447,11 @@ export default function KanbanView() {
     [tasks_list],
   );
 
-  const handleDragStart = (event) => {
+  const handleDragStart = useCallback((event) => {
     const { active } = event;
     setActiveIssue(findIssue(active.id));
-  };
-  const handleDragOver = (event) => {
+  }, [findIssue]);
+  const handleDragOver = useCallback((event) => {
     const { active } = event;
     if (!active) return;
 
@@ -452,7 +462,7 @@ export default function KanbanView() {
     if (!task) return;
 
     setActiveIssue(task);
-  };
+  }, [activeIssue, tasks_list]);
 
   const mutateTaskStatus = async (task, newStatus) => {
     // Find the current task to get old status
@@ -495,36 +505,38 @@ export default function KanbanView() {
   };
 
   const createNewTask = async (newTask) => {
-    await tasks_list_query.mutate(
-      async (current) => {
-        const newTaskCreated = await createMutation.createDoc("Task", newTask);
-
-        return [
-          ...current,
-          {
-            ...newTaskCreated,
-            id: newTaskCreated.name,
-            title: newTaskCreated.subject,
-          },
-        ];
-      },
-      {
-        optimisticData: (current) => {
+    try {
+      await tasks_list_query.mutate(
+        async (current) => {
+          const newTaskCreated = await createMutation.createDoc("Task", newTask);
           return [
             ...current,
             {
-              ...newTask,
-              title: newTask.subject,
-
-              id: "temp-" + Math.random().toString(36).substr(2, 9),
+              ...newTaskCreated,
+              id: newTaskCreated.name,
+              title: newTaskCreated.subject,
             },
           ];
         },
-        rollbackOnError: true,
-        revalidate: false,
-        populateCache: true,
-      },
-    );
+        {
+          optimisticData: (current) => {
+            return [
+              ...current,
+              {
+                ...newTask,
+                title: newTask.subject,
+                id: "temp-" + Math.random().toString(36).substr(2, 9),
+              },
+            ];
+          },
+          rollbackOnError: true,
+          revalidate: false,
+          populateCache: true,
+        },
+      );
+    } catch (e) {
+      message.error("Failed to create task: " + (e.message || e));
+    }
   };
   // console.log("Tasks:", tasks_list_query);
 
@@ -534,7 +546,7 @@ export default function KanbanView() {
   //   }
   // }, [isAllTasksDone]);
 
-  const handleDragEnd = async (event) => {
+  const handleDragEnd = useCallback(async (event) => {
     const { active, over } = event;
     if (!over) return;
 
@@ -692,17 +704,59 @@ export default function KanbanView() {
     } finally {
       setActiveIssue(null);
     }
-  };
+  }, [tasks_list, COLUMNS, tasks_list_query, updateTaskMutation, updateSortOrderMutation, mutate]);
 
-  const dropAnimation = {
-    sideEffects: defaultDropAnimationSideEffects({
-      styles: {
-        active: {
-          opacity: "0.5",
-        },
-      },
-    }),
-  };
+  const tasksByColumn = useMemo(() => {
+    const map = {};
+    for (const col of COLUMNS) {
+      map[col.id] = tasks_list
+        .filter((i) => i.status === col.id)
+        .slice()
+        .sort((a, b) => {
+          const aSort =
+            a.custom_sort_order === null || a.custom_sort_order === undefined
+              ? Number.POSITIVE_INFINITY
+              : Number(a.custom_sort_order);
+          const bSort =
+            b.custom_sort_order === null || b.custom_sort_order === undefined
+              ? Number.POSITIVE_INFINITY
+              : Number(b.custom_sort_order);
+          if (aSort !== bSort) return aSort - bSort;
+          return String(b.modified || "").localeCompare(
+            String(a.modified || ""),
+          );
+        });
+    }
+    return map;
+  }, [tasks_list, COLUMNS]);
+
+  if (
+    tasks_list_query.isError ||
+    columns_query.isError ||
+    project_query.isError ||
+    active_cycle_query.isError
+  ) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <div className="text-center space-y-4">
+          <p className="text-lg font-bold text-red-600">Failed to load board</p>
+          <p className="text-sm text-slate-500">
+            {tasks_list_query.error?.message ||
+              columns_query.error?.message ||
+              project_query.error?.message ||
+              active_cycle_query.error?.message ||
+              "An error occurred"}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+          >
+            Reload
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (
     tasks_list_query.isLoading &&
@@ -745,6 +799,15 @@ export default function KanbanView() {
       </div>
     );
   }
+
+  if (!options || COLUMNS.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <p className="text-slate-500">No columns configured for this board</p>
+      </div>
+    );
+  }
+
   return (
     <div className="text-slate-900 h-[calc(100vh-180px)] overflow-hidden">
       <div className="mx-auto flex gap-6 overflow-x-auto hide-scrollbar pb-8 h-full items-start">
@@ -754,35 +817,15 @@ export default function KanbanView() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          {COLUMNS.map((col) => {
-            return (
-              <Column
-                key={col.id}
-                id={col.id}
-                title={col.title}
-                tasks_list={tasks_list
-                  .filter((i) => i.status === col.id)
-                  .slice()
-                  .sort((a, b) => {
-                    const aSort =
-                      a.custom_sort_order === null ||
-                      a.custom_sort_order === undefined
-                        ? Number.POSITIVE_INFINITY
-                        : Number(a.custom_sort_order);
-                    const bSort =
-                      b.custom_sort_order === null ||
-                      b.custom_sort_order === undefined
-                        ? Number.POSITIVE_INFINITY
-                        : Number(b.custom_sort_order);
-                    if (aSort !== bSort) return aSort - bSort;
-                    return String(b.modified || "").localeCompare(
-                      String(a.modified || ""),
-                    );
-                  })}
-                createTask={createNewTask}
-              />
-            );
-          })}
+          {COLUMNS.map((col) => (
+            <Column
+              key={col.id}
+              id={col.id}
+              title={col.title}
+              tasks_list={tasksByColumn[col.id] || []}
+              createTask={createNewTask}
+            />
+          ))}
 
           <DragOverlay dropAnimation={dropAnimation}>
             {activeIssue ? (

@@ -30,7 +30,7 @@ import ProjectDetail from "../views/ProjectDetail";
 import Phases from "../views/Phases";
 import Filters from "../components/Filters";
 import TaskFilters from "../components/TaskFilters";
-const Tasks = () => {
+const TasksContent = ({ project }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
   const qp = useQueryParams();
@@ -39,12 +39,7 @@ const Tasks = () => {
   const filtersRef = React.useRef(null);
 
   const view = params.view || "table";
-  const project = qp.get("project") || null;
   const custom_phase = qp.get("custom_phase") || null;
-
-  if (!project) {
-    return <Navigate to="/projects" replace />;
-  }
   const project_query = useFrappeGetDoc(
     "Project",
     project,
@@ -411,6 +406,15 @@ const Tasks = () => {
       {/* <ProjectHealth project_id={project} collapsible={true} /> */}
     </>
   );
+};
+
+const Tasks = () => {
+  const qp = useQueryParams();
+  const project = qp.get("project") || null;
+  if (!project) {
+    return <Navigate to="/projects" replace />;
+  }
+  return <TasksContent project={project} />;
 };
 
 export default Tasks;

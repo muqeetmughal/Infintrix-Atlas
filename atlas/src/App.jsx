@@ -3,11 +3,10 @@ import "./App.css";
 import { FrappeProvider } from "frappe-react-sdk";
 import { router } from "./Routes";
 import { SWRDevTools } from "swr-devtools";
-import { useTheme } from "./hooks/theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AntdThemeProvider } from "./context/AntdThemeProvider";
-import { useAuth } from "./hooks/query";
+import { showFrappeError } from "./lib/frappeError";
 const light_color_scheme = {
   colorPrimary: "#16b04f",
   colorSuccess: "#42bf04",
@@ -23,10 +22,9 @@ const dark_color_scheme = {
   colorWarning: "#f7aa11",
 };
 
-function App() {
-  const { isDark } = useTheme();
+const queryClient = new QueryClient();
 
-  const queryClient = new QueryClient();
+function App() {
   // Handle different Frappe versions
   const getSiteName = () => {
     // @ts-ignore
@@ -52,10 +50,16 @@ function App() {
     return map;
   }
 
-  // if (!auth.currentUser) {
-  //   window.location.href = "/login";
-  //   return null; // or a loading spinner
-  // }
+  // Global safety net for unhandled Frappe API errors
+  if (typeof window !== "undefined") {
+    window.addEventListener("unhandledrejection", (event) => {
+      const error = event.reason;
+      if (error && (error.exception || error._server_messages || error.httpStatus)) {
+        event.preventDefault();
+        showFrappeError(error);
+      }
+    });
+  }
 
   return (
     <div className="App">
@@ -74,6 +78,9 @@ function App() {
                 swrConfig={{
                   errorRetryCount: 2,
                   provider: localStorageProvider,
+                  onError: (error) => {
+                    showFrappeError(error);
+                  },
                 }}
               >
                 <RouterProvider router={router} />

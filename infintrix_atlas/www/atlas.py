@@ -82,7 +82,12 @@ def get_context(context):
 def get_context_for_dev():
 	if not frappe.conf.developer_mode:
 		frappe.throw(_("This method is only meant for developer mode"))
-	return json.loads(get_boot())
+	csrf_token = frappe.sessions.get_csrf_token()
+	frappe.db.commit()
+	return {
+		"boot": json.loads(get_boot()),
+		"csrf_token": csrf_token,
+	}
 
 
 def get_boot():

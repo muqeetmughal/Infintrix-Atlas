@@ -25,11 +25,11 @@ class Cycle(Document):
 		if not self.phase:
 			frappe.throw("Cycle must belong to a Project Phase")
 		
-		# Cycle allowed only if phase is active
+		# Cycle allowed only if phase is Active
 		if self.phase:
 			phase = frappe.get_doc("Project Phase", self.phase)
-			if phase.status == "Completed":
-				frappe.throw(f"Cycles can not be created for phases with Completed status. Current phase status: {phase.status}")
+			if phase.status != "Active":
+				frappe.throw(f"Cycles can only be created for Active phases. Current phase status: {phase.status}")
 		
 		if self.status == "Active" and (not self.start_date or not self.end_date):
 			frappe.throw("Cycle cannot be active without start and end date")

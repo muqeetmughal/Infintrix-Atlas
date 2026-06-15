@@ -10,7 +10,7 @@ import {
 } from "frappe-react-sdk";
 import { db } from "../lib/frappeClient";
 import { useQueryParams } from "./useQueryParams";
-import { useState, useCallback, use, useEffect } from "react"
+import { useState, useCallback, use, useEffect, useRef } from "react"
 
 export const useAvatarQuery = (name) => {
 	return useQuery({
@@ -298,16 +298,14 @@ export function useFrappePaginatedTasksCall(method, baseParams = {}, pageSize = 
   }, [])
 
 
-const hasLoadedRef = useCallback(() => {
+const hasLoadedRef = useRef(false)
+
+useEffect(() => {
 	if (autoLoad && data.length === 0 && !hasLoadedRef.current) {
 		hasLoadedRef.current = true
 		loadMore()
 	}
 }, [autoLoad, data.length, loadMore])
-
-useEffect(() => {
-	hasLoadedRef()
-}, [hasLoadedRef])
 
   return {
     data,

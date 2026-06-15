@@ -1565,6 +1565,9 @@ def backlog_with_phases(project=None):
             if cycle not in cycles_by_tasks:
                 cycles_by_tasks[cycle] = []
             cycles_by_tasks[cycle].append(task)
+    for phase_name, phase_cycles in cycles_by_phase.items():
+        for cycle in phase_cycles:
+            cycle["tasks"] = cycles_by_tasks.get(cycle["name"], [])
     return {
         "is_scrum": isScrum,
         "active_phase": active_phase,
@@ -2106,93 +2109,96 @@ def remove_task(task_name):
 
 
 @frappe.whitelist()
-def set_backlog_position(type, task_name, target_id):
-    if type == "cycle":
+def _move_task(task_name, target_type, target_id):
+    """Move a single task. target_type: 'cycle', 'backlog', or 'phase'"""
+    task_doc = frappe.get_doc("Task", task_name)
+    project_doc = frappe.get_doc("Project", task_doc.project)
+
+    if target_type == "cycle":
         cycle_name = target_id
 
-        try:
-            task_doc = frappe.get_doc("Task", task_name)
-            project_doc = frappe.get_doc("Project", task_doc.project)
-            if cycle_name:
-                cycle_doc = frappe.get_doc("Cycle", cycle_name)
-            else:
-                cycle_doc = None
+        if project_doc.custom_execution_mode != "Scrum":
+            return {"success": False, "message": f"Project '{project_doc.project_name}' is not in Scrum mode"}
 
-            # Validate project is in Scrum mode
-            if project_doc.custom_execution_mode != "Scrum":
-                return {"success": False, "message": f"Project '{project_doc.project_name}' is not in Scrum mode"}
+        if task_doc.custom_cycle == cycle_name:
+            return {"success": False, "message": f"Task '{task_doc.subject}' is already in cycle '{cycle_name}'"}
 
-            # Task already in target cycle
-            if task_doc.custom_cycle == cycle_name:
-                return {"success": False, "message": f"Task '{task_doc.subject}' is already in cycle '{cycle_name}'"}
+        active_cycle = frappe.db.get_value("Cycle", {"project": project_doc.name, "status": "Active"}, "name")
+        if active_cycle and task_doc.custom_cycle == active_cycle and cycle_name != active_cycle:
+            return {"success": False, "message": f"Cannot move tasks out of active cycle '{active_cycle}'. Please complete it first."}
 
-            # Check if moving out of active cycle
-            active_cycle = frappe.db.get_value(
-                "Cycle",
-                {"project": project_doc.name, "status": "Active"},
-                "name"
-            )
+        if task_doc.custom_cycle:
+            current_cycle = frappe.get_doc("Cycle", task_doc.custom_cycle)
+            if current_cycle.status == "Completed":
+                return {"success": False, "message": f"Cannot move tasks out of completed cycle '{current_cycle.cycle_name}'."}
 
-            if active_cycle and task_doc.custom_cycle == active_cycle and cycle_name != active_cycle:
-                return {"success": False, "message": f"Cannot move tasks out of active cycle '{active_cycle}'. Please complete it first."}
+        if cycle_name:
+            cycle_doc = frappe.get_doc("Cycle", cycle_name)
+            if cycle_doc.project != project_doc.name:
+                return {"success": False, "message": f"Cycle '{cycle_doc.cycle_name}' does not belong to project '{project_doc.project_name}'"}
+            if cycle_doc.status == "Completed":
+                return {"success": False, "message": f"Cannot move tasks into completed cycle '{cycle_doc.cycle_name}'."}
 
-            if task_doc.custom_cycle:
-                current_cycle = frappe.get_doc("Cycle", task_doc.custom_cycle)
-                if current_cycle.status == "Completed":
-                    return {"success": False, "message": f"Cannot move tasks out of completed cycle '{current_cycle.cycle_name}'."}
-            # Validate cycle belongs to the same project
+        task_doc.custom_cycle = cycle_name
+        task_doc.save()
+        frappe.db.commit()
+        return {"success": True, "message": f"Task '{task_doc.subject}' moved to '{cycle_name or 'Backlog'}'"}
 
-            if cycle_doc:
+    elif target_type == "backlog":
+        if project_doc.custom_execution_mode != "Scrum":
+            return {"success": False, "message": f"Project '{project_doc.project_name}' is not in Scrum mode"}
 
-                if cycle_doc.project != project_doc.name:
-                    return {"success": False, "message": f"Cycle '{cycle_doc.cycle_name}' does not belong to project '{project_doc.project_name}'"}
+        active_cycle = frappe.db.get_value("Cycle", {"project": project_doc.name, "status": "Active"}, "name")
+        if active_cycle and task_doc.custom_cycle == active_cycle:
+            return {"success": False, "message": f"Cannot move tasks out of active cycle '{active_cycle}'. Please complete it first."}
 
-                # Check if moving into or out of completed cycle
-                if cycle_doc.status == "Completed":
-                    return {"success": False, "message": f"Cannot move tasks into completed cycle '{cycle_doc.cycle_name}'."}
+        if task_doc.custom_cycle:
+            current_cycle = frappe.get_doc("Cycle", task_doc.custom_cycle)
+            if current_cycle.status == "Completed":
+                return {"success": False, "message": f"Cannot move tasks out of completed cycle '{current_cycle.cycle_name}'."}
 
-            # Update and save
-            task_doc.custom_cycle = cycle_name
-            task_doc.save()
-            frappe.db.commit()
+        task_doc.custom_cycle = None
+        task_doc.save()
+        frappe.db.commit()
+        return {"success": True, "message": f"Task '{task_doc.subject}' moved to backlog"}
 
-            return {
-                "success": True,
-                "message": f"Task '{task_doc.subject}' moved to '{cycle_name or 'Backlog'}'"
-            }
-        except Exception as e:
-            frappe.log_error(
-                f"Error setting cycle for task: {e}", "Set Cycle Error")
-            return {"success": False, "message": str(e)}
-    elif type == "phase":
+    elif target_type == "phase":
         phase_name = target_id
-
-        try:
-            task_doc = frappe.get_doc("Task", task_name)
-            project_doc = frappe.get_doc("Project", task_doc.project)
-            if phase_name:
-                phase_doc = frappe.get_doc("Project Phase", phase_name)
-            else:
-                phase_doc = None
-
-            # Validate phase belongs to the same project
-            if phase_doc and phase_doc.project != project_doc.name:
+        phase_title = "None"
+        if phase_name:
+            phase_doc = frappe.get_doc("Project Phase", phase_name)
+            if phase_doc.project != project_doc.name:
                 return {"success": False, "message": f"Phase '{phase_doc.title}' does not belong to project '{project_doc.project_name}'"}
+            phase_title = phase_doc.title
 
-            # Update and save
-            task_doc.custom_phase = phase_name
-            task_doc.save()
-            frappe.db.commit()
+        task_doc.custom_phase = phase_name
+        task_doc.save()
+        frappe.db.commit()
+        return {"success": True, "message": f"Task '{task_doc.subject}' moved to phase '{phase_title}'"}
 
-            return {
-                "success": True,
-                "message": f"Task '{task_doc.subject}' moved to phase '{phase_doc.title if phase_doc else 'None'}'"
-            }
-        except Exception as e:
-            frappe.log_error(
-                f"Error setting phase for task: {e}", "Set Phase Error")
-            return {"success": False, "message": str(e)}
+    return {"success": False, "message": "Unknown target type"}
 
+
+def set_backlog_position(type, task_name, target_id, task_names=None):
+    if task_names:
+        task_names = frappe.parse_json(task_names)
+    else:
+        task_names = [task_name]
+
+    first_error = None
+    moved = 0
+    for name in task_names:
+        result = _move_task(name, type, target_id)
+        if result.get("success"):
+            moved += 1
+        elif first_error is None:
+            first_error = result
+
+    if moved > 0:
+        return {"success": True, "message": f"{moved} task(s) moved successfully"}
+    if first_error:
+        return first_error
+    return {"success": False, "message": "No tasks were moved"}
 
 def set_task_status(task_name, new_status):
     try:
