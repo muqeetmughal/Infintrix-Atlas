@@ -8,8 +8,8 @@ def project_permission_query(user):
 
     user_roles = frappe.get_roles(user)
 
-    # System User: see everything
-    if "System User" in user_roles:
+    # System Manager: see everything
+    if "System Manager" in user_roles:
         return ""
 
     escaped_user = frappe.db.escape(user)
@@ -43,7 +43,7 @@ def task_permission_query(user):
 
         roles = frappe.get_roles(user)
 
-        if "System User" in roles:
+        if "System Manager" in roles:
             return ""
 
         escaped_user = frappe.db.escape(user)
@@ -76,16 +76,12 @@ def fathom_meeting_permission_query_conditions(user):
 
     roles = frappe.get_roles(user)
 
-    if "System User" in roles:
+    if "System Manager" in roles:
         return ""
 
     escaped_user = frappe.db.escape(user)
-    
-    # return ""
-    
-    print(f"Building permission query for user: {user}, escaped_user: {escaped_user}")
 
-    # # Only show meetings where user is the owner or is in the attendees child table
+    # Only show meetings where user is the owner or is in the attendees child table
     account_condition = f"""
         `tabFathom Meeting`.account IN (
             SELECT name
@@ -111,7 +107,7 @@ def fathom_meeting_has_permission(doc, user):
 
     roles = frappe.get_roles(user)
 
-    if "System User" in roles:
+    if "System Manager" in roles:
         return True
 
     # Check if meeting belongs to current user's account
@@ -142,7 +138,7 @@ def fathom_account_permission_query_conditions(user):
 
     roles = frappe.get_roles(user)
 
-    if "System User" in roles:
+    if "System Manager" in roles:
         return ""
 
     escaped_user = frappe.db.escape(user)
@@ -158,7 +154,7 @@ def fathom_account_has_permission(doc, user):
 
     roles = frappe.get_roles(user)
 
-    if "System User" in roles:
+    if "System Manager" in roles:
         return True
 
     # Only allow access if user is the owner of the account
