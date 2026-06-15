@@ -181,6 +181,18 @@ export const UsersSelectWidget = React.memo((props) => {
   });
   const { token } = theme.useToken();
 
+  const getNameByValue = useCallback((value) => {
+    if (!collegues_list_query.data || !value) return value;
+    const user = collegues_list_query.data.find(
+      (colleague) => colleague.name === value,
+    );
+    return user ? user.full_name : value;
+  }, [collegues_list_query.data]);
+
+  useEffect(() => {
+    setSelected(props.value);
+  }, [props.value]);
+
   if (collegues_list_query.isLoading) return <Spin />;
 
   const defaultOptions =
@@ -209,22 +221,6 @@ export const UsersSelectWidget = React.memo((props) => {
         ),
       };
     });
-
-  const getNameByValue = useCallback((value) => {
-    if (!collegues_list_query.data || !value) return value;
-    const user = collegues_list_query.data.find(
-      (colleague) => colleague.name === value,
-    );
-    return user ? user.full_name : value;
-  }, [collegues_list_query.data]);
-
-
-
-  
-  useEffect(() => {
-    setSelected(props.value);
-  }, [props.value]);
-
   return (
     <div onClick={(e) => e.stopPropagation()}>
       <Dropdown
