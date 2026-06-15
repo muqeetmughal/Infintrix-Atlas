@@ -1,20 +1,17 @@
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import React, { useMemo } from 'react';
+import { Outlet, useLocation } from "react-router-dom";
+import { useMemo } from "react";
 
 import Sidebar from "../components/Sidebar";
 import { useFrappeAuth } from "frappe-react-sdk";
 import { menuItems } from "../data/menu";
 import ModalGenerator from "../components/ModalGenerator";
 import ProjectModal from "../components/custom/ProjectModal";
-import { useTheme } from "../context/ThemeContext";
 import { Spin } from "antd";
 
 import Header from "../components/Header";
 
 const MainLayout = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { isDark } = useTheme()
 
   const auth = useFrappeAuth();
 
@@ -23,7 +20,7 @@ const MainLayout = () => {
   }, [location.pathname]);
 
   const isLoading = auth.isLoading || (auth.currentUser === undefined);
-  const isAuthenticated = !!auth.currentUser;
+  const isAuthenticated = !!auth.currentUser && auth.currentUser !== "Guest";
 
   if (isLoading) {
     return (
