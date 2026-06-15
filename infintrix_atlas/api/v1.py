@@ -166,6 +166,19 @@ def switch_assignee_of_task(task_name, new_assignee):
             icons='<i class="fa fa-tasks"></i>',
         )
 
+        # Auto-add assignee to project users if not already present
+        if task_doc.project and not frappe.db.exists(
+            "Project User",
+            {"parent": task_doc.project, "user": new_assignee}
+        ):
+            frappe.get_doc({
+                "doctype": "Project User",
+                "parent": task_doc.project,
+                "parenttype": "Project",
+                "parentfield": "users",
+                "user": new_assignee,
+            }).insert(ignore_permissions=True)
+
     frappe.db.commit()
     return {"success": True, "message": "Assignee updated"}
 
@@ -1231,17 +1244,13 @@ def list_projects(filters={}, limit=20, offset=0):
         # Administrators see all projects
         pass
     elif is_project_manager:
-        # Project Managers see projects they created OR projects where they're assigned to any task
+        # Project Managers see projects they created OR projects they're added to in Project User
         query = query.where(
             (Project.owner == user) |
             (Project.name.isin(
-                frappe.qb.from_(Task)
-                .inner_join(ToDo).on(
-                    (ToDo.reference_name == Task.name) &
-                    (ToDo.reference_type == "Task") &
-                    (ToDo.allocated_to == user)
-                )
-                .select(Task.project)
+                frappe.qb.from_(ProjectUser)
+                .select(ProjectUser.parent)
+                .where(ProjectUser.user == user)
             ))
         )
     else:
@@ -1328,12 +1337,17 @@ def list_tasks(project, group_by=None, filters=None, limit=None, offset=0):
 
     if not is_admin:
         if is_project_manager:
-            # Project Manager sees only projects they created
-            query = query.inner_join(frappe.qb.DocType("Project")).on(
-                frappe.qb.DocType("Project").name == Task.project
-            ).where(frappe.qb.DocType("Project").owner == user)
+            # Project Manager sees tasks from projects they own OR are added to in Project User
+            query = query.where(
+                (Project.owner == user) |
+                (Project.name.isin(
+                    frappe.qb.from_(ProjectUser)
+                    .select(ProjectUser.parent)
+                    .where(ProjectUser.user == user)
+                ))
+            )
         else:
-            # Project User sees projects they're assigned to
+            # Project User sees tasks from projects they're assigned to
             query = query.inner_join(ProjectUser).on(
                 (ProjectUser.parent == Task.project)
                 & (ProjectUser.user == user)

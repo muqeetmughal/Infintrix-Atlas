@@ -115,11 +115,6 @@ class TaskOverride(Task):
         if user == "Administrator":
             return True
 
-        roles = frappe.get_roles(user)
-
-        if "System User" in roles:
-            return True
-
         if self.owner == user:
             return True
 
