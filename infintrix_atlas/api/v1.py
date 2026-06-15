@@ -1162,9 +1162,14 @@ def is_project_manager():
     user = frappe.session.user
     user_roles = frappe.get_roles(user)
 
-    if "Administrator" in user_roles or "Projects Manager" in user_roles:
+    if "Administrator" in user_roles or "Project Manager" in user_roles or "Projects Manager" in user_roles:
         return True
     return False
+
+
+@frappe.whitelist()
+def get_user_roles():
+    return frappe.get_roles()
 
 
 @frappe.whitelist()
@@ -1315,9 +1320,6 @@ def list_tasks(project, group_by=None, filters=None, limit=None, offset=0):
             & (ToDo.status == "Open")
         )
     )
-
-    print(f"check1", query)
-
     # Permission-based filtering
     user = frappe.session.user
     user_roles = frappe.get_roles(user)

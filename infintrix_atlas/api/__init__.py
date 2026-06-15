@@ -20,7 +20,7 @@ def check_app_permission():
 		return False
 
 	roles = frappe.get_roles()
-	if any(role in ["System Manager", "Projects User", "Projects Manager"] for role in roles):
+	if any(role in ["System Manager", "Projects User", "Project Manager"] for role in roles):
 		return True
 
 	return False

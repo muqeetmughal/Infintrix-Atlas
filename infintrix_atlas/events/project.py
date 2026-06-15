@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 
 
 def create_default_phase(doc):
@@ -23,6 +24,13 @@ def validate(doc, method):
     doc.update_percent_complete()
     doc.validate_from_to_dates("expected_start_date", "expected_end_date")
     doc.validate_from_to_dates("actual_start_date", "actual_end_date")
+
+    if doc.has_value_changed("custom_execution_mode"):
+        user_roles = frappe.get_roles()
+        if "Project Manager" not in user_roles and "Administrator" not in user_roles:
+            frappe.throw(
+                _("Only Project Manager can change the Execution Mode.")
+            )
 
 
 def before_insert(doc, method):
