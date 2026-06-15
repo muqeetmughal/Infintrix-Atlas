@@ -124,12 +124,11 @@ class ProjectPhase(Document):
     def _set_sequence(self):
         """Assign sequence number if not provided"""
         if not self.sequence and self.project:
-            max_sequence = frappe.db.get_value(
-                "Project Phase",
-                {"project": self.project},
-                "MAX(sequence)"
-            ) or 0
-            self.sequence = max_sequence + 1
+            max_sequence = frappe.db.sql(
+                """SELECT MAX(sequence) FROM `tabProject Phase` WHERE project = %s""",
+                self.project,
+            )
+            self.sequence = (max_sequence[0][0] or 0) + 1
 
     def _set_title(self):
         """Set default title if not provided"""
