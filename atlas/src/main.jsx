@@ -10,6 +10,9 @@ dayjs.extend(relativeTime)
 if (import.meta.env.DEV) {
   fetch("/api/method/infintrix_atlas.www.atlas.get_context_for_dev", {
     method: "POST",
+    headers: {
+      "X-Frappe-CSRF-Token": window.csrf_token,
+    },
   })
     .then((response) => response.json())
     .then((values) => {
