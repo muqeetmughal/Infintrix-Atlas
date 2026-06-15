@@ -509,37 +509,29 @@ def get_project_user_stats(user=None, activity_limit=5):
         activity_limit = 5
 
     # ---- Task Activities ----
-    task_activities = frappe.get_all(
-        "Task",
-        filters={
-            "docstatus": ["<", 2],
-            "project": ["in", project_names],
-        },
-        fields=[
-            "'Task' as type",
-            "name as doc_name",
-            "subject as title",
-            "status as detail",
-            "owner as user",
-            "modified as timestamp",
-        ],
+    task_activities_raw = frappe.db.sql(
+        """
+        SELECT 'Task' AS type, name AS doc_name, subject AS title,
+               status AS detail, owner AS user, modified AS timestamp
+        FROM `tabTask`
+        WHERE docstatus < 2 AND project IN %(projects)s
+        ORDER BY modified DESC
+        """,
+        {"projects": project_names},
+        as_dict=True,
     )
 
     # ---- Project Activities ----
-    project_activities_raw = frappe.get_all(
-        "Project",
-        filters={
-            "docstatus": ["<", 2],
-            "name": ["in", project_names],
-        },
-        fields=[
-            "'Project' as type",
-            "name as doc_name",
-            "project_name as title",
-            "status",
-            "owner as user",
-            "modified as timestamp",
-        ],
+    project_activities_raw = frappe.db.sql(
+        """
+        SELECT 'Project' AS type, name AS doc_name, project_name AS title,
+               status, owner AS user, modified AS timestamp
+        FROM `tabProject`
+        WHERE docstatus < 2 AND name IN %(projects)s
+        ORDER BY modified DESC
+        """,
+        {"projects": project_names},
+        as_dict=True,
     )
 
     project_activities = []
@@ -555,7 +547,7 @@ def get_project_user_stats(user=None, activity_limit=5):
             }
         )
 
-    activities = task_activities + project_activities
+    activities = task_activities_raw + project_activities
     activities.sort(key=lambda x: x["timestamp"], reverse=True)
     activity_data = activities[:activity_limit]
 
