@@ -144,7 +144,9 @@ const RequirementsTab = ({ projectId }) => {
   const statusMutation = useFrappePostCall("infintrix_atlas.api.v1.update_requirement_status");
   const createTaskMutation = useFrappePostCall("infintrix_atlas.api.v1.create_task_from_requirement");
   const [modalOpen, setModalOpen] = useState(false);
+  const [taskModalOpen, setTaskModalOpen] = useState(null);
   const [form] = Form.useForm();
+  const [taskForm] = Form.useForm();
 
   const requirements = data?.message || [];
 
@@ -156,15 +158,22 @@ const RequirementsTab = ({ projectId }) => {
   };
 
   const handleCreateTask = (req) => {
-    Modal.confirm({
-      title: "Create Task from Requirement",
-      content: `Create a task from "${req.title}"?`,
-      okText: "Create Task",
-      cancelText: "Cancel",
-      onOk: () => createTaskMutation.call({ requirement: req.name }).then(() => {
-        message.success("Task created");
-        mutate();
-      }),
+    taskForm.setFieldsValue({
+      subject: req.title,
+      description: req.description || "",
+    });
+    setTaskModalOpen(req);
+  };
+
+  const handleTaskSubmit = () => {
+    const req = taskModalOpen;
+    if (!req) return;
+    const values = taskForm.getFieldsValue();
+    createTaskMutation.call({ requirement: req.name, subject: values.subject }).then(() => {
+      message.success("Task created");
+      taskForm.resetFields();
+      setTaskModalOpen(null);
+      mutate();
     });
   };
 
@@ -192,7 +201,7 @@ const RequirementsTab = ({ projectId }) => {
     { title: "Owner", dataIndex: "owner_name", key: "owner_name" },
     {
       title: "Actions", key: "actions", render: (_, r) => (
-        <Button type="link" icon={<PlusOutlined />} onClick={() => handleCreateTask(r)} loading={createTaskMutation.loading}>
+        <Button type="link" icon={<PlusOutlined />} onClick={() => handleCreateTask(r)}>
           Create Task
         </Button>
       ),
@@ -218,6 +227,22 @@ const RequirementsTab = ({ projectId }) => {
         className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-700"
         locale={{ emptyText: "No requirements yet" }}
       />
+
+      <Modal
+        title={`Create Task — [${taskModalOpen?.name}] ${taskModalOpen?.title || ""}`}
+        open={!!taskModalOpen}
+        onCancel={() => { setTaskModalOpen(null); taskForm.resetFields(); }}
+        onOk={handleTaskSubmit}
+        okText="Create Task"
+        confirmLoading={createTaskMutation.loading}
+      >
+        <Form form={taskForm} layout="vertical">
+          <Form.Item name="subject" label="Task Subject" rules={[{ required: true }]}>
+            <Input placeholder="Task title" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
       <Modal
         title="New Requirement"
         open={modalOpen}
