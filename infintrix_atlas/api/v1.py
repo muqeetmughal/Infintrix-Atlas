@@ -1244,6 +1244,17 @@ def list_project_requirements(project):
 
 
 @frappe.whitelist()
+def list_project_phases(project):
+    _ensure_project_access(project, allow_customer_portal=True)
+    return frappe.get_all(
+        "Project Phase",
+        filters={"project": project},
+        fields=["name", "title", "status", "sequence"],
+        order_by="sequence asc",
+    )
+
+
+@frappe.whitelist()
 def update_requirement_status(requirement, status):
     doc = frappe.get_doc("Requirement", requirement)
     _ensure_project_access(doc.project, require_write=True)
@@ -1259,12 +1270,17 @@ def update_requirement_status(requirement, status):
 
 
 @frappe.whitelist()
-def create_task_from_requirement(requirement, subject=None, type=None, priority="Medium"):
+def create_task_from_requirement(requirement, subject=None, type=None, priority="Medium", phase=None):
     req = frappe.get_doc("Requirement", requirement)
     _ensure_project_access(req.project, require_write=True)
 
     if not subject:
         subject = req.title
+
+    if not phase:
+        phase = frappe.db.get_value("Project Phase", {"project": req.project, "status": "Active"}, "name")
+    if not phase:
+        phase = frappe.db.get_value("Project Phase", {"project": req.project, "status": "Planned"}, "name", order_by="sequence asc")
 
     task = frappe.get_doc(
         {
@@ -1275,6 +1291,7 @@ def create_task_from_requirement(requirement, subject=None, type=None, priority=
             "priority": priority,
             "description": req.description or "",
             "custom_requirement": req.name,
+            "custom_phase": phase,
             "status": "Open",
         }
     )

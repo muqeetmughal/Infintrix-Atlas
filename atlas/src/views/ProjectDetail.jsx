@@ -143,12 +143,18 @@ const RequirementsTab = ({ projectId }) => {
   const submitMutation = useFrappePostCall("infintrix_atlas.api.v1.submit_portal_requirement");
   const statusMutation = useFrappePostCall("infintrix_atlas.api.v1.update_requirement_status");
   const createTaskMutation = useFrappePostCall("infintrix_atlas.api.v1.create_task_from_requirement");
+  const phasesQuery = useFrappeGetCall(
+    "infintrix_atlas.api.v1.list_project_phases",
+    projectId ? { project: projectId } : undefined,
+    projectId ? ["project_phases_dropdown", projectId] : null,
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [taskModalOpen, setTaskModalOpen] = useState(null);
   const [form] = Form.useForm();
   const [taskForm] = Form.useForm();
 
   const requirements = data?.message || [];
+  const phases = phasesQuery?.data?.message || [];
 
   const handleStatusChange = (req, newStatus) => {
     statusMutation.call({ requirement: req.name, status: newStatus }).then(() => {
@@ -158,9 +164,11 @@ const RequirementsTab = ({ projectId }) => {
   };
 
   const handleCreateTask = (req) => {
+    const activePhase = phases.find((p) => p.status === "Active");
     taskForm.setFieldsValue({
       subject: req.title,
       description: req.description || "",
+      phase: activePhase?.name || phases[0]?.name || undefined,
     });
     setTaskModalOpen(req);
   };
@@ -169,7 +177,11 @@ const RequirementsTab = ({ projectId }) => {
     const req = taskModalOpen;
     if (!req) return;
     const values = taskForm.getFieldsValue();
-    createTaskMutation.call({ requirement: req.name, subject: values.subject }).then(() => {
+    createTaskMutation.call({
+      requirement: req.name,
+      subject: values.subject,
+      phase: values.phase,
+    }).then(() => {
       message.success("Task created");
       taskForm.resetFields();
       setTaskModalOpen(null);
@@ -239,6 +251,16 @@ const RequirementsTab = ({ projectId }) => {
         <Form form={taskForm} layout="vertical">
           <Form.Item name="subject" label="Task Subject" rules={[{ required: true }]}>
             <Input placeholder="Task title" />
+          </Form.Item>
+          <Form.Item name="phase" label="Phase">
+            <Select
+              placeholder="Auto-detect (Active phase)"
+              allowClear
+              options={phases.map((p) => ({
+                label: `${p.title} (${p.status})`,
+                value: p.name,
+              }))}
+            />
           </Form.Item>
         </Form>
       </Modal>
