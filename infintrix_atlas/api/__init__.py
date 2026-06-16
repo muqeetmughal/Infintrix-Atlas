@@ -1,6 +1,7 @@
 
 import frappe
 from infintrix_atlas.utils import is_frappe_version
+from infintrix_atlas.role_utils import ATLAS_ACCESS_ROLES
 
 
 def check_app_permission():
@@ -20,7 +21,7 @@ def check_app_permission():
 		return False
 
 	roles = frappe.get_roles()
-	if any(role in ["System Manager", "Projects User", "Project Manager"] for role in roles):
+	if any(role in ATLAS_ACCESS_ROLES for role in roles):
 		return True
 
 	return False

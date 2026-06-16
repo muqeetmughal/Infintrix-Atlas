@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from infintrix_atlas.role_utils import has_projects_manager_role
 
 
 def create_default_phase(doc):
@@ -27,9 +28,9 @@ def validate(doc, method):
 
     if doc.has_value_changed("custom_execution_mode"):
         user_roles = frappe.get_roles()
-        if "Project Manager" not in user_roles and "Administrator" not in user_roles:
+        if not has_projects_manager_role(roles=user_roles):
             frappe.throw(
-                _("Only Project Manager can change the Execution Mode.")
+                _("Only Projects Manager can change the Execution Mode.")
             )
 
 

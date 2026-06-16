@@ -305,11 +305,25 @@ website_route_rules = [
 permission_query_conditions = {
     "Project": "infintrix_atlas.permissions.project_permission_query",
     "Task": "infintrix_atlas.permissions.task_permission_query",
+    "Requirement": "infintrix_atlas.permissions.requirement_permission_query",
+    "Scope Snapshot": "infintrix_atlas.permissions.scope_snapshot_permission_query",
+    "Change Request": "infintrix_atlas.permissions.change_request_permission_query",
+    "Project Resource": "infintrix_atlas.permissions.project_resource_permission_query",
+    "Project Action Request": "infintrix_atlas.permissions.project_action_request_permission_query",
+    "Project Phase": "infintrix_atlas.permissions.project_phase_permission_query",
+    "Cycle": "infintrix_atlas.permissions.cycle_permission_query",
     "Fathom Meeting": "infintrix_atlas.permissions.fathom_meeting_permission_query_conditions",
     "Fathom Account": "infintrix_atlas.permissions.fathom_account_permission_query_conditions",
 }
 
 has_permission = {
+    "Requirement": "infintrix_atlas.permissions.requirement_has_permission",
+    "Scope Snapshot": "infintrix_atlas.permissions.scope_snapshot_has_permission",
+    "Change Request": "infintrix_atlas.permissions.change_request_has_permission",
+    "Project Resource": "infintrix_atlas.permissions.project_resource_has_permission",
+    "Project Action Request": "infintrix_atlas.permissions.project_action_request_has_permission",
+    "Project Phase": "infintrix_atlas.permissions.project_phase_has_permission",
+    "Cycle": "infintrix_atlas.permissions.cycle_has_permission",
     "Fathom Meeting": "infintrix_atlas.permissions.fathom_meeting_has_permission",
     "Fathom Account": "infintrix_atlas.permissions.fathom_account_has_permission",
 }
