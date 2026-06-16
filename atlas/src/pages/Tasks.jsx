@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import { TASK_PRIORITY_COLORS, TASK_STATUS_COLORS } from "../data/constants";
 import {
   useFrappeCreateDoc,
+  useFrappeGetCall,
   useFrappeGetDoc,
   useFrappeGetDocList,
   useFrappePostCall,
@@ -30,6 +31,7 @@ import ProjectDetail from "../views/ProjectDetail";
 import Phases from "../views/Phases";
 import Filters from "../components/Filters";
 import TaskFilters from "../components/TaskFilters";
+import { useHasRole } from "../hooks/useRole";
 const TasksContent = ({ project }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
@@ -37,6 +39,8 @@ const TasksContent = ({ project }) => {
   const navigate = useNavigate();
   const [showFilters, setShowFilters] = React.useState(false);
   const filtersRef = React.useRef(null);
+  const { has: isProjectsManager } = useHasRole("Projects Manager");
+  const canViewManagerDashboard = isProjectsManager;
 
   const view = params.view || "table";
   const custom_phase = qp.get("custom_phase") || null;
@@ -46,6 +50,17 @@ const TasksContent = ({ project }) => {
     project ? ["Project", project] : null,
   );
   const project_data = project_query?.data || {};
+  const customerPortalAccessQuery = useFrappeGetCall(
+    "infintrix_atlas.api.v1.has_customer_portal_access",
+    project ? { project } : null,
+    project ? ["customer-portal-access", project] : null,
+  );
+  const canViewInsights =
+    !isProjectsManager && !!customerPortalAccessQuery.data?.message;
+  const isCustomerPortalAccessLoading =
+    !isProjectsManager &&
+    project &&
+    (customerPortalAccessQuery.isLoading ?? customerPortalAccessQuery.loading ?? false);
   const [pendingMode, setPendingMode] = React.useState(null);
 
   const statusFilter = qp.getArray("status");
@@ -78,15 +93,15 @@ const TasksContent = ({ project }) => {
 
   const tabs = [
     // { id: "ai-architect", label: "AI Architect" },
-    { id: "dashboard", label: "Dashboard" },
-    { id: "insights", label: "Insights" },
-    
+    ...(canViewManagerDashboard ? [{ id: "dashboard", label: "Dashboard" }] : []),
+    ...(canViewInsights ? [{ id: "insights", label: "Insights" }] : []),
     { id: "list", label: "List" },
     { id: "backlog", label: "Backlog" },
     // { id: "tree", label: "Tree" },
     { id: "kanban", label: "Kanban" },
     // { id: "kanban2", label: "Kanban 2" },
   ];
+  const allowedViewIds = tabs.map((tab) => tab.id);
 
   const assignees = (project_data?.users || []).map((u) => u.user);
 
@@ -110,6 +125,27 @@ const TasksContent = ({ project }) => {
     };
   }, [showFilters]);
 
+  useEffect(() => {
+    if (isCustomerPortalAccessLoading) {
+      return;
+    }
+
+    if (!allowedViewIds.length || allowedViewIds.includes(view)) {
+      return;
+    }
+
+    const oldSearchParams = new URLSearchParams(searchParams.toString());
+    navigate(`/tasks/${allowedViewIds[0]}`);
+    setSearchParams(oldSearchParams);
+  }, [
+    allowedViewIds,
+    isCustomerPortalAccessLoading,
+    navigate,
+    searchParams,
+    setSearchParams,
+    view,
+  ]);
+
   if (active_cycle_query.isLoading || projects_options_query.isLoading) {
     return <div>Loading...</div>;
   }
@@ -123,9 +159,9 @@ const TasksContent = ({ project }) => {
               <h1 className="text-xl font-bold">{project_data.project_name}</h1>
             )}
           </div>
-          {project_data.project_name && (
+            {project_data.project_name && (
             <RequireRole
-              role="Project Manager"
+              role="Projects Manager"
               fallback={
                 <Tag color="default" style={{ fontSize: "14px", fontWeight: 600, padding: "4px 12px" }}>
                   {project_data.custom_execution_mode || "Kanban"}
@@ -394,8 +430,8 @@ const TasksContent = ({ project }) => {
           {view === "kanban" && <KanbanView />}
           {view === "backlog" && <BacklogView />}
           {/* {view === "tree" && <TreeView />} */}
-          {view === "insights" && <InsightsView />}
-           {view === "dashboard" && <ProjectDetail />}
+          {view === "insights" && canViewInsights && <InsightsView />}
+          {view === "dashboard" && canViewManagerDashboard && <ProjectDetail />}
         </div>
       </div>
       <CompleteCycleModal />

@@ -1,6 +1,6 @@
-import { INITIAL_PROJECTS, PROJECT_STATUS_COLORS, TEAM_MEMBERS } from '../data/constants'
-import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { PROJECT_STATUS_COLORS } from '../data/constants'
+import { useMemo } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import {
     Briefcase,
     CheckSquare,
@@ -14,6 +14,14 @@ import { Spin } from 'antd';
 import Accountability from '../components/Accountability';
 
 const Dashboard = () => {
+    const customerPortalAccessQuery = useFrappeGetCall(
+        "infintrix_atlas.api.v1.has_any_customer_portal_access",
+    );
+    const isCustomerPortalUser = !!customerPortalAccessQuery.data?.message;
+
+    if (isCustomerPortalUser) {
+        return <Navigate to="/projects" replace />;
+    }
 
     const dashboard_stats_query = useFrappeGetCall(
         "infintrix_atlas.api.v1.get_project_user_stats",
@@ -133,7 +141,8 @@ const Dashboard = () => {
                                 </th>
                                 <th className="text-left text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-4 py-3">
                                     Status
-                                </th>                    <th className="text-left text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-4 py-3">
+                                </th>
+                                <th className="text-left text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-4 py-3">
                                     Due Date
                                 </th>
                             </tr>

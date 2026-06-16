@@ -12,7 +12,7 @@ if (import.meta.env.DEV) {
     .then((response) => response.json())
     .then((values) => {
       const data = values.message;
-      const v = JSON.parse(data.boot);
+      const v = typeof data.boot === "string" ? JSON.parse(data.boot) : data.boot;
       //@ts-expect-error
       if (!window.frappe) window.frappe = {};
       //@ts-ignore

@@ -19,6 +19,9 @@ const TaskCard = ({ task, isOverlay = false, selectedTasks, toggleTaskSelection 
       }
     : undefined;
   const isSelected = selectedTasks?.has(task.id);
+  const cardClasses = isOverlay
+    ? "inline-flex w-fit max-w-[min(80vw,28rem)] shadow-xl ring-2 ring-indigo-500 dark:ring-indigo-400 cursor-grabbing scale-[0.98]"
+    : "flex w-full cursor-grab active:cursor-grabbing";
 
   return (
     <div
@@ -38,9 +41,9 @@ const TaskCard = ({ task, isOverlay = false, selectedTasks, toggleTaskSelection 
         searchParams.set("selected_task", task.id);
         setSearchParams(searchParams);
       }}
-      className={`bg-white dark:bg-slate-800 border p-2 rounded-xl shadow-sm hover:border-indigo-300 dark:hover:border-indigo-600 transition-all flex items-start gap-3 group
+      className={`bg-white dark:bg-slate-800 border p-2 rounded-xl shadow-sm hover:border-indigo-300 dark:hover:border-indigo-600 transition-[width,max-width,transform,opacity,box-shadow] duration-300 ease-out items-start gap-3 group
         ${isDragging && !isOverlay ? "opacity-30" : "opacity-100"}
-        ${isOverlay ? "shadow-xl ring-2 ring-indigo-500 dark:ring-indigo-400 cursor-grabbing" : "cursor-grab active:cursor-grabbing"}
+        ${cardClasses}
         ${isSelected ? "border-indigo-500 dark:border-indigo-400 ring-2 ring-indigo-200 dark:ring-indigo-800" : "border-slate-200 dark:border-slate-700"}`}
     >
       <div className="flex items-center gap-1">
@@ -61,37 +64,39 @@ const TaskCard = ({ task, isOverlay = false, selectedTasks, toggleTaskSelection 
           />
         )}
       </div>
-      <div className="flex-1 pointer-events-none">
-        <div className="flex justify-between items-start mb-1">
-          <div className="flex justify-start space-x-4 items-center pointer-events-auto cursor-pointer">
-            <WorkItemTypeWidget
-              value={task.type}
-              onChange={(newType) => {
-                updateMutation
-                  .updateDoc("Task", task.name, {
-                    type: newType,
-                  })
-                  .then(() => {
-                    swr.mutate(["Task"]);
-                    // task_details_query.mutate();
-                  });
-              }}
-            />
+      <div className={`${isOverlay ? "flex-none min-w-0" : "flex-1"} pointer-events-none`}>
+        <div className={`flex items-start mb-1 ${isOverlay ? "justify-start" : "justify-between"}`}>
+          <div className={`pointer-events-auto cursor-pointer ${isOverlay ? "min-w-0" : "flex justify-start space-x-4 items-center"}`}>
+            {!isOverlay && (
+              <WorkItemTypeWidget
+                value={task.type}
+                onChange={(newType) => {
+                  updateMutation
+                    .updateDoc("Task", task.name, {
+                      type: newType,
+                    })
+                    .then(() => {
+                      swr.mutate(["Task"]);
+                    });
+                }}
+              />
+            )}
 
             <h4
               onClick={(e) => {
                 e.stopPropagation();
                 if (task.id === "new_item") return;
-                // console.log("Issue clicked:", issue, issue);
                 searchParams.set("selected_task", task.id);
                 setSearchParams(searchParams);
               }}
-              className="pointer-events-auto text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug cursor-pointer hover:underline"
+              className={`pointer-events-auto text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug cursor-pointer hover:underline transition-all duration-300 ${
+                isOverlay ? "truncate whitespace-nowrap" : ""
+              }`}
             >
               {task.subject}
             </h4>
           </div>
-          <StatusWidget value={task.status} />
+          {!isOverlay && <StatusWidget value={task.status} />}
         </div>
       </div>
     </div>

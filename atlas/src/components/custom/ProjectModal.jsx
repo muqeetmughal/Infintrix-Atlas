@@ -25,7 +25,7 @@ export default function ProjectModal() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [form] = Form.useForm();
   const { mutate } = useSWRConfig();
-  const { has: isProjectManager } = useHasRole("Project Manager");
+  const { has: isProjectManager } = useHasRole("Projects Manager");
 
   const projectParam = searchParams.get("project_modal");
   const isCreate = projectParam === "create";
@@ -95,7 +95,7 @@ export default function ProjectModal() {
       footer={null}
       width={720}
       confirmLoading={isLoading}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}
