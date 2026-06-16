@@ -21,10 +21,9 @@ const GlobalSearch = () => {
   }, [query, open]);
 
   const search_query = useFrappeGetCall(
-    debouncedQuery
-      ? "infintrix_atlas.api.v1.global_search"
-      : null,
+    "infintrix_atlas.api.v1.global_search",
     debouncedQuery ? { query: debouncedQuery } : undefined,
+    debouncedQuery ? ["global_search", debouncedQuery] : null,
   );
 
  
