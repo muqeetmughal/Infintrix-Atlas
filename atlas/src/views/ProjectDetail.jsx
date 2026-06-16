@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   ChevronRight,
-  Clock,
   TrendingUp,
   Layers,
   Users,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { useFrappeGetDoc } from "frappe-react-sdk";
 import { useQueryParams } from "../hooks/useQueryParams";
+import { formatCurrency as formatCurrencyValue } from "../lib/currency";
 
 // --- Roles Configuration ---
 const ROLES = { PM: "Project Manager", STAFF: "Staff", CLIENT: "Client" };
@@ -31,9 +31,14 @@ const PROJECT_DETAIL = {
   company: "Infintrix Technologies",
   creation: "2026-01-28",
   custom_enable_ai_architect: 1,
-  total_sales_amount: 0,
+  estimated_costing: 0,
+  total_costing_amount: 0,
+  total_purchase_cost: 0,
+  total_consumed_material_cost: 0,
+  total_expense_claim: 0,
   total_billed_amount: 0,
-  actual_time: 0,
+  gross_margin: 0,
+  per_gross_margin: 0,
   users: [
     {
       user: "kashi@gmail.com",
@@ -69,33 +74,44 @@ const Badge = ({ children, variant = "neutral" }) => {
   );
 };
 
+const formatPercent = (value) => `${Number(value || 0).toLocaleString()}%`;
+
 const SectionProjectDetail = ({ project }) => {
   const [activeTab, setActiveTab] = useState("Overview");
+  const currency = project.currency || project.default_currency;
+  const totalActualCost =
+    Number(project.total_costing_amount || 0) +
+    Number(project.total_purchase_cost || 0) +
+    Number(project.total_consumed_material_cost || 0) +
+    Number(project.total_expense_claim || 0);
 
   const financialMetrics = [
     {
-      label: "Sales Amount",
-      value: `$${project.total_sales_amount}`,
+      label: "Estimated Cost",
+      value: formatCurrencyValue(project.estimated_costing, { currency }),
       icon: DollarSign,
       color: "text-emerald-500",
     },
     {
-      label: "Billed Amount",
-      value: `$${project.total_billed_amount}`,
+      label: "Total Actual Cost",
+      value: formatCurrencyValue(totalActualCost, { currency }),
+      icon: Activity,
+      color: "text-amber-500",
+    },
+    {
+      label: "Total Actual Amount Billed",
+      value: formatCurrencyValue(project.total_billed_amount, { currency }),
       icon: BarChart3,
       color: "text-indigo-500",
     },
     {
-      label: "Actual Time",
-      value: `${project.actual_time}h`,
-      icon: Clock,
-      color: "text-amber-500",
-    },
-    {
       label: "Gross Margin",
-      value: "0%",
+      value: formatPercent(project.per_gross_margin),
       icon: TrendingUp,
-      color: "text-slate-400 dark:text-slate-500",
+      color:
+        Number(project.per_gross_margin || 0) >= 0
+          ? "text-slate-400 dark:text-slate-500"
+          : "text-rose-500 dark:text-rose-400",
     },
   ];
 

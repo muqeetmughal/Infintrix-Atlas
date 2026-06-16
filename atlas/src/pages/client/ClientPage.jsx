@@ -28,6 +28,7 @@ import {
   Plus,
   Paperclip
 } from 'lucide-react';
+import { formatCurrency } from '../../lib/currency';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -235,7 +236,7 @@ const ClientPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-6">
           <div className="p-4 bg-red-50 rounded-xl border border-red-100">
             <div className="text-[10px] font-black text-red-800 uppercase mb-1">Budget Impact</div>
-            <div className="text-xl font-bold text-red-600">+$1,200 USD</div>
+            <div className="text-xl font-bold text-red-600">+{formatCurrency(1200)}</div>
           </div>
           <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
             <div className="text-[10px] font-black text-amber-800 uppercase mb-1">Time Impact</div>
