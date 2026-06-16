@@ -105,6 +105,14 @@ class ProjectPhase(Document):
         if open_tasks > 0:
             frappe.throw("Cannot complete phase with open tasks.")
 
+        open_action_requests = frappe.db.count(
+            "Project Action Request",
+            {"phase": self.name, "status": "Pending"}
+        )
+
+        if open_action_requests > 0:
+            frappe.throw("Cannot complete phase with open action requests.")
+
     def validate_status_change(self):
         """Prevent status change if phase is already completed"""
         if not self.name:

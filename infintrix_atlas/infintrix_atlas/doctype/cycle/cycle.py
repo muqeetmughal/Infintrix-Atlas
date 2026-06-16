@@ -21,15 +21,16 @@ class Cycle(Document):
 		if self.status not in ["Planned", "Active", "Completed", "Archived"]:
 			frappe.throw("Status must be one of: Planned, Active, Completed, Archived")
 		
-		# Cycle must belong to a phase
 		if not self.phase:
 			frappe.throw("Cycle must belong to a Project Phase")
-		
-		# Cycle allowed only if phase is Active
-		if self.phase:
-			phase = frappe.get_doc("Project Phase", self.phase)
-			if phase.status != "Active":
-				frappe.throw(f"Cycles can only be created for Active phases. Current phase status: {phase.status}")
+
+		phase = frappe.get_doc("Project Phase", self.phase)
+		if phase.project != self.project:
+			frappe.throw("Cycle phase must belong to the same project.")
+		if self.status == "Active" and phase.status != "Active":
+			frappe.throw(
+				f"Active cycles can only exist in an Active phase. Current phase status: {phase.status}"
+			)
 		
 		if self.status == "Active" and (not self.start_date or not self.end_date):
 			frappe.throw("Cycle cannot be active without start and end date")
@@ -37,23 +38,18 @@ class Cycle(Document):
 			frappe.throw("End date cannot be before start date")
 
 		if self.project:
+			project = frappe.get_doc("Project", self.project)
 			active_cycle = frappe.db.get_value(
 				"Cycle",
 				{
 					"project": self.project,
-					"phase": self.phase,
 					"status": "Active",
 					"name": ["!=", self.name],
 				},
 				"name",
 			)
-			if active_cycle and self.status == "Active":
+			if active_cycle and self.status == "Active" and project.custom_execution_mode == "Scrum":
 				frappe.throw(f"Phase already has an active cycle: {active_cycle}")
-		
-		if self.project:
-			project = frappe.get_doc("Project", self.project)
-			if project.custom_execution_mode != "Scrum":
-				frappe.throw("Cycles can only be created for projects with Scrum execution mode")
 
 	def on_update(self):
 		if self.status == "Completed" and not self.actual_end_date:
@@ -69,4 +65,3 @@ class Cycle(Document):
 	@property
 	def is_active(self):
 		return self.status == "Active"
-
