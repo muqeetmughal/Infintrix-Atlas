@@ -1,53 +1,53 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
-  Layout,
-  Card,
-  Row,
-  Col,
-  Progress,
-  Badge,
-  Tabs,
-  Button,
-  Spin,
   Alert,
-  Modal,
-  Typography,
-  Table,
-  Avatar,
-  Statistic,
-  List as AntList,
+  Badge,
+  Button,
+  Card,
+  Col,
+  Form,
   Input,
+  Layout,
+  List as AntList,
+  Modal,
+  message,
+  notification,
+  Progress,
+  Row,
+  Select,
+  Spin,
+  Statistic,
+  Table,
+  Tabs,
   Tag,
   Tooltip,
-  notification,
+  Typography,
 } from "antd";
 import {
+  CalendarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  ExclamationCircleOutlined,
-  CalendarOutlined,
-  FileTextOutlined,
-  DollarCircleOutlined,
-  DownloadOutlined,
-  MessageOutlined,
-  SearchOutlined,
-  InfoCircleOutlined,
-  ArrowRightOutlined,
-  SendOutlined,
-  MailOutlined,
   CustomerServiceOutlined,
+  DownloadOutlined,
+  ExclamationCircleOutlined,
+  FileTextOutlined,
+  InfoCircleOutlined,
+  SearchOutlined,
+  SendOutlined,
 } from "@ant-design/icons";
-import { useFrappeGetCall } from "frappe-react-sdk";
+import { useFrappeGetCall, useFrappePostCall } from "frappe-react-sdk";
 import { useQueryParams } from "../../hooks/useQueryParams";
+import { formatCurrency, getDefaultCurrency } from "../../lib/currency";
 
 const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
 const ProjectSummaryCards = ({ summary }) => {
   const statusConfig = {
-    "On Track": { color: "success", icon: <CheckCircleOutlined /> },
-    "At Risk": { color: "warning", icon: <ExclamationCircleOutlined /> },
-    Delayed: { color: "error", icon: <ClockCircleOutlined /> },
+    "On Track": { color: "success" },
+    "At Risk": { color: "warning" },
+    Delayed: { color: "error" },
+    Completed: { color: "success" },
   };
 
   return (
@@ -71,15 +71,16 @@ const ProjectSummaryCards = ({ summary }) => {
                 }
               />
               <Title level={4} className="m-0! dark:text-gray-100">
-                {summary?.overall_status}
+                {summary?.overall_status || "Unknown"}
               </Title>
             </div>
-            <Tooltip title="Status is updated weekly based on task velocity.">
+            <Tooltip title="Calculated from project status, overdue work, and target dates.">
               <InfoCircleOutlined className="text-gray-300 dark:text-gray-600" />
             </Tooltip>
           </div>
         </Card>
       </Col>
+
       <Col xs={24} sm={12} lg={6}>
         <Card
           size="small"
@@ -94,14 +95,14 @@ const ProjectSummaryCards = ({ summary }) => {
           <div className="mt-2">
             <div className="flex justify-between items-end mb-1">
               <Title level={4} className="m-0! dark:text-gray-100">
-                {summary?.percent_complete}%
+                {summary?.percent_complete || 0}%
               </Title>
               <Text type="secondary" className="text-[10px] dark:text-gray-500">
-                6.2% vs last month
+                Overall completion
               </Text>
             </div>
             <Progress
-              percent={summary?.percent_complete}
+              percent={summary?.percent_complete || 0}
               showInfo={false}
               strokeWidth={6}
               strokeColor="#1677ff"
@@ -109,6 +110,7 @@ const ProjectSummaryCards = ({ summary }) => {
           </div>
         </Card>
       </Col>
+
       <Col xs={24} sm={12} lg={6}>
         <Card
           size="small"
@@ -118,26 +120,27 @@ const ProjectSummaryCards = ({ summary }) => {
             type="secondary"
             className="uppercase text-[10px] font-bold tracking-widest dark:text-gray-400"
           >
-            Next Milestone
+            Next Deadline
           </Text>
           <div className="mt-2 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs">
-              {summary?.days_to_milestone}d
+              {summary?.days_to_milestone ?? "-"}d
             </div>
             <div>
               <Title level={5} className="m-0 truncate! dark:text-gray-100">
-                {summary?.next_milestone_date}
+                {summary?.next_milestone_date || "Not scheduled"}
               </Title>
               <Text
                 type="secondary"
                 className="text-[10px] uppercase font-bold dark:text-gray-500"
               >
-                Countdown
+                Phase target
               </Text>
             </div>
           </div>
         </Card>
       </Col>
+
       <Col xs={24} sm={12} lg={6}>
         <Card
           size="small"
@@ -151,12 +154,12 @@ const ProjectSummaryCards = ({ summary }) => {
           </Text>
           <div className="mt-2">
             <Title level={5} className="m-0 truncate! dark:text-gray-100">
-              {summary?.active_cycle?.title}
+              {summary?.active_phase?.title || "Not started"}
             </Title>
             <div className="flex items-center gap-2 mt-1">
               <CalendarOutlined className="text-[10px] text-gray-400 dark:text-gray-600" />
               <Text type="secondary" className="text-[10px] dark:text-gray-500">
-                Active
+                {summary?.active_phase?.status || "Planned"}
               </Text>
             </div>
           </div>
@@ -185,7 +188,9 @@ const ApprovalWorkflow = ({ actions }) => {
     });
   };
 
-  if (!actions || actions.length === 0) return null;
+  if (!actions?.length) {
+    return null;
+  }
 
   return (
     <>
@@ -219,18 +224,26 @@ const ApprovalWorkflow = ({ actions }) => {
                   <div className="font-black text-gray-800 dark:text-gray-100 text-base">
                     {action.title}
                   </div>
-                  <div className="flex gap-4 mt-1">
+                  <div className="flex flex-wrap gap-4 mt-1">
                     <Text
                       type="secondary"
                       className="text-[10px] font-bold uppercase tracking-tight dark:text-gray-400"
                     >
                       Type: {action.type}
                     </Text>
+                    {action.phase && (
+                      <Text
+                        type="secondary"
+                        className="text-[10px] font-bold uppercase tracking-tight dark:text-gray-400"
+                      >
+                        Phase: {action.phase}
+                      </Text>
+                    )}
                     <Text
                       type="danger"
                       className="text-[10px] font-bold flex items-center gap-1 dark:text-red-400"
                     >
-                      <ClockCircleOutlined /> Due: {action.due_date}
+                      <ClockCircleOutlined /> Due: {action.due_date || "Not set"}
                     </Text>
                   </div>
                 </div>
@@ -241,9 +254,7 @@ const ApprovalWorkflow = ({ actions }) => {
                 className="shrink-0 bg-gray-900 dark:bg-indigo-600 border-none hover:bg-indigo-600 dark:hover:bg-indigo-500 rounded-xl font-bold px-8"
                 onClick={() => handleAction(action)}
               >
-                {action.type === "Approval"
-                  ? "Sign & Approve"
-                  : "Begin Submission"}
+                {action.type === "Approval" ? "Sign & Approve" : "Begin Submission"}
               </Button>
             </div>
           ))}
@@ -253,31 +264,32 @@ const ApprovalWorkflow = ({ actions }) => {
   );
 };
 
-const InteractiveRoadmap = ({ cycles }) => {
+const InteractiveRoadmap = ({ phases }) => {
   const [selectedId, setSelectedId] = useState(
-    cycles?.find((c) => c.status === "Active")?.id,
+    phases?.find((phase) => phase.status === "Active")?.id || phases?.[0]?.id,
   );
-  const activeCycle = useMemo(
-    () => cycles?.find((c) => c.id === selectedId),
-    [selectedId, cycles],
+
+  const activePhase = useMemo(
+    () => phases?.find((phase) => phase.id === selectedId),
+    [phases, selectedId],
   );
 
   return (
     <Card
       title={
         <span className="text-sm font-black uppercase tracking-widest dark:text-gray-100">
-          Project Lifecycle
+          Project Phases
         </span>
       }
       className="mb-8 shadow-sm dark:bg-slate-800 dark:border-slate-700"
     >
       <div className="flex gap-4 overflow-x-auto pb-6 no-scrollbar">
-        {cycles?.map((cycle) => (
+        {phases?.map((phase) => (
           <div
-            key={cycle.id}
-            onClick={() => setSelectedId(cycle.id)}
+            key={phase.id}
+            onClick={() => setSelectedId(phase.id)}
             className={`shrink-0 w-64 p-5 rounded-2xl border-2 transition-all cursor-pointer ${
-              selectedId === cycle.id
+              selectedId === phase.id
                 ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 shadow-md scale-105"
                 : "border-gray-50 dark:border-slate-700 bg-white dark:bg-slate-700 opacity-70 grayscale"
             }`}
@@ -285,31 +297,31 @@ const InteractiveRoadmap = ({ cycles }) => {
             <div className="flex justify-between items-start mb-3">
               <Badge
                 status={
-                  cycle.status === "Completed"
+                  phase.status === "Completed"
                     ? "success"
-                    : cycle.status === "Active"
+                    : phase.status === "Active"
                       ? "processing"
                       : "default"
                 }
               />
               <Text className="text-[10px] font-black uppercase text-gray-400 dark:text-gray-600">
-                {cycle.status}
+                {phase.status}
               </Text>
             </div>
             <div className="font-black text-slate-800 dark:text-gray-100 text-sm mb-1">
-              {cycle.title}
+              {phase.title}
             </div>
             <Progress
-              percent={cycle.completion}
+              percent={phase.completion || 0}
               size="small"
               showInfo={false}
-              strokeColor={cycle.status === "Completed" ? "#52c41a" : "#1677ff"}
+              strokeColor={phase.status === "Completed" ? "#52c41a" : "#1677ff"}
             />
           </div>
         ))}
       </div>
 
-      {activeCycle && (
+      {activePhase && (
         <div className="mt-8 p-6 bg-slate-50 dark:bg-slate-700 rounded-3xl animate-in fade-in duration-500">
           <Row gutter={24} align="middle">
             <Col xs={24} md={16}>
@@ -317,34 +329,37 @@ const InteractiveRoadmap = ({ cycles }) => {
                 type="secondary"
                 className="text-[10px] font-black uppercase tracking-widest dark:text-gray-400"
               >
-                Deliverables: {activeCycle.title}
+                Deliverables: {activePhase.title}
               </Text>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                {(activeCycle?.deliverables || []).map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-3 bg-white dark:bg-slate-600 p-3 rounded-xl border border-gray-100 dark:border-slate-500"
-                  >
-                    <CheckCircleOutlined className="text-emerald-500" />
-                    <span className="text-xs font-bold text-slate-700 dark:text-gray-200">
-                      {item}
-                    </span>
-                  </div>
-                ))}
+                {(activePhase.deliverables || []).length > 0 ? (
+                  (activePhase.deliverables || []).map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-3 bg-white dark:bg-slate-600 p-3 rounded-xl border border-gray-100 dark:border-slate-500"
+                    >
+                      <CheckCircleOutlined className="text-emerald-500" />
+                      <span className="text-xs font-bold text-slate-700 dark:text-gray-200">
+                        {item}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <Text className="text-xs text-gray-500 dark:text-gray-400">
+                    No deliverables linked yet for this phase.
+                  </Text>
+                )}
               </div>
             </Col>
-            <Col
-              xs={24}
-              md={8}
-              className="text-center md:text-right mt-6 md:mt-0"
-            >
-              <Button
-                type="link"
-                icon={<ArrowRightOutlined />}
-                className="dark:text-indigo-400"
-              >
-                Phase Archive
-              </Button>
+            <Col xs={24} md={8} className="text-center md:text-right mt-6 md:mt-0">
+              <div className="space-y-2">
+                <Text className="block text-[11px] uppercase font-black text-gray-400 dark:text-gray-500">
+                  {activePhase.completed_tasks || 0} of {activePhase.tasks_count || 0} tasks completed
+                </Text>
+                <Text className="block text-xs text-gray-500 dark:text-gray-400">
+                  Target: {activePhase.end_date || "Not set"}
+                </Text>
+              </div>
             </Col>
           </Row>
         </div>
@@ -358,8 +373,8 @@ const DocumentWorkbench = ({ requirements, resources }) => {
 
   const filteredRequirements = useMemo(
     () =>
-      requirements?.filter((r) =>
-        r.title.toLowerCase().includes(search.toLowerCase()),
+      requirements?.filter((requirement) =>
+        (requirement.title || "").toLowerCase().includes(search.toLowerCase()),
       ) || [],
     [requirements, search],
   );
@@ -406,7 +421,7 @@ const DocumentWorkbench = ({ requirements, resources }) => {
                     title: "Type",
                     dataIndex: "type",
                     key: "type",
-                    render: (t) => <Badge status="default" text={t} />,
+                    render: (type) => <Badge status="default" text={type} />,
                   },
                   {
                     title: "Added",
@@ -417,8 +432,13 @@ const DocumentWorkbench = ({ requirements, resources }) => {
                   {
                     title: "",
                     key: "action",
-                    render: () => (
-                      <Button type="text" icon={<DownloadOutlined />} />
+                    render: (_, row) => (
+                      <Button
+                        type="text"
+                        icon={<DownloadOutlined />}
+                        disabled={!row.url}
+                        onClick={() => row.url && window.open(row.url, "_blank")}
+                      />
                     ),
                   },
                 ]}
@@ -436,32 +456,35 @@ const DocumentWorkbench = ({ requirements, resources }) => {
               <AntList
                 dataSource={filteredRequirements}
                 rowKey="id"
-                renderItem={(req) => (
+                renderItem={(requirement) => (
                   <AntList.Item
-                    key={req.id}
+                    key={requirement.id}
                     className="px-0 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors p-4 rounded-xl"
                   >
-                    <div className="flex justify-between w-full items-center">
+                    <div className="flex justify-between w-full items-center gap-3">
                       <div className="flex items-center gap-4">
                         <FileTextOutlined className="text-indigo-400" />
                         <div>
                           <div className="font-bold text-sm dark:text-gray-100">
-                            {req.title}
+                            {requirement.title}
                           </div>
                           <Text
                             type="secondary"
                             className="text-[10px] dark:text-gray-400"
                           >
-                            Owner: {req.owner} • {req.submitted_on}
+                            Owner: {requirement.owner} • {requirement.submitted_on}
                           </Text>
                         </div>
                       </div>
                       <Tag
                         color={
-                          req.status === "Approved" ? "success" : "processing"
+                          requirement.status === "Approved" ||
+                          requirement.status === "Implemented"
+                            ? "success"
+                            : "processing"
                         }
                       >
-                        {req.status}
+                        {requirement.status}
                       </Tag>
                     </div>
                   </AntList.Item>
@@ -475,101 +498,356 @@ const DocumentWorkbench = ({ requirements, resources }) => {
   );
 };
 
-const FinanceSnapshot = ({ financials }) => (
-  <Card
-    title={
-      <span className="text-sm font-black uppercase tracking-widest dark:text-gray-100">
-        Commercial Summary
-      </span>
-    }
-    className="mb-8 shadow-sm dark:bg-slate-800 dark:border-slate-700"
-  >
-    <Row gutter={16}>
-      <Col xs={12} md={6}>
-        <Statistic
-          title="Project Budget"
-          value={financials?.total_budget}
-          prefix={<DollarCircleOutlined />}
-          valueStyle={{ color: "#1677ff" }}
+const FinanceSnapshot = ({ financials }) => {
+  const currency = financials?.currency || getDefaultCurrency();
+
+  return (
+    <Card
+      title={
+        <span className="text-sm font-black uppercase tracking-widest dark:text-gray-100">
+          Commercial Summary
+        </span>
+      }
+      className="mb-8 shadow-sm dark:bg-slate-800 dark:border-slate-700"
+    >
+      <Row gutter={16}>
+        <Col xs={12} md={6}>
+          <Statistic
+            title="Project Budget"
+            value={formatCurrency(financials?.total_budget || 0, { currency })}
+            valueStyle={{ color: "#1677ff", fontSize: 20 }}
+          />
+        </Col>
+        <Col xs={12} md={6}>
+          <Statistic
+            title="Invoiced"
+            value={formatCurrency(financials?.total_invoiced || 0, { currency })}
+            valueStyle={{ color: "#1677ff", fontSize: 20 }}
+          />
+        </Col>
+        <Col xs={12} md={6}>
+          <Statistic
+            title="Collected"
+            value={formatCurrency(financials?.paid || 0, { currency })}
+            valueStyle={{ color: "#52c41a", fontSize: 20 }}
+          />
+        </Col>
+        <Col xs={12} md={6}>
+          <div className="flex flex-col h-full justify-center">
+            <Text className="text-xs uppercase font-black text-gray-400 dark:text-gray-500">
+              Last Invoice
+            </Text>
+            <Title level={5} className="m-0! dark:text-gray-100">
+              {financials?.last_invoice_date || "No invoices"}
+            </Title>
+          </div>
+        </Col>
+      </Row>
+    </Card>
+  );
+};
+
+const PortalMetrics = ({ progress, portalMetrics }) => {
+  const total = progress?.total || 0;
+  const completion = total
+    ? Math.round(((progress?.completed || 0) / total) * 100)
+    : 0;
+
+  return (
+    <Card
+      title={
+        <span className="text-xs font-black uppercase tracking-widest dark:text-gray-100">
+          Delivery Snapshot
+        </span>
+      }
+      className="mb-8 shadow-sm dark:bg-slate-800 dark:border-slate-700"
+    >
+      <div className="flex flex-col items-center py-6">
+        <Progress
+          type="dashboard"
+          percent={completion}
+          strokeWidth={10}
+          strokeColor={{ "0%": "#108ee9", "100%": "#87d068" }}
+          size={160}
         />
-      </Col>
-      <Col xs={12} md={6}>
-        <Statistic
-          title="Invoiced"
-          value={financials?.total_invoiced}
-          valueStyle={{ color: "#1677ff" }}
-        />
-      </Col>
-      <Col xs={12} md={6}>
-        <Statistic
-          title="Payment Status"
-          value={Math.round(
-            ((financials?.paid || 0) / (financials?.total_invoiced || 1)) * 100,
-          )}
-          suffix="%"
-          valueStyle={{ color: "#52c41a" }}
-        />
-      </Col>
-      <Col xs={12} md={6}>
-        <div className="flex flex-col h-full justify-center">
+        <div className="text-center mt-6">
+          <Title level={5} className="m-0! dark:text-gray-100">
+            {progress?.completed || 0} completed tasks
+          </Title>
+          <Paragraph className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-black mt-1">
+            {progress?.in_progress || 0} in progress • {portalMetrics?.pending_actions || 0} pending client actions
+          </Paragraph>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+const RequirementSubmissionPanel = ({
+  projectId,
+  requirements,
+  onSubmitted,
+}) => {
+  const [form] = Form.useForm();
+  const requirementMutation = useFrappePostCall(
+    "infintrix_atlas.api.v1.submit_portal_requirement",
+  );
+
+  return (
+    <Card
+      title={
+        <span className="text-sm font-black uppercase tracking-widest dark:text-gray-100">
+          Submit Requirement
+        </span>
+      }
+      className="mb-8 shadow-sm dark:bg-slate-800 dark:border-slate-700"
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={(values) => {
+          requirementMutation
+            .call({
+              project: projectId,
+              title: values.title,
+              description: values.description,
+              acceptance_criteria: values.acceptance_criteria,
+              priority: values.priority,
+              source: "Meeting",
+            })
+            .then(() => {
+              message.success("Requirement submitted");
+              form.resetFields();
+              onSubmitted?.();
+            });
+        }}
+      >
+        <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+          <Input placeholder="What do you need delivered?" />
+        </Form.Item>
+        <Form.Item name="description" label="Description">
+          <Input.TextArea
+            rows={3}
+            placeholder="Describe the business need or request"
+          />
+        </Form.Item>
+        <Form.Item name="acceptance_criteria" label="Acceptance Criteria">
+          <Input.TextArea
+            rows={3}
+            placeholder="What would make this requirement complete?"
+          />
+        </Form.Item>
+        <Form.Item
+          name="priority"
+          label="Priority"
+          initialValue="Medium"
+        >
+          <Select
+            options={[
+              { label: "Low", value: "Low" },
+              { label: "Medium", value: "Medium" },
+              { label: "High", value: "High" },
+            ]}
+          />
+        </Form.Item>
+        <div className="flex justify-end">
           <Button
-            block
             type="primary"
-            size="large"
-            className="rounded-xl font-bold dark:bg-indigo-600"
+            htmlType="submit"
+            loading={requirementMutation.loading}
           >
-            Billing Portal
+            Submit Requirement
           </Button>
         </div>
-      </Col>
-    </Row>
-  </Card>
-);
+      </Form>
 
-const TeamDirectory = ({ team }) => (
+      <div className="mt-6">
+        <Text className="text-[10px] uppercase font-black tracking-widest text-gray-400 dark:text-gray-500">
+          Recent Requirements
+        </Text>
+        <AntList
+          className="mt-3"
+          dataSource={requirements || []}
+          rowKey="name"
+          renderItem={(item) => (
+            <AntList.Item>
+              <div className="flex justify-between items-center w-full gap-3">
+                <div>
+                  <div className="font-semibold dark:text-gray-100">{item.title}</div>
+                  <Text className="text-xs text-gray-500 dark:text-gray-400">
+                    {item.task_count || 0} linked tasks
+                  </Text>
+                </div>
+                <Tag color={item.status === "Approved" ? "success" : "processing"}>
+                  {item.status}
+                </Tag>
+              </div>
+            </AntList.Item>
+          )}
+        />
+      </div>
+    </Card>
+  );
+};
+
+const ChangeRequestPanel = ({
+  projectId,
+  changeRequests,
+  requirements,
+  onSubmitted,
+}) => {
+  const [form] = Form.useForm();
+  const changeRequestMutation = useFrappePostCall(
+    "infintrix_atlas.api.v1.submit_change_request",
+  );
+
+  return (
+    <Card
+      title={
+        <span className="text-sm font-black uppercase tracking-widest dark:text-gray-100">
+          Change Requests
+        </span>
+      }
+      className="mb-8 shadow-sm dark:bg-slate-800 dark:border-slate-700"
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={(values) => {
+          changeRequestMutation
+            .call({
+              project: projectId,
+              title: values.title,
+              description: values.description,
+              related_requirement: values.related_requirement,
+              impact_hours: values.impact_hours || 0,
+              impact_cost: values.impact_cost || 0,
+              impact_days: values.impact_days || 0,
+            })
+            .then(() => {
+              message.success("Change request submitted");
+              form.resetFields();
+              onSubmitted?.();
+            });
+        }}
+      >
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+              <Input placeholder="Requested scope change" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="related_requirement" label="Related Requirement">
+              <Select
+                allowClear
+                placeholder="Select existing requirement"
+                options={(requirements || []).map((item) => ({
+                  label: item.title,
+                  value: item.name,
+                }))}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Form.Item
+          name="description"
+          label="Description"
+          rules={[{ required: true }]}
+        >
+          <Input.TextArea rows={3} placeholder="Describe the requested change" />
+        </Form.Item>
+        <Row gutter={16}>
+          <Col xs={24} md={8}>
+            <Form.Item name="impact_hours" label="Impact Hours">
+              <Input type="number" min={0} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item name="impact_cost" label="Impact Cost">
+              <Input type="number" min={0} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item name="impact_days" label="Impact Days">
+              <Input type="number" min={0} />
+            </Form.Item>
+          </Col>
+        </Row>
+        <div className="flex justify-end">
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={changeRequestMutation.loading}
+          >
+            Submit Change Request
+          </Button>
+        </div>
+      </Form>
+
+      <AntList
+        className="mt-6"
+        dataSource={changeRequests || []}
+        rowKey="name"
+        renderItem={(item) => (
+          <AntList.Item>
+            <div className="flex justify-between items-start gap-3 w-full">
+              <div>
+                <div className="font-semibold dark:text-gray-100">{item.title}</div>
+                <Text className="text-xs text-gray-500 dark:text-gray-400">
+                  {item.related_requirement_title || "Standalone request"} •{" "}
+                  {item.request_date || "No date"}
+                </Text>
+              </div>
+              <Tag
+                color={
+                  item.status === "Approved"
+                    ? "success"
+                    : item.status === "Rejected"
+                      ? "error"
+                      : "processing"
+                }
+              >
+                {item.status}
+              </Tag>
+            </div>
+          </AntList.Item>
+        )}
+      />
+    </Card>
+  );
+};
+
+const ScopeSnapshotsPanel = ({ snapshots }) => (
   <Card
     title={
       <span className="text-sm font-black uppercase tracking-widest dark:text-gray-100">
-        Assigned Experts
+        Scope Baselines
       </span>
     }
     className="mb-8 shadow-sm dark:bg-slate-800 dark:border-slate-700"
   >
-    <div className="space-y-5">
-      {team?.map((member) => (
-        <div
-          key={member.id}
-          className="flex items-center justify-between group"
-        >
-          <div className="flex items-center gap-4">
-            <Avatar
-              size={48}
-              style={{ backgroundColor: member.color }}
-              shape="square"
-              className="rounded-xl shadow-sm"
-            >
-              {member.avatar}
-            </Avatar>
+    <AntList
+      dataSource={snapshots || []}
+      rowKey="name"
+      renderItem={(item) => (
+        <AntList.Item>
+          <div className="flex justify-between items-center w-full gap-3">
             <div>
-              <div className="text-sm font-black text-gray-800 dark:text-gray-100">
-                {member.name}
+              <div className="font-semibold dark:text-gray-100">
+                Version {item.version}
               </div>
-              <div className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-tight">
-                {member.role}
-              </div>
+              <Text className="text-xs text-gray-500 dark:text-gray-400">
+                {item.snapshot_date} • {item.requirements_count || 0} requirements
+              </Text>
             </div>
+            <Tag color={item.docstatus === 1 ? "success" : "default"}>
+              {item.docstatus === 1 ? "Submitted" : "Draft"}
+            </Tag>
           </div>
-          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Tooltip title={`Email ${member.name}`}>
-              <Button shape="circle" icon={<MailOutlined />} size="small" />
-            </Tooltip>
-            <Tooltip title={`Chat with ${member.name}`}>
-              <Button shape="circle" icon={<MessageOutlined />} size="small" />
-            </Tooltip>
-          </div>
-        </div>
-      ))}
-    </div>
+        </AntList.Item>
+      )}
+    />
   </Card>
 );
 
@@ -580,17 +858,51 @@ const CustomerPortal = () => {
   const query = useFrappeGetCall(
     "infintrix_atlas.api.v1.get_customer_portal_data",
     { project: projectId },
+    projectId ? ["customer_portal_data", projectId] : null,
   );
-  const data = query?.data?.message || {};
+  const requirementsQuery = useFrappeGetCall(
+    "infintrix_atlas.api.v1.list_project_requirements",
+    { project: projectId },
+    projectId ? ["project_requirements", projectId] : null,
+  );
+  const changeRequestsQuery = useFrappeGetCall(
+    "infintrix_atlas.api.v1.list_project_change_requests",
+    { project: projectId },
+    projectId ? ["project_change_requests", projectId] : null,
+  );
+  const snapshotsQuery = useFrappeGetCall(
+    "infintrix_atlas.api.v1.list_scope_snapshots",
+    { project: projectId },
+    projectId ? ["project_scope_snapshots", projectId] : null,
+  );
 
-  if (query.isLoading)
+  const data = query?.data?.message || {};
+  const requirements = requirementsQuery?.data?.message || [];
+  const changeRequests = changeRequestsQuery?.data?.message || [];
+  const snapshots = snapshotsQuery?.data?.message || [];
+
+  if (!projectId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
+        <Alert
+          message="Project not selected"
+          description="Open insights from a specific project to view customer-facing updates."
+          type="info"
+          showIcon
+        />
+      </div>
+    );
+  }
+
+  if (query.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
         <Spin size="large" tip="Securing data connection..." />
       </div>
     );
+  }
 
-  if (query.error)
+  if (query.error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
         <Alert
@@ -601,6 +913,7 @@ const CustomerPortal = () => {
         />
       </div>
     );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900">
@@ -610,43 +923,36 @@ const CustomerPortal = () => {
 
         <Row gutter={[24, 24]}>
           <Col xs={24} lg={16}>
-            <InteractiveRoadmap cycles={data?.cycles || []} />
+            <InteractiveRoadmap phases={data.phases || []} />
             <FinanceSnapshot financials={data.financials} />
+            <RequirementSubmissionPanel
+              projectId={projectId}
+              requirements={requirements}
+              onSubmitted={() => {
+                requirementsQuery.mutate();
+                query.mutate();
+              }}
+            />
+            <ChangeRequestPanel
+              projectId={projectId}
+              changeRequests={changeRequests}
+              requirements={requirements}
+              onSubmitted={() => {
+                changeRequestsQuery.mutate();
+              }}
+            />
+            <ScopeSnapshotsPanel snapshots={snapshots} />
             <DocumentWorkbench
-              requirements={data.requirements}
-              resources={data.resources}
+              requirements={data.requirements || []}
+              resources={data.resources || []}
             />
           </Col>
 
           <Col xs={24} lg={8}>
-            <TeamDirectory team={data.team} />
-
-            <Card
-              title={
-                <span className="text-xs font-black uppercase tracking-widest dark:text-gray-100">
-                  Engagement Score
-                </span>
-              }
-              className="mb-8 shadow-sm dark:bg-slate-800 dark:border-slate-700"
-            >
-              <div className="flex flex-col items-center py-6">
-                <Progress
-                  type="dashboard"
-                  percent={84}
-                  strokeWidth={10}
-                  strokeColor={{ "0%": "#108ee9", "100%": "#87d068" }}
-                  size={160}
-                />
-                <div className="text-center mt-6">
-                  <Title level={5} className="m-0! dark:text-gray-100">
-                    Highly Efficient
-                  </Title>
-                  <Paragraph className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-black mt-1">
-                    Approval Latency: 4.2h Avg
-                  </Paragraph>
-                </div>
-              </div>
-            </Card>
+            <PortalMetrics
+              progress={data.progress}
+              portalMetrics={data.portal_metrics}
+            />
 
             <Card className="bg-slate-900 dark:bg-slate-950 border-none rounded-4xl p-8 shadow-2xl relative overflow-hidden group">
               <div className="relative z-10">
@@ -655,7 +961,7 @@ const CustomerPortal = () => {
                 </Title>
                 <Paragraph className="text-slate-400 text-xs mb-8">
                   Open a high-priority ticket or request a scope adjustment call
-                  with your manager.
+                  with your delivery team.
                 </Paragraph>
                 <Button
                   block
