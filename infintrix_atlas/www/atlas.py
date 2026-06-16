@@ -38,8 +38,6 @@ def get_context(context):
 	boot_json = SCRIPT_TAG_PATTERN.sub("", boot_json)
 
 	boot_json = CLOSING_SCRIPT_TAG_PATTERN.sub("", boot_json)
-	boot_json = json.dumps(boot_json)
-
 	context.update(
 		{"build_version": frappe.utils.get_build_version(), "boot": boot_json, "csrf_token": csrf_token}
 	)
@@ -101,6 +99,4 @@ def get_boot():
 	boot_json = SCRIPT_TAG_PATTERN.sub("", boot_json)
 
 	boot_json = CLOSING_SCRIPT_TAG_PATTERN.sub("", boot_json)
-	boot_json = json.dumps(boot_json)
-
 	return boot_json
