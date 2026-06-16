@@ -5,6 +5,12 @@
 - **Backend**: Frappe/ERPNext app (`infintrix_atlas/`), modifies standard `Project` & `Task` via custom fields + custom doc types (Cycle, Project Phase, Requirement, etc.)
 - **Frontend**: React SPA (`atlas/`), served via `www/atlas.html` + `www/atlas.py` with boot context. Routes: Dashboard, Tasks, Projects, Team, Profile, AI Architect, Customer Portal
 - **Frontend port**: `8080` (Vite dev server proxies to Frappe)
+- **Customer portal access**: based on `Customer.portal_users` membership, not a `Client` role
+- **Core modeling**:
+  - Phase = lifecycle
+  - Cycle = execution planning
+  - Task status = execution state
+  - Backlog is derived, not stored
 
 ## Developer commands
 
@@ -34,14 +40,17 @@ pre-commit run --all-files
 - **`override_doctype_class` allows only one app per doctype**: HRMS already overrides `Project`. `AtlasProject` extends `EmployeeProject` but Frappe won't chain them automatically. Use `doc_events` for Project hooks instead.
 - **`hooks.py` has duplicate `doc_events`** — only the last one takes effect. Keep merged.
 - **Class name mismatch**: `overrides/project.py` has `AtlasProject` but hooks.py may reference `Project`. Fix the string.
+- **After permission / override changes**: prefer `bench --site sitename clear-cache`, and restart bench workers/web if behavior still appears stale
 
 ## Permission model
 
 - **Administrator**: full access (no filter)
-- **Project Manager**: owned projects OR projects where user is in `Project User` child table OR has a task assigned (via ToDo)
-- **Regular user**: only projects where user is in `Project User` child table
-- Backend: `permissions.py` provides `permission_query_conditions` for Project, Task, Fathom Meeting/Account
-- `TaskOverride.has_permission` in `overrides/task.py`: admin, task owner, ToDo assignee, project owner, or `Project User` member can view task detail
+- **System Manager**: full access
+- **Projects Manager**: owned projects OR projects where user is in `Project User` child table
+- **Projects User**: only projects where user is in `Project User` child table
+- **Customer portal user**: project-linked access through matching `Project.customer` to `Customer.portal_users`
+- Backend: `permissions.py` provides `permission_query_conditions` for project-linked lifecycle doctypes as well as Project/Task/Fathom
+- `TaskOverride.has_permission` in `overrides/task.py`: admin, task owner, ToDo assignee, project owner, project member, or eligible customer portal user can view task detail
 
 ## React frontend conventions
 
@@ -62,6 +71,16 @@ pre-commit run --all-files
 | `set_project_mode` | Scrum/Kanban toggle (requires Project Manager role) |
 | `get_user_roles` | Returns current user's roles |
 | `get_project_user_stats` | Dashboard stats for user (uses `frappe.db.sql` — not `frappe.get_all`) |
+| `get_customer_portal_data` | Dynamic customer-facing project view |
+| `list_project_requirements` | Requirements for a project |
+| `submit_portal_requirement` | Customer submits new requirement |
+| `list_project_change_requests` | Change requests for a project |
+| `submit_change_request` | Submit change request |
+| `approve_change_request` | Approve change request and generate new requirement |
+| `list_scope_snapshots` | Scope baselines for a project |
+| `create_scope_snapshot` | Create new scope baseline |
+| `list_project_resources` | Project knowledge/resources list |
+| `list_project_action_requests` | Client action requests list |
 
 ## Important backend files
 
@@ -79,6 +98,18 @@ pre-commit run --all-files
 
 Project Phase, Cycle, Requirement, Scope Snapshot, Project Resource, Project Action Request, Change Request, AI Task Session, AI Task Draft — all have a `project` Link field.
 
+## Current product reality
+
+- Some lifecycle doctypes now have meaningful validation and APIs
+- The custom frontend still does **not** provide a full internal CRUD/governance UI for every Atlas doctype
+- For many internal workflows, Frappe Desk is still part of the supported operator experience
+- Customer portal currently supports:
+  - dynamic insights
+  - requirement submission
+  - change request submission
+  - scope baseline visibility
+- Customer portal does **not** yet provide a full transactional workflow for all action request types
+
 ## Backlog behavior
 
 - **Scrum**: `backlog_by_phase` excludes tasks with a cycle (`not t["cycle"]`)
@@ -92,5 +123,9 @@ Project Phase, Cycle, Requirement, Scope Snapshot, Project Resource, Project Act
 
 ## Known issues
 
-- HRMS override conflict for Project (see ISSUES.md)
+- Full internal SPA governance screens for all lifecycle doctypes do not yet exist
+- Change request approval UX is partial
+- Scope snapshot diff/comparison tooling does not yet exist
+- AI executor workflow is still incomplete
 - `notify_status_changed` referenced in `events/task.py` but not defined in `api/v1.py`
+- See `ISSUES.md` for the current actionable audit list
