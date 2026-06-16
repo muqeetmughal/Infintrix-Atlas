@@ -695,72 +695,11 @@ def update_users_on_project(project, users):
 
 @frappe.whitelist()
 def global_search(query: str, limit: int = 10):
-    """
-    Global search for Tasks and Projects
-    """
+    if not query or len(query) < 2:
+        return []
+
     results = []
 
-    if not query or len(query) < 2:
-        # Return last 5 from all if query is empty
-        tasks = frappe.get_all(
-            "Task",
-            fields=["name", "subject", "project"],
-            order_by="modified desc",
-            limit=5,
-            filters={"project": ["!=", ""]},
-        )
-
-        projects = frappe.get_all(
-            "Project",
-            fields=["name", "project_name"],
-            order_by="modified desc",
-            limit=5,
-        )
-        cycles = frappe.get_all(
-            "Cycle",
-            fields=["name", "cycle_name", "project"],
-            order_by="modified desc",
-            limit=5,
-        )
-
-        for task in tasks:
-            if frappe.has_permission("Task", "read", task.name):
-                results.append(
-                    {
-                        "type": "Task",
-                        "name": task.name,
-                        "title": task.subject,
-                        "route": f"/tasks/kanban?project={task.project}&selected_task={task.name}",
-                    }
-                )
-
-        for project in projects:
-            if frappe.has_permission("Project", "read", project.name):
-                results.append(
-                    {
-                        "type": "Project",
-                        "name": project.name,
-                        "title": project.project_name,
-                        "route": f"/tasks/kanban?project={project.name}",
-                    }
-                )
-
-        for cycle in cycles:
-            project_name = frappe.db.get_value(
-                "Project", cycle.project, "project_name") or cycle.project
-            if frappe.has_permission("Cycle", "read", cycle.name):
-                results.append(
-                    {
-                        "type": "Cycle",
-                        "name": cycle.name,
-                        "title": f"{cycle.cycle_name} (Project: {project_name})",
-                        "route": f"/tasks/backlog?project={cycle.project}",
-                    }
-                )
-
-        return results
-
-    # ---- TASKS ----
     tasks = frappe.get_all(
         "Task",
         filters=[
@@ -771,20 +710,16 @@ def global_search(query: str, limit: int = 10):
         limit=limit,
     )
 
-    print(f"Found {len(tasks)} tasks matching query '{query}'")
-
     for task in tasks:
-        if frappe.has_permission("Task", "read", task.name):
-            results.append(
-                {
-                    "type": "Task",
-                    "name": task.name,
-                    "title": task.subject,
-                    "route": f"/tasks/kanban?project={task.project}&selected_task={task.name}",
-                }
-            )
+        results.append(
+            {
+                "type": "Task",
+                "name": task.name,
+                "title": task.subject,
+                "route": f"/tasks/kanban?project={task.project}&selected_task={task.name}",
+            }
+        )
 
-    # ---- PROJECTS ----
     projects = frappe.get_all(
         "Project",
         or_filters=[
@@ -795,18 +730,16 @@ def global_search(query: str, limit: int = 10):
         order_by="modified desc",
         limit=limit,
     )
-    print(f"Found {len(projects)} projects matching query '{query}'")
 
     for project in projects:
-        if frappe.has_permission("Project", "read", project.name):
-            results.append(
-                {
-                    "type": "Project",
-                    "name": project.name,
-                    "title": project.project_name,
-                    "route": f"/tasks/kanban?project={project.name}",
-                }
-            )
+        results.append(
+            {
+                "type": "Project",
+                "name": project.name,
+                "title": project.project_name,
+                "route": f"/tasks/kanban?project={project.name}",
+            }
+        )
 
     cycles = frappe.get_all(
         "Cycle",
@@ -818,19 +751,18 @@ def global_search(query: str, limit: int = 10):
         limit=limit,
     )
 
-    print(f"Found {len(cycles)} cycles matching query '{query}'")
     for cycle in cycles:
         project_name = frappe.db.get_value(
             "Project", cycle.project, "project_name") or cycle.project
-        if frappe.has_permission("Cycle", "read", cycle.name):
-            results.append(
-                {
-                    "type": "Cycle",
-                    "name": cycle.name,
-                    "title": f"{cycle.cycle_name} (Project: {project_name})",
-                    "route": f"/tasks/backlog?project={cycle.project}",
-                }
-            )
+        results.append(
+            {
+                "type": "Cycle",
+                "name": cycle.name,
+                "title": f"{cycle.cycle_name} (Project: {project_name})",
+                "route": f"/tasks/backlog?project={cycle.project}",
+            }
+        )
+
     return results
 
 
