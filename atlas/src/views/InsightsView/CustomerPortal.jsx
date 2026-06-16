@@ -818,6 +818,98 @@ const ChangeRequestPanel = ({
   );
 };
 
+const ActionRequestPanel = ({
+  actionRequests,
+  onSubmitted,
+}) => {
+  const completeMutation = useFrappePostCall(
+    "infintrix_atlas.api.v1.complete_action_request",
+  );
+  const rejectMutation = useFrappePostCall(
+    "infintrix_atlas.api.v1.reject_action_request",
+  );
+
+  return (
+    <Card
+      title={
+        <span className="text-sm font-black uppercase tracking-widest dark:text-gray-100">
+          Action Requests
+        </span>
+      }
+      className="mb-8 shadow-sm dark:bg-slate-800 dark:border-slate-700"
+    >
+      <AntList
+        dataSource={actionRequests || []}
+        rowKey="name"
+        renderItem={(item) => (
+          <AntList.Item>
+            <div className="flex justify-between items-start gap-3 w-full">
+              <div>
+                <div className="font-semibold dark:text-gray-100">{item.title}</div>
+                <Text className="text-xs text-gray-500 dark:text-gray-400">
+                  {item.action_type} • {item.phase_title || "No phase"} {item.due_date ? `• Due: ${item.due_date}` : ""}
+                </Text>
+                {item.description && (
+                  <Text className="block text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {item.description}
+                  </Text>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Tag
+                  color={
+                    item.status === "Completed"
+                      ? "success"
+                      : item.status === "Expired"
+                        ? "default"
+                        : item.status === "Rejected"
+                          ? "error"
+                          : "warning"
+                  }
+                >
+                  {item.status}
+                </Tag>
+                {item.status === "Pending" && (
+                  <div className="flex gap-1">
+                    <Button
+                      size="small"
+                      type="primary"
+                      icon={<CheckCircleOutlined />}
+                      loading={completeMutation.loading}
+                      onClick={() => {
+                        completeMutation.call({ action_request: item.name }).then(() => {
+                          message.success("Action request completed");
+                          onSubmitted?.();
+                        });
+                      }}
+                    >
+                      Complete
+                    </Button>
+                    <Button
+                      size="small"
+                      danger
+                      icon={<CloseCircleOutlined />}
+                      loading={rejectMutation.loading}
+                      onClick={() => {
+                        rejectMutation.call({ action_request: item.name }).then(() => {
+                          message.success("Action request rejected");
+                          onSubmitted?.();
+                        });
+                      }}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </AntList.Item>
+        )}
+      />
+    </Card>
+  );
+};
+
 const ScopeSnapshotsPanel = ({ snapshots }) => (
   <Card
     title={
@@ -870,6 +962,11 @@ const CustomerPortal = () => {
     { project: projectId },
     projectId ? ["project_change_requests", projectId] : null,
   );
+  const actionRequestsQuery = useFrappeGetCall(
+    "infintrix_atlas.api.v1.list_project_action_requests",
+    { project: projectId, include_completed: true },
+    projectId ? ["customer_action_requests", projectId] : null,
+  );
   const snapshotsQuery = useFrappeGetCall(
     "infintrix_atlas.api.v1.list_scope_snapshots",
     { project: projectId },
@@ -879,6 +976,7 @@ const CustomerPortal = () => {
   const data = query?.data?.message || {};
   const requirements = requirementsQuery?.data?.message || [];
   const changeRequests = changeRequestsQuery?.data?.message || [];
+  const actionRequests = actionRequestsQuery?.data?.message || [];
   const snapshots = snapshotsQuery?.data?.message || [];
 
   if (!projectId) {
@@ -939,6 +1037,14 @@ const CustomerPortal = () => {
               requirements={requirements}
               onSubmitted={() => {
                 changeRequestsQuery.mutate();
+              }}
+            />
+            <ActionRequestPanel
+              projectId={projectId}
+              actionRequests={actionRequests}
+              onSubmitted={() => {
+                actionRequestsQuery.mutate();
+                query.mutate();
               }}
             />
             <ScopeSnapshotsPanel snapshots={snapshots} />

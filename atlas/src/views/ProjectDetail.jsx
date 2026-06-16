@@ -312,6 +312,8 @@ const ChangeRequestsTab = ({ projectId }) => {
     projectId ? ["project_change_requests", projectId] : null,
   );
   const approveMutation = useFrappePostCall("infintrix_atlas.api.v1.approve_change_request");
+  const rejectMutation = useFrappePostCall("infintrix_atlas.api.v1.reject_change_request");
+  const implementMutation = useFrappePostCall("infintrix_atlas.api.v1.implement_change_request");
   const submitMutation = useFrappePostCall("infintrix_atlas.api.v1.submit_change_request");
   const requirementsQuery = useFrappeGetCall(
     "infintrix_atlas.api.v1.list_project_requirements",
@@ -334,21 +336,54 @@ const ChangeRequestsTab = ({ projectId }) => {
     });
   };
 
+  const handleReject = (cr) => {
+    Modal.confirm({
+      title: "Reject Change Request?",
+      content: `Reject "${cr.title}"? The customer will be notified.`,
+      okText: "Reject",
+      cancelText: "Cancel",
+      okButtonProps: { danger: true },
+      onOk: () => rejectMutation.call({ change_request: cr.name }).then(() => { message.success("Change request rejected"); mutate(); }),
+    });
+  };
+
+  const handleImplement = (cr) => {
+    Modal.confirm({
+      title: "Mark Change Request as Implemented?",
+      content: `Mark "${cr.title}" as implemented?`,
+      okText: "Implement",
+      cancelText: "Cancel",
+      onOk: () => implementMutation.call({ change_request: cr.name }).then(() => { message.success("Change request implemented"); mutate(); }),
+    });
+  };
+
   const columns = [
     { title: "Title", dataIndex: "title", key: "title", render: (t) => <span className="font-semibold">{t}</span> },
     { title: "Status", dataIndex: "status", key: "status", render: (s) => {
-      const color = s === "Approved" ? "success" : s === "Rejected" ? "error" : "processing";
+      const color = s === "Approved" ? "success" : s === "Rejected" ? "error" : s === "Implemented" ? "purple" : "processing";
       return <Tag color={color}>{s}</Tag>;
     }},
     { title: "Related Requirement", dataIndex: "related_requirement_title", key: "related_requirement_title", render: (r) => r || "-" },
     { title: "Impact", key: "impact", render: (_, r) => `${r.impact_hours || 0}h / ${r.impact_cost || 0} / ${r.impact_days || 0}d` },
     { title: "Date", dataIndex: "request_date", key: "request_date" },
     { title: "Actions", key: "actions", render: (_, r) => (
-      r.status === "Under Review" ? (
-        <Button type="link" icon={<CheckCircleOutlined />} onClick={() => handleApprove(r)} loading={approveMutation.loading}>
-          Approve
-        </Button>
-      ) : null
+      <div className="flex gap-1">
+        {r.status === "Under Review" && (
+          <>
+            <Button type="link" icon={<CheckCircleOutlined />} onClick={() => handleApprove(r)} loading={approveMutation.loading}>
+              Approve
+            </Button>
+            <Button type="link" danger icon={<CloseCircleOutlined />} onClick={() => handleReject(r)} loading={rejectMutation.loading}>
+              Reject
+            </Button>
+          </>
+        )}
+        {r.status === "Approved" && (
+          <Button type="link" icon={<CheckCircleOutlined />} onClick={() => handleImplement(r)} loading={implementMutation.loading}>
+            Implement
+          </Button>
+        )}
+      </div>
     )},
   ];
 
@@ -500,28 +535,78 @@ const ResourcesTab = ({ projectId }) => {
 };
 
 const ActionRequestsTab = ({ projectId }) => {
-  const { data, isLoading } = useFrappeGetCall(
+  const { data, isLoading, mutate } = useFrappeGetCall(
     "infintrix_atlas.api.v1.list_project_action_requests",
     { project: projectId, include_completed: true },
     projectId ? ["project_action_requests", projectId] : null,
   );
+  const createMutation = useFrappePostCall("infintrix_atlas.api.v1.create_action_request");
+  const completeMutation = useFrappePostCall("infintrix_atlas.api.v1.complete_action_request");
+  const expireMutation = useFrappePostCall("infintrix_atlas.api.v1.expire_action_request");
+  const phasesQuery = useFrappeGetCall(
+    "infintrix_atlas.api.v1.list_project_phases",
+    { project: projectId },
+    projectId ? ["project_phases_ar", projectId] : null,
+  );
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form] = Form.useForm();
+
   const actionRequests = data?.message || [];
+  const phases = phasesQuery?.data?.message || [];
+
+  const handleComplete = (ar) => {
+    Modal.confirm({
+      title: "Complete Action Request?",
+      content: `Mark "${ar.title}" as completed?`,
+      okText: "Complete",
+      cancelText: "Cancel",
+      onOk: () => completeMutation.call({ action_request: ar.name }).then(() => { message.success("Action request completed"); mutate(); }),
+    });
+  };
+
+  const handleExpire = (ar) => {
+    Modal.confirm({
+      title: "Expire Action Request?",
+      content: `Expire "${ar.title}"?`,
+      okText: "Expire",
+      cancelText: "Cancel",
+      okButtonProps: { danger: true },
+      onOk: () => expireMutation.call({ action_request: ar.name }).then(() => { message.success("Action request expired"); mutate(); }),
+    });
+  };
 
   const columns = [
     { title: "Title", dataIndex: "title", key: "title", render: (t) => <span className="font-semibold">{t}</span> },
     { title: "Type", dataIndex: "action_type", key: "action_type", render: (t) => <Tag>{t}</Tag> },
     { title: "Status", dataIndex: "status", key: "status", render: (s) => (
-      <Tag color={s === "Completed" ? "success" : s === "Pending" ? "warning" : "processing"}>{s}</Tag>
+      <Tag color={s === "Completed" ? "success" : s === "Pending" ? "warning" : s === "Expired" ? "default" : "error"}>{s}</Tag>
     )},
     { title: "Phase", dataIndex: "phase_title", key: "phase_title", render: (p) => p || "-" },
     { title: "Due Date", dataIndex: "due_date", key: "due_date" },
+    { title: "Actions", key: "actions", render: (_, r) => (
+      r.status === "Pending" ? (
+        <div className="flex gap-1">
+          <Button type="link" icon={<CheckCircleOutlined />} onClick={() => handleComplete(r)} loading={completeMutation.loading}>
+            Complete
+          </Button>
+          <Button type="link" danger icon={<CloseCircleOutlined />} onClick={() => handleExpire(r)} loading={expireMutation.loading}>
+            Expire
+          </Button>
+        </div>
+      ) : null
+    )},
   ];
 
   return (
     <div className="space-y-6">
-      <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-        Action Requests ({actionRequests.length})
-      </h3>
+      <div className="flex justify-between items-center">
+        <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+          Action Requests ({actionRequests.length})
+        </h3>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
+          New Action Request
+        </Button>
+      </div>
       <Table
         dataSource={actionRequests}
         columns={columns}
@@ -531,6 +616,61 @@ const ActionRequestsTab = ({ projectId }) => {
         className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-700"
         locale={{ emptyText: "No action requests yet" }}
       />
+      <Modal title="New Action Request" open={modalOpen} onCancel={() => setModalOpen(false)} footer={null}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={(values) => {
+            createMutation.call({ project: projectId, ...values }).then(() => {
+              message.success("Action request created");
+              form.resetFields();
+              setModalOpen(false);
+              mutate();
+            });
+          }}
+        >
+          <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+            <Input placeholder="Action title" />
+          </Form.Item>
+          <Form.Item name="description" label="Description" rules={[{ required: true }]}>
+            <Input.TextArea rows={3} placeholder="Describe the action needed" />
+          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="action_type" label="Action Type" initialValue="Approval">
+                <Select options={[
+                  { label: "Approval", value: "Approval" },
+                  { label: "Document Submission", value: "Document Submission" },
+                  { label: "Payment", value: "Payment" },
+                  { label: "Feedback", value: "Feedback" },
+                  { label: "Signature", value: "Signature" },
+                ]} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="phase" label="Phase">
+                <Select allowClear placeholder="Auto-detect" options={phases.map((p) => ({ label: `${p.title} (${p.status})`, value: p.name }))} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="due_date" label="Due Date">
+                <Input type="date" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="is_portal_visible" label="Portal Visibility" initialValue={1}>
+                <Select options={[{ label: "Visible to Customer", value: 1 }, { label: "Internal Only", value: 0 }]} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button type="primary" htmlType="submit" loading={createMutation.loading}>Create</Button>
+          </div>
+        </Form>
+      </Modal>
     </div>
   );
 };

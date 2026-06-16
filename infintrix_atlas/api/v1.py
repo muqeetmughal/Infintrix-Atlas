@@ -1444,6 +1444,131 @@ def approve_change_request(change_request):
 
 
 @frappe.whitelist()
+def reject_change_request(change_request):
+    doc = frappe.get_doc("Change Request", change_request)
+    _ensure_project_access(doc.project, require_write=True)
+
+    if doc.status not in {"Draft", "Under Review"}:
+        frappe.throw(_("Only draft or under review change requests can be rejected"))
+
+    doc.status = "Rejected"
+    doc.rejected_by = frappe.session.user
+    doc.rejection_date = frappe.utils.now_datetime()
+    doc.save(ignore_permissions=True)
+
+    return {
+        "change_request": doc.name,
+        "message": "Change request rejected",
+    }
+
+
+@frappe.whitelist()
+def implement_change_request(change_request):
+    doc = frappe.get_doc("Change Request", change_request)
+    _ensure_project_access(doc.project, require_write=True)
+
+    if doc.status != "Approved":
+        frappe.throw(_("Only approved change requests can be implemented"))
+
+    doc.status = "Implemented"
+    doc.implemented_by = frappe.session.user
+    doc.implemented_date = frappe.utils.now_datetime()
+    doc.save(ignore_permissions=True)
+
+    return {
+        "change_request": doc.name,
+        "message": "Change request implemented",
+    }
+
+
+@frappe.whitelist()
+def create_action_request(
+    project,
+    title,
+    description,
+    action_type="Approval",
+    phase=None,
+    due_date=None,
+    related_task=None,
+    is_portal_visible=1,
+):
+    _ensure_project_access(project, require_write=True)
+
+    if not phase:
+        active = frappe.db.get_value("Project Phase", {"project": project, "status": "Active"}, "name")
+        if active:
+            phase = active
+        else:
+            phase = frappe.db.get_value("Project Phase", {"project": project, "status": "Planned"}, "name", order_by="sequence asc")
+
+    doc = frappe.get_doc(
+        {
+            "doctype": "Project Action Request",
+            "project": project,
+            "title": title,
+            "description": description,
+            "action_type": action_type,
+            "phase": phase,
+            "due_date": due_date,
+            "related_task": related_task,
+            "is_portal_visible": cint(is_portal_visible),
+            "status": "Pending",
+        }
+    )
+    doc.insert(ignore_permissions=True)
+
+    return {"name": doc.name, "message": "Action request created"}
+
+
+@frappe.whitelist()
+def complete_action_request(action_request):
+    doc = frappe.get_doc("Project Action Request", action_request)
+    _ensure_project_access(doc.project, allow_customer_portal=True)
+
+    if doc.status != "Pending":
+        frappe.throw(_("Only pending action requests can be completed"))
+
+    doc.status = "Completed"
+    doc.completed_by = frappe.session.user
+    doc.completed_date = frappe.utils.now_datetime()
+    doc.save(ignore_permissions=True)
+
+    return {"name": doc.name, "message": "Action request completed"}
+
+
+@frappe.whitelist()
+def reject_action_request(action_request):
+    doc = frappe.get_doc("Project Action Request", action_request)
+    _ensure_project_access(doc.project, allow_customer_portal=True)
+
+    if doc.status != "Pending":
+        frappe.throw(_("Only pending action requests can be rejected"))
+
+    doc.status = "Rejected"
+    doc.rejected_by = frappe.session.user
+    doc.rejection_date = frappe.utils.now_datetime()
+    doc.save(ignore_permissions=True)
+
+    return {"name": doc.name, "message": "Action request rejected"}
+
+
+@frappe.whitelist()
+def expire_action_request(action_request):
+    doc = frappe.get_doc("Project Action Request", action_request)
+    _ensure_project_access(doc.project, require_write=True)
+
+    if doc.status != "Pending":
+        frappe.throw(_("Only pending action requests can be expired"))
+
+    doc.status = "Expired"
+    doc.expired_by = frappe.session.user
+    doc.expiration_date = frappe.utils.now_datetime()
+    doc.save(ignore_permissions=True)
+
+    return {"name": doc.name, "message": "Action request expired"}
+
+
+@frappe.whitelist()
 def list_scope_snapshots(project):
     _ensure_project_access(project, allow_customer_portal=True)
 
@@ -1539,6 +1664,12 @@ def list_project_action_requests(project, include_completed=True):
             "phase",
             "related_task",
             "is_portal_visible",
+            "completed_by",
+            "completed_date",
+            "rejected_by",
+            "rejection_date",
+            "expired_by",
+            "expiration_date",
         ],
         order_by="due_date asc, modified desc",
     )
