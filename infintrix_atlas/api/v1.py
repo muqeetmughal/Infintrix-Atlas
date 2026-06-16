@@ -1244,6 +1244,53 @@ def list_project_requirements(project):
 
 
 @frappe.whitelist()
+def update_requirement_status(requirement, status):
+    doc = frappe.get_doc("Requirement", requirement)
+    _ensure_project_access(doc.project, require_write=True)
+
+    allowed_statuses = {"Draft", "Approved", "Rejected", "Implemented"}
+    if status not in allowed_statuses:
+        frappe.throw(f"Status must be one of: {', '.join(sorted(allowed_statuses))}")
+
+    doc.status = status
+    doc.save(ignore_permissions=True)
+
+    return {"name": doc.name, "status": doc.status, "message": f"Requirement status updated to {status}"}
+
+
+@frappe.whitelist()
+def create_task_from_requirement(requirement, subject=None, type=None, priority="Medium"):
+    req = frappe.get_doc("Requirement", requirement)
+    _ensure_project_access(req.project, require_write=True)
+
+    if not subject:
+        subject = req.title
+
+    task = frappe.get_doc(
+        {
+            "doctype": "Task",
+            "project": req.project,
+            "subject": f"[{req.name}] {subject}",
+            "type": type or "Task",
+            "priority": priority,
+            "description": req.description or "",
+            "custom_requirement": req.name,
+            "status": "Open",
+        }
+    )
+    task.insert(ignore_permissions=True)
+
+    if req.status == "Draft":
+        req.status = "Approved"
+        req.save(ignore_permissions=True)
+
+    return {
+        "name": task.name,
+        "message": f"Task {task.name} created from requirement",
+    }
+
+
+@frappe.whitelist()
 def submit_portal_requirement(
     project,
     title,

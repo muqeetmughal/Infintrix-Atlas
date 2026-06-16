@@ -132,6 +132,8 @@ const OverviewTab = ({ project }) => {
   );
 };
 
+const REQUIRED_STATUSES = ["Draft", "Approved", "Rejected", "Implemented"];
+
 const RequirementsTab = ({ projectId }) => {
   const { data, isLoading, mutate } = useFrappeGetCall(
     "infintrix_atlas.api.v1.list_project_requirements",
@@ -139,22 +141,62 @@ const RequirementsTab = ({ projectId }) => {
     projectId ? ["project_requirements", projectId] : null,
   );
   const submitMutation = useFrappePostCall("infintrix_atlas.api.v1.submit_portal_requirement");
+  const statusMutation = useFrappePostCall("infintrix_atlas.api.v1.update_requirement_status");
+  const createTaskMutation = useFrappePostCall("infintrix_atlas.api.v1.create_task_from_requirement");
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
 
   const requirements = data?.message || [];
 
+  const handleStatusChange = (req, newStatus) => {
+    statusMutation.call({ requirement: req.name, status: newStatus }).then(() => {
+      message.success(`Requirement moved to ${newStatus}`);
+      mutate();
+    });
+  };
+
+  const handleCreateTask = (req) => {
+    Modal.confirm({
+      title: "Create Task from Requirement",
+      content: `Create a task from "${req.title}"?`,
+      okText: "Create Task",
+      cancelText: "Cancel",
+      onOk: () => createTaskMutation.call({ requirement: req.name }).then(() => {
+        message.success("Task created");
+        mutate();
+      }),
+    });
+  };
+
   const columns = [
     { title: "Title", dataIndex: "title", key: "title", render: (t) => <span className="font-semibold">{t}</span> },
-    { title: "Status", dataIndex: "status", key: "status", render: (s) => (
-      <Tag color={s === "Approved" ? "success" : s === "Draft" ? "default" : "processing"}>{s}</Tag>
-    )},
+    {
+      title: "Status", dataIndex: "status", key: "status", render: (s, r) => (
+        <Select
+          value={s}
+          size="small"
+          style={{ width: 120 }}
+          onChange={(v) => handleStatusChange(r, v)}
+          options={REQUIRED_STATUSES.map((st) => ({
+            label: st,
+            value: st,
+          }))}
+        />
+      ),
+    },
     { title: "Priority", dataIndex: "priority", key: "priority", render: (p) => (
       <Tag color={p === "High" ? "error" : p === "Medium" ? "warning" : "default"}>{p}</Tag>
     )},
     { title: "Source", dataIndex: "source", key: "source" },
     { title: "Tasks", dataIndex: "task_count", key: "task_count" },
     { title: "Owner", dataIndex: "owner_name", key: "owner_name" },
+    {
+      title: "Actions", key: "actions", render: (_, r) => (
+        <Button type="link" icon={<PlusOutlined />} onClick={() => handleCreateTask(r)} loading={createTaskMutation.loading}>
+          Create Task
+        </Button>
+      ),
+    },
   ];
 
   return (
