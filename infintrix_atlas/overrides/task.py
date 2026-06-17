@@ -13,9 +13,12 @@ class TaskOverride(Task):
             self._set_default_phase_if_missing()
             self.validate_cycle_phase()
             self.validate_task_allowed()
-        # self.validate_task_type_hierarchy()
-        # self.validate_cycle_lock()
-        # ALWAYS call core validation
+
+        if self.get("status") == "Completed" and self.has_value_changed("status") and not frappe.flags.get("is_review_approval"):
+            frappe.throw(
+                _("Tasks can only be completed through the review workflow (Approve). Direct status change to Completed is not allowed.")
+            )
+
         super().validate()
 
     
