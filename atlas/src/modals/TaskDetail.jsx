@@ -24,6 +24,10 @@ import {
   Menu,
   ExternalLink,
   MessageCircle,
+  History,
+  RotateCcw,
+  Send,
+  ThumbsUp,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -35,7 +39,7 @@ import {
   useFrappeCreateDoc,
 } from "frappe-react-sdk";
 import { useQueryClient } from "@tanstack/react-query";
-import { Modal as AntdModal, Drawer, Typography } from "antd";
+import { Modal as AntdModal, Drawer, Typography, message } from "antd";
 import dayjs from "dayjs";
 import {
   UsersSelectWidget,
@@ -61,6 +65,65 @@ import TaskCopilot from "../components/TaskCopilot";
 import TaskSkeleton from "./TaskSkeleton";
 import WatchersWidget from "../components/WatchersWidget";
 import RelativeTime from "../components/RelativeTime";
+
+function ReviewHistory({ logs }) {
+  if (!logs || !logs.length) {
+    return <div className="text-sm text-slate-500 dark:text-slate-400">No review history</div>;
+  }
+  const sorted = [...logs].sort((a, b) => new Date(b.reviewed_on) - new Date(a.reviewed_on));
+  return (
+    <div className="space-y-3">
+      {sorted.map((log, i) => (
+        <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+          <div className={`w-2 h-2 mt-2 rounded-full shrink-0 ${log.decision === "Approved" ? "bg-green-500" : "bg-amber-500"}`} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium text-slate-900 dark:text-slate-100">{log.reviewer}</span>
+              <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${log.decision === "Approved" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"}`}>
+                {log.decision}
+              </span>
+            </div>
+            <div className="text-xs text-slate-400 mt-0.5">
+              {dayjs(log.reviewed_on).format("MMM D, YYYY h:mm A")}
+            </div>
+            {log.comments && (
+              <div className="text-sm text-slate-600 dark:text-slate-300 mt-1">{log.comments}</div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReopenHistory({ logs }) {
+  if (!logs || !logs.length) {
+    return <div className="text-sm text-slate-500 dark:text-slate-400">No reopen history</div>;
+  }
+  const sorted = [...logs].sort((a, b) => new Date(b.reopened_on) - new Date(a.reopened_on));
+  return (
+    <div className="space-y-3">
+      {sorted.map((log, i) => (
+        <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+          <div className="w-2 h-2 mt-2 rounded-full shrink-0 bg-purple-500" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium text-slate-900 dark:text-slate-100">{log.user || log.employee}</span>
+              <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                {log.reopen_type}
+              </span>
+            </div>
+            <div className="text-xs text-slate-400 mt-0.5">
+              #{log.reopen_sequence} &middot; {dayjs(log.reopened_on).format("MMM D, YYYY h:mm A")}
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-300 mt-1">{log.reason}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
   const containerRef = useRef(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -82,6 +145,73 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
       (tag) => tag.trim() !== "",
     );
   }, [task?._user_tags]);
+
+  const [reviewModal, setReviewModal] = useState(null);
+  const [approveComments, setApproveComments] = useState("");
+  const [requestComments, setRequestComments] = useState("");
+  const [reopenType, setReopenType] = useState("Bug Found");
+  const [reopenReason, setReopenReason] = useState("");
+  const [activeHistoryTab, setActiveHistoryTab] = useState("review");
+
+  const submitForReviewCall = useFrappePostCall("infintrix_atlas.api.task_review.submit_for_review");
+  const approveTaskCall = useFrappePostCall("infintrix_atlas.api.task_review.approve_task");
+  const requestChangesCall = useFrappePostCall("infintrix_atlas.api.task_review.request_changes");
+  const reopenTaskCall = useFrappePostCall("infintrix_atlas.api.task_review.reopen_task");
+
+  const handleSubmitForReview = async () => {
+    try {
+      await submitForReviewCall.call({ task_name: task.name });
+      message.success("Task submitted for review");
+      task_details_query.mutate();
+    } catch (err) {
+      message.error(err?.message || "Failed to submit for review");
+    }
+  };
+
+  const handleApprove = async () => {
+    try {
+      await approveTaskCall.call({ task_name: task.name, comments: approveComments || null });
+      message.success("Task approved");
+      setReviewModal(null);
+      setApproveComments("");
+      task_details_query.mutate();
+    } catch (err) {
+      message.error(err?.message || "Failed to approve task");
+    }
+  };
+
+  const handleRequestChanges = async () => {
+    if (!requestComments.trim()) {
+      message.error("Comments are required");
+      return;
+    }
+    try {
+      await requestChangesCall.call({ task_name: task.name, comments: requestComments });
+      message.success("Changes requested");
+      setReviewModal(null);
+      setRequestComments("");
+      task_details_query.mutate();
+    } catch (err) {
+      message.error(err?.message || "Failed to request changes");
+    }
+  };
+
+  const handleReopen = async () => {
+    if (!reopenReason.trim()) {
+      message.error("Reason is required");
+      return;
+    }
+    try {
+      await reopenTaskCall.call({ task_name: task.name, reason: reopenReason, reopen_type: reopenType });
+      message.success("Task reopened");
+      setReviewModal(null);
+      setReopenReason("");
+      setReopenType("Bug Found");
+      task_details_query.mutate();
+    } catch (err) {
+      message.error(err?.message || "Failed to reopen task");
+    }
+  };
 
   const onClose = useCallback(() => {
     searchParams.delete("selected_task");
@@ -303,6 +433,31 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
               </button>
             </section> */}
 
+            {/* Review / Reopen History */}
+            {(task.custom_task_review_logs?.length > 0 || task.custom_task_reopen_logs?.length > 0) && (
+              <section>
+                <div className="flex items-center gap-4 border-b border-slate-200 dark:border-slate-700 mb-4">
+                  <button
+                    onClick={() => setActiveHistoryTab("review")}
+                    className={`pb-2 text-sm font-medium border-b-2 transition-colors ${activeHistoryTab === "review" ? "border-blue-500 text-blue-600 dark:text-blue-400" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                  >
+                    Review History ({task.custom_task_review_logs?.length || 0})
+                  </button>
+                  <button
+                    onClick={() => setActiveHistoryTab("reopen")}
+                    className={`pb-2 text-sm font-medium border-b-2 transition-colors ${activeHistoryTab === "reopen" ? "border-blue-500 text-blue-600 dark:text-blue-400" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                  >
+                    Reopen History ({task.custom_task_reopen_logs?.length || 0})
+                  </button>
+                </div>
+                {activeHistoryTab === "review" ? (
+                  <ReviewHistory logs={task.custom_task_review_logs} />
+                ) : (
+                  <ReopenHistory logs={task.custom_task_reopen_logs} />
+                )}
+              </section>
+            )}
+
             {/* Activity Section */}
             <section className="mt-12">
               <ActivityTimeline task_id={task.name} />
@@ -358,6 +513,53 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
               <Zap size={14} />
             </button>
           </div>
+
+          {/* Review Actions */}
+          {task.status === "Working" && (
+            <div className="mb-6">
+              <Button
+                type="primary"
+                block
+                icon={<Send size={14} />}
+                onClick={handleSubmitForReview}
+                loading={submitForReviewCall.loading}
+              >
+                Submit For Review
+              </Button>
+            </div>
+          )}
+
+          {task.status === "Pending Review" && (
+            <div className="mb-6 space-y-2">
+              <Button
+                type="primary"
+                block
+                icon={<ThumbsUp size={14} />}
+                onClick={() => setReviewModal("approve")}
+              >
+                Approve
+              </Button>
+              <Button
+                block
+                icon={<History size={14} />}
+                onClick={() => setReviewModal("request_changes")}
+              >
+                Request Changes
+              </Button>
+            </div>
+          )}
+
+          {task.status === "Completed" && (
+            <div className="mb-6">
+              <Button
+                block
+                icon={<RotateCcw size={14} />}
+                onClick={() => setReviewModal("reopen")}
+              >
+                Reopen Task
+              </Button>
+            </div>
+          )}
 
           {/* Details Section */}
           <div className="space-y-6">
@@ -467,6 +669,81 @@ const TaskBody = React.memo(({ task, fullScreen, setFullScreen }) => {
           </div>
         </aside>
       </div>
+
+      {/* Approve Modal */}
+      <AntdModal
+        title="Approve Task"
+        open={reviewModal === "approve"}
+        onOk={handleApprove}
+        onCancel={() => { setReviewModal(null); setApproveComments(""); }}
+        confirmLoading={approveTaskCall.loading}
+        okText="Approve"
+      >
+        <Input.TextArea
+          placeholder="Comments (optional)"
+          value={approveComments}
+          onChange={(e) => setApproveComments(e.target.value)}
+          rows={3}
+        />
+      </AntdModal>
+
+      {/* Request Changes Modal */}
+      <AntdModal
+        title="Request Changes"
+        open={reviewModal === "request_changes"}
+        onOk={handleRequestChanges}
+        onCancel={() => { setReviewModal(null); setRequestComments(""); }}
+        confirmLoading={requestChangesCall.loading}
+        okText="Request Changes"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-slate-500">Provide feedback on what needs to be changed.</p>
+          <Input.TextArea
+            placeholder="Comments *"
+            value={requestComments}
+            onChange={(e) => setRequestComments(e.target.value)}
+            rows={4}
+          />
+        </div>
+      </AntdModal>
+
+      {/* Reopen Modal */}
+      <AntdModal
+        title="Reopen Task"
+        open={reviewModal === "reopen"}
+        onOk={handleReopen}
+        onCancel={() => { setReviewModal(null); setReopenReason(""); setReopenType("Bug Found"); }}
+        confirmLoading={reopenTaskCall.loading}
+        okText="Reopen"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">Reopen Type *</label>
+            <Select
+              value={reopenType}
+              onChange={setReopenType}
+              style={{ width: "100%" }}
+              options={[
+                { value: "Client Feedback", label: "Client Feedback" },
+                { value: "Bug Found", label: "Bug Found" },
+                { value: "QA Failure", label: "QA Failure" },
+                { value: "Requirement Missed", label: "Requirement Missed" },
+                { value: "Change Request", label: "Change Request" },
+                { value: "Other", label: "Other" },
+              ]}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">Reason *</label>
+            <Input.TextArea
+              placeholder="Why is this task being reopened?"
+              value={reopenReason}
+              onChange={(e) => setReopenReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+        </div>
+      </AntdModal>
     </div>
   );
 });
