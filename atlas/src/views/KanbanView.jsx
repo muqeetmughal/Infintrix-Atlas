@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { Plus, MoreHorizontal, Ellipsis, Check } from "lucide-react";
+import { Plus, MoreHorizontal, Ellipsis, Check, RotateCcw, Eye } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -87,6 +87,33 @@ const IssueCard = React.memo(
 
             {issue.id !== "new_item" && <TaskActions task={issue} />}
           </div>
+
+          {/* Review / Reopen Status Badges */}
+          {(issue.custom_reopen_count > 0 || issue.custom_review_cycles > 0 || issue.status === "Pending Review") && (
+            <div className="flex items-center gap-2 mb-2">
+              {issue.status === "Pending Review" && (
+                <Tooltip title="Pending Review">
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20 px-1.5 py-0.5 rounded">
+                    <Eye size={10} /> Pending
+                  </span>
+                </Tooltip>
+              )}
+              {issue.custom_review_cycles > 0 && (
+                <Tooltip title={`Review cycles: ${issue.custom_review_cycles}`}>
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">
+                    <RotateCcw size={10} /> {issue.custom_review_cycles}
+                  </span>
+                </Tooltip>
+              )}
+              {issue.custom_reopen_count > 0 && (
+                <Tooltip title={`Reopened ${issue.custom_reopen_count} time(s)`}>
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20 px-1.5 py-0.5 rounded">
+                    <RotateCcw size={10} /> {issue.custom_reopen_count}
+                  </span>
+                </Tooltip>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-between items-center mt-1">
             <div className="flex items-center gap-2">

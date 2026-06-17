@@ -1854,6 +1854,9 @@ def list_tasks(project, group_by=None, filters=None, limit=None, offset=0):
             Project.project_name,
             Task.custom_phase,
             ProjectPhase.title.as_("phase_name"),
+            Task.custom_reopen_count,
+            Task.custom_review_cycles,
+            Task.custom_last_reopened_on,
             fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
         ).inner_join(Project).on(Project.name == Task.project)
         .left_join(ProjectPhase).on(ProjectPhase.name == Task.custom_phase)

@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from frappe.utils import now
 from infintrix_atlas.role_utils import has_projects_manager_role
+from .utils import send_notification
 
 
 def _get_task(task_name):
@@ -79,6 +80,9 @@ def submit_for_review(task_name):
     task.custom_review_cycles = (task.custom_review_cycles or 0) + 1
     task.save(ignore_permissions=True)
 
+    _notify_project_managers(task, "submitted_for_review",
+        f"Task '<b>{task.subject}</b>' has been submitted for review.")
+
     frappe.db.commit()
 
     return {"success": True, "message": _("Task submitted for review")}
@@ -107,6 +111,9 @@ def approve_task(task_name, comments=None):
     frappe.flags.is_review_approval = True
     task.save(ignore_permissions=True)
     frappe.flags.is_review_approval = False
+
+    _notify_assignee(task, "approved",
+        f"Your task '<b>{task.subject}</b>' has been approved and completed.")
 
     frappe.db.commit()
 
@@ -137,6 +144,9 @@ def request_changes(task_name, comments):
 
     task.status = "Working"
     task.save(ignore_permissions=True)
+
+    _notify_assignee(task, "changes_requested",
+        f"Changes have been requested on your task '<b>{task.subject}</b>'.")
 
     frappe.db.commit()
 
@@ -188,6 +198,51 @@ def reopen_task(task_name, reason, reopen_type):
     task.custom_last_reopened_by = frappe.session.user
     task.save(ignore_permissions=True)
 
+    _notify_project_managers(task, "reopened",
+        f"Task '<b>{task.subject}</b>' has been reopened. Reason: {reason}")
+
     frappe.db.commit()
 
     return {"success": True, "message": _("Task reopened")}
+
+
+def _get_project_managers(task):
+    managers = set()
+    if task.project:
+        project_owner = frappe.db.get_value("Project", task.project, "owner")
+        if project_owner:
+            managers.add(project_owner)
+        project_users = frappe.get_all(
+            "Project User",
+            filters={"parent": task.project},
+            pluck="user",
+        )
+        for user in project_users:
+            roles = frappe.get_roles(user)
+            if has_projects_manager_role(roles=roles):
+                managers.add(user)
+    return managers
+
+
+def _notify_assignee(task, event, content):
+    assignee = _get_assignee(task.name)
+    if assignee:
+        send_notification(
+            user=assignee,
+            subject=f"Task {event}: {task.subject}",
+            content=content,
+            document_type="Task",
+            document_name=task.name,
+        )
+
+
+def _notify_project_managers(task, event, content):
+    managers = _get_project_managers(task)
+    for manager in managers:
+        send_notification(
+            user=manager,
+            subject=f"Task {event}: {task.subject}",
+            content=content,
+            document_type="Task",
+            document_name=task.name,
+        )
