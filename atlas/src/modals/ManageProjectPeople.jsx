@@ -1,8 +1,9 @@
-import { Modal, Form, Button } from "antd";
+import { Form, Button } from "antd";
 import { useFrappePostCall } from "frappe-react-sdk";
 import { useQueryParams } from "../hooks/useQueryParams";
 import { useProjectUsers } from "../hooks/query";
 import { AssigneeFormWidget } from "../components/widgets/AssigneeFormWidget";
+import Modal from "../components/ui/Modal";
 
 const ManageProjectPeople = () => {
   const [form] = Form.useForm();

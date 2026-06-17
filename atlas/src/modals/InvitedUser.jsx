@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Modal, Input, Button, message } from "antd";
+import { Input, Button, message } from "antd";
+import Modal from "../components/ui/Modal";
 
 
 const InvitedUserModal = ({ visible, onClose }) => {

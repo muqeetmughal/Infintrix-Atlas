@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { Modal, Form, Select, Button, message, Spin } from "antd";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Form, Select, Button, message, Spin } from "antd";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   useFrappeGetDocList,
   useFrappePostCall,
@@ -8,16 +8,13 @@ import {
 } from "frappe-react-sdk";
 import { useQueryParams } from "../../hooks/useQueryParams";
 import Confetti from "../Confetti";
+import Modal from "../ui/Modal";
 
 export default function CompleteCycleModal() {
-
-    const [showCelebration, setShowCelebration] = useState(false);
-
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const complete_cycle = searchParams.get("complete_cycle");
   const [move_tasks_to, setMoveTasksTo] = useState(null);
-  const [form] = Form.useForm();
   const { mutate } = useSWRConfig();
   const qp = useQueryParams();
   const project_id = qp.get("project") || null;
@@ -86,7 +83,6 @@ export default function CompleteCycleModal() {
       .then(() => {
         message.success("Cycle completed");
         onClose();
-        setShowCelebration(true);
         navigate(`/tasks/backlog?project=${project_id}`);
       })
       .catch(() => {

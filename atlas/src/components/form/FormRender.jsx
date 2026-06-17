@@ -3,8 +3,9 @@ import { FormField } from "./FormField";
 import { useFrappeCreateDoc, useSWRConfig } from "frappe-react-sdk";
 import { useDoctypeSchema } from "../../hooks/doctype";
 import { Maximize, Minimize } from "lucide-react";
-import { Button, Collapse, Form, Modal, Row, Col } from "antd";
+import { Button, Collapse, Form, Row, Col } from "antd";
 import dayjs from "dayjs";
+import Modal from "../ui/Modal";
 function FormRender({
   doctype = null,
   mode = "create",
@@ -153,7 +154,7 @@ function FormRender({
         initialValues={defaultValues} // used only on first mount
         onFinish={(values) => {
           if (mode === "create") {
-            createMutation.createDoc(doctype, values).then((doc) => {
+            createMutation.createDoc(doctype, values).then(() => {
               onClose();
               swr.mutate(
                 (key) => Array.isArray(key) && key.some((k) => k === doctype),
