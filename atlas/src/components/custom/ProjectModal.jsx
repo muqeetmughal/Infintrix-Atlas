@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
-  Modal,
   Form,
   Input,
   Select,
@@ -20,6 +19,7 @@ import {
   useSWRConfig,
 } from "frappe-react-sdk";
 import { useHasRole } from "../../hooks/useRole";
+import Modal from "../ui/Modal";
 
 export default function ProjectModal() {
   const [searchParams, setSearchParams] = useSearchParams();

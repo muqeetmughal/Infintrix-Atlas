@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import {
-  Modal,
   Form,
   Select,
   DatePicker,
@@ -18,6 +17,7 @@ import {
   useSWRConfig,
 } from "frappe-react-sdk";
 import { useQueryParams } from "../../hooks/useQueryParams";
+import Modal from "../ui/Modal";
 
 const { Option } = Select;
 
@@ -33,7 +33,7 @@ export default function CycleModal() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [form] = Form.useForm();
-  const [duration, setDuration] = useState("Custom");
+  const duration = Form.useWatch("duration", form) || "Custom";
 
   const { mutate } = useSWRConfig();
   const project_id = qp.get("project");
@@ -75,8 +75,6 @@ export default function CycleModal() {
       ? dayjs(data.end_date)
       : startDate;
 
-    setDuration(data.duration || "Custom");
-
     form.setFieldsValue({
       ...data,
       start_date: startDate,
@@ -101,8 +99,6 @@ export default function CycleModal() {
   //     };
   //   }, [data, isLoading]);
   const handleDurationChange = (value) => {
-    setDuration(value);
-
     if (value === "Custom") return;
 
     const startDate = form.getFieldValue("start_date") || dayjs();
