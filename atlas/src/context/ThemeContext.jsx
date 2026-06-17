@@ -1,42 +1,23 @@
-import React, { createContext, useContext, useEffect, useState } from "react"
-
-
-
-const ThemeContext = createContext(null)
+import { useEffect } from "react";
+import { useThemeStore } from "../store/useUiStore";
 
 export function ThemeProvider({ children }) {
-    const [mode, setMode] = useState(() => {
-        return (localStorage.getItem("theme")) || "light"
-    })
+    const { mode } = useThemeStore();
 
     useEffect(() => {
-        const root = document.documentElement
+        const root = document.documentElement;
         if (mode === "dark") {
-            root.classList.add("dark")
+            root.classList.add("dark");
         } else {
-            root.classList.remove("dark")
+            root.classList.remove("dark");
         }
-        localStorage.setItem("theme", mode)
-    }, [mode])
+    }, [mode]);
 
     return (
-        <ThemeContext.Provider
-            value={{
-                mode,
-                isDark: mode === "dark",
-                toggle: () => setMode(m => (m === "dark" ? "light" : "dark")),
-                setMode,
-            }}
-        >
-            {children}
-        </ThemeContext.Provider>
-    )
+        children
+    );
 }
 
 export function useTheme() {
-    const ctx = useContext(ThemeContext)
-    if (!ctx) {
-        throw new Error("useTheme must be used inside ThemeProvider")
-    }
-    return ctx
+    return useThemeStore();
 }

@@ -15,7 +15,7 @@
 
     window.app_name = "{{ app_name }}";
 
-    frappe.boot = JSON.parse({{ boot }});
+    frappe.boot = {{ boot | safe }};
   </script>
   <script type="module" src="/src/main.jsx"></script>
 </body>

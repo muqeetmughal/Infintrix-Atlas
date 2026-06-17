@@ -93,12 +93,12 @@ const Accountability = () => {
     <Card>
 
         <Table
-        bordered={false}
+          bordered={false}
           columns={columns}
           dataSource={data}
           size="middle"
-          
           pagination={false}
+          rowKey={(record) => record.assignee || record.full_name || "unassigned"}
           rowClassName={(record) => (record.overdue_count > 0 ? "row-danger" : "")}
         />
     </Card>

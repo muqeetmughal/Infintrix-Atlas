@@ -6,4 +6,5 @@ tags
 node_modules
 __pycache__
 atlas/.env
-infintrix_atlas/public/atlas
+infintrix_atlas/public/atlas/
+infintrix_atlas/infintrix_atlas/www/atlas.html

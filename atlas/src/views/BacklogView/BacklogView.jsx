@@ -31,7 +31,7 @@ import {
   useSWRConfig,
 } from "frappe-react-sdk";
 import { useParams } from "react-router-dom";
-import { Button, Input, message, Select, Space, Spin } from "antd";
+import { Button, Input, message, Select, Space, Spin, Tooltip } from "antd";
 import { useQueryParams } from "../../hooks/useQueryParams";
 import { useProjectDetailsQuery } from "../../hooks/query";
 import PhasesHeader from "./PhasesHeader";
@@ -59,7 +59,7 @@ const BacklogView = () => {
   const custom_phase = qp.get("custom_phase") || null;
   // const [selectedPhase, setSelectedPhase] = useState(null);
   const [showBacklogCreator, setShowBacklogCreator] = useState(false);
-  const [setCycleModal] = useState(null);
+  const [cycleModal, setCycleModal] = useState(null);
   // edit button logic
 const [isEditingPhase, setIsEditingPhase] = useState(false);
 const [phaseTitle, setPhaseTitle] = useState("");
@@ -80,7 +80,24 @@ const phaseInputRef = useRef(null);
     "infintrix_atlas.api.v1.complete_cycle",
   );
   const [activeId, setActiveId] = useState(null);
+  const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [isBacklogExpanded, setIsBacklogExpanded] = useState(true);
+
+  const toggleTaskSelection = useCallback((taskId, ctrlKey) => {
+    if (!ctrlKey) {
+      setSelectedTasks(new Set());
+      return;
+    }
+    setSelectedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  }, []);
   const project_query = useProjectDetailsQuery(project_id);
 
   const cycles_query3 = useFrappeGetCall(
@@ -114,30 +131,34 @@ const phaseInputRef = useRef(null);
   // const backlogTasks = useMemo(() => {
   //   return cycles_query3?.data?.message?.backlog || [];
   // }, [cycles_query3.data]);
-  const activePhase = useMemo(() => {
-    return cycles_query3?.data?.message?.active_phase || null;
+  const phases = useMemo(() => {
+    return cycles_query3?.data?.message?.phases || [];
   }, [cycles_query3.data]);
 
+  const defaultPhase = useMemo(() => {
+    const active = cycles_query3?.data?.message?.active_phase || null;
+    if (active) return active
+    return phases.length > 0 ? phases[phases.length - 1] : null
+  }, [cycles_query3.data, phases]);
+
   useEffect(() => {
-    if (!custom_phase && activePhase) {
-      qp.set("custom_phase", activePhase.name);
+    if (!custom_phase && defaultPhase) {
+      qp.set("custom_phase", defaultPhase.name);
     }
-  }, [activePhase, custom_phase]);
+  }, [defaultPhase, custom_phase]);
 
   const all_tasks = useMemo(() => {
     return cycles_query3?.data?.message?.all_tasks || [];
   }, [cycles_query3.data]);
   const cycles = useMemo(() => {
     return cycles_query3?.data?.message?.cycles_by_phase[custom_phase] || [];
-  }, [cycles_query3.data, custom_phase, activePhase]);
-
-  const phases = useMemo(() => {
-    return cycles_query3?.data?.message?.phases || [];
-  }, [cycles_query3.data, custom_phase, activePhase]);
+  }, [cycles_query3.data, custom_phase, defaultPhase]);
 
   const handleDragStart = (event) => {
-    console.log("Drag started:", event);
     setActiveId(event.active.id);
+    if (!selectedTasks.has(event.active.id)) {
+      setSelectedTasks(new Set());
+    }
   };
 
   const backlogTasks = useMemo(() => {
@@ -146,25 +167,21 @@ const phaseInputRef = useRef(null);
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
-    console.log("Drag ended:", );
-
     const type = over?.data?.current || null;
 
     if (over) {
-      handleMoveTask(active.id, over.id, type);
+      const taskIds = selectedTasks.has(active.id)
+        ? Array.from(selectedTasks)
+        : [active.id];
+      handleMoveTask(taskIds, over.id, type);
     }
     setActiveId(null);
+    setSelectedTasks(new Set());
   };
 
   const handleMoveTask = useCallback(
-    (taskId, targetId, type) => {
-      console.log("Moving task", taskId, "to", targetId, "of type", type);
-      // if (isScrum && hasActiveCycle && targetId === active_cycle_name) {
-      //   message.error(
-      //     "Cannot move task to active cycle. Please complete the active cycle before moving tasks into it.",
-      //   );
-      //   return;
-      // }
+    (taskIds, targetId, type) => {
+      const isMulti = taskIds.length > 1;
 
       if (type === "cycle" && targetId === active_cycle_name) {
         message.error(
@@ -181,15 +198,14 @@ const phaseInputRef = useRef(null);
         }
       }
 
-
       set_backlog_position
         .call({
           type: type,
-          task_name: taskId,
+          task_name: taskIds[0],
+          task_names: isMulti ? JSON.stringify(taskIds) : undefined,
           target_id: targetId === "Open" ? null : targetId,
         })
         .then((response) => {
-          console.log("Set cycle response:", response);
           if (response?.message?.success) {
             message.success(response?.message?.message);
             cycles_query3.mutate();
@@ -225,9 +241,13 @@ const phaseInputRef = useRef(null);
     () => all_tasks.find((t) => t.id === activeId),
     [all_tasks, activeId],
   );
+  const activeSelection = useMemo(
+    () => all_tasks.filter((t) => selectedTasks.has(t.id)),
+    [all_tasks, selectedTasks],
+  );
   const selectedPhase = useMemo(() => {
-    return phases.find((p) => p.name === custom_phase) || activePhase;
-  }, [phases, custom_phase, activePhase]);
+    return phases.find((p) => p.name === custom_phase) || defaultPhase;
+  }, [phases, custom_phase, defaultPhase]);
 
 
 
@@ -266,7 +286,13 @@ const handlePhaseUpdate = async () => {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <PhasesHeader phases={phases} />
+        <PhasesHeader
+          phases={phases}
+          onPhaseTitleUpdate={async (phaseName, newTitle) => {
+            await updateMutation.updateDoc("Project Phase", phaseName, { title: newTitle })
+            await cycles_query3.mutate()
+          }}
+        />
 
         {phases.length !== 0 && selectedPhase && (
           <div className="flex flex-col lg:flex-row gap-6 p-4 sm:p-6 h-full">
@@ -337,41 +363,46 @@ const handlePhaseUpdate = async () => {
                     >
                       <ArrowUpRight size={16} />
                     </Button>
-                    <Button
-                      disabled={
-                        deleteMutation.loading ||
-                        backlogTasks.length > 0 ||
-                        cycles.length > 0
+                    <Tooltip
+                      title={
+                        !deleteMutation.loading && (backlogTasks.length > 0 || cycles.length > 0)
+                          ? "Remove all tasks and cycles before deleting"
+                          : undefined
                       }
-                      type="text"
-                      size="small"
-                      danger
-                      icon={<Trash size={16} />}
-                      onClick={() => {
-                        // const currentPhase = selectedPhase;
-                        const previousPhase = phases.find(
-                          (p) =>
-                            phases.indexOf(p) ===
-                            phases.indexOf(selectedPhase) - 1,
-                        );
-                        console.log(" previousPhase:", previousPhase);
-
-                        deleteMutation
-                          .deleteDoc("Project Phase", selectedPhase.name)
-                          .then(() => {
-                            cycles_query3.mutate().then(() => {
-                              if (previousPhase) {
-                                qp.set("custom_phase", previousPhase.name);
-                              }
-                            });
-                          });
-                      }}
                     >
-                      Delete
-                    </Button>
-                    <Select
-                      disabled={backlogTasks.length > 0 || cycles.length > 0}
-                      value={selectedPhase?.status || "Planned"}
+                      <Button
+                        disabled={
+                          deleteMutation.loading ||
+                          backlogTasks.length > 0 ||
+                          cycles.length > 0
+                        }
+                        type="text"
+                        size="small"
+                        danger
+                        icon={<Trash size={16} />}
+                        onClick={() => {
+                          const previousPhase = phases.find(
+                            (p) =>
+                              phases.indexOf(p) ===
+                              phases.indexOf(selectedPhase) - 1,
+                          );
+
+                          deleteMutation
+                            .deleteDoc("Project Phase", selectedPhase.name)
+                            .then(() => {
+                              cycles_query3.mutate().then(() => {
+                                if (previousPhase) {
+                                  qp.set("custom_phase", previousPhase.name);
+                                }
+                              });
+                            });
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </Tooltip>
+                      <Select
+                        value={selectedPhase?.status || "Planned"}
                       variant="borderless"
                       size="small"
                       popupMatchSelectWidth={false}
@@ -454,7 +485,7 @@ const handlePhaseUpdate = async () => {
                 {isScrum && (
                   <div className="space-y-3">
                     {cycles.map((cycle) => (
-                      <Cycle key={cycle.name} cycle={cycle} />
+                      <Cycle key={cycle.name} cycle={cycle} deleteMutation={deleteMutation} cycles_query3={cycles_query3} setCycleModal={setCycleModal} selectedTasks={selectedTasks} toggleTaskSelection={toggleTaskSelection} />
                     ))}
                   </div>
                 )}
@@ -517,7 +548,7 @@ const handlePhaseUpdate = async () => {
                       )}
 
                       {backlogTasks.map((t) => (
-                        <TaskCard key={t.id} task={t} />
+                        <TaskCard key={t.id} task={t} selectedTasks={selectedTasks} toggleTaskSelection={toggleTaskSelection} />
                       ))}
                     </div>
                   )}
@@ -525,7 +556,16 @@ const handlePhaseUpdate = async () => {
               </div>
 
               <DragOverlay>
-                {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+                {activeTask ? (
+                  <div className="relative">
+                    <TaskCard task={activeTask} isOverlay />
+                    {selectedTasks.size > 1 && (
+                      <div className="absolute -top-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                        {selectedTasks.size}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </DragOverlay>
             </div>
           </div>

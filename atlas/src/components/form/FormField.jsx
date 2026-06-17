@@ -9,6 +9,7 @@ import {
   Select,
 } from "antd";
 import { RichTextWidgetForm } from "../widgets/RichTextWidget/RichTextWidget";
+import { formatCurrency, parseCurrencyInput } from "../../lib/currency";
 
 export function FormField({ field }) {
   if (field.hidden) return null;
@@ -81,9 +82,11 @@ export function FormField({ field }) {
           <InputNumber
             style={{ width: "100%" }}
             formatter={(value) =>
-              `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+              value === undefined || value === null || value === ""
+                ? ""
+                : formatCurrency(value)
             }
-            parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+            parser={parseCurrencyInput}
             placeholder={field.placeholder}
           />
         );

@@ -1,44 +1,26 @@
-import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useFrappeGetDocList } from "frappe-react-sdk";
 import { useQueryParams } from "../hooks/useQueryParams";
 import { menuItems } from "../data/menu";
-import logo from "../assets/logo.png";
 import { useFrappeGetCall } from "frappe-react-sdk";
-import { useAuth } from "../hooks/query";
+import { useSidebarStore } from "../store/useUiStore";
 
 import Logo from "./Logo";
-import { Dropdown, Typography } from "antd";
-import {
-  ChevronDown,
-  Info,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Settings,
-} from "lucide-react";
 const Sidebar = () => {
   const qp = useQueryParams();
-  const auth = useAuth();
 
   const currentProject = qp.get("project");
 
   const projectsQuery = useFrappeGetCall("infintrix_atlas.api.v1.recent_projects_with_activity_of_current_user");
+  const customerPortalAccessQuery = useFrappeGetCall(
+    "infintrix_atlas.api.v1.has_any_customer_portal_access",
+  );
   const location = useLocation();
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    const saved = localStorage.getItem("sidebarOpen");
-    return saved !== null ? JSON.parse(saved) : false;
-  });
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen((prev) => {
-      const newState = !prev;
-      localStorage.setItem("sidebarOpen", JSON.stringify(newState));
-      return newState;
-    });
-  };
+  const { isSidebarOpen, toggleSidebar } = useSidebarStore();
   const navigate = useNavigate();
+  const isCustomerPortalUser = !!customerPortalAccessQuery.data?.message;
+  const visibleMenuItems = isCustomerPortalUser
+    ? menuItems.filter((item) => item.id !== "dashboard" && item.id !== "team")
+    : menuItems;
 
   return (
     <>
@@ -60,7 +42,7 @@ const Sidebar = () => {
           </div>
 
         <nav className="px-4 space-y-2">
-          {menuItems.map((item) => (
+          {visibleMenuItems.map((item) => (
             <button
               key={item.id}
               onClick={() => navigate(`/${item.id}`)}
@@ -159,7 +141,7 @@ const Sidebar = () => {
       {/* Mobile Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 z-50 pb-safe">
         <div className="flex items-center justify-around px-2 py-3">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             return (
               <button
                 key={item.id}

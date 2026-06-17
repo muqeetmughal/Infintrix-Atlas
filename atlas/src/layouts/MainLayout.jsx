@@ -1,17 +1,17 @@
-import { Outlet } from "react-router-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { Outlet, useLocation } from "react-router-dom";
+import { useMemo } from "react";
 
 import Sidebar from "../components/Sidebar";
 import { useFrappeAuth } from "frappe-react-sdk";
-import { useLocation } from "react-router-dom";
 import { menuItems } from "../data/menu";
 import ModalGenerator from "../components/ModalGenerator";
-import { useTheme } from "../context/ThemeContext";
+import ProjectModal from "../components/custom/ProjectModal";
+import { Spin } from "antd";
 
 import Header from "../components/Header";
+
 const MainLayout = () => {
   const location = useLocation();
-  const { toggle, isDark } = useTheme()
 
   const auth = useFrappeAuth();
 
@@ -19,20 +19,22 @@ const MainLayout = () => {
     return menuItems.find(item => item.id === location.pathname.split('/')[1]);
   }, [location.pathname]);
 
+  const isLoading = auth.isLoading || (auth.currentUser === undefined);
+  const isAuthenticated = !!auth.currentUser && auth.currentUser !== "Guest";
 
-  // const redirectPath = encodeURIComponent(location.pathname);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <Spin size="large" />
+      </div>
+    );
+  }
 
-  // console.log("redirectPath:", location.pathname);
-  // if (!auth.currentUser || location.pathname === "/login") {
-  //   if (redirectPath && redirectPath !== "/login") {
-  //     window.location.href = `/login?redirect-to=${redirectPath}`;
-  //           return null; // or a loading spinner
-
-  //   } else {
-  //     window.location.href = "/login";
-  //     return null; // or a loading spinner
-  //   }
-  // }
+  if (!isAuthenticated) {
+    const redirectPath = encodeURIComponent(location.pathname + location.search);
+    window.location.href = `/login?redirect-to=${redirectPath}`;
+    return null;
+  }
 
   return (
     <>
@@ -47,6 +49,7 @@ const MainLayout = () => {
             <div className="max-w-8xl mx-auto">
               <Outlet />
               <ModalGenerator />
+              <ProjectModal />
             </div>
           </div>
         </main>

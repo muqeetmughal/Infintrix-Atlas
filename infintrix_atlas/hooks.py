@@ -153,6 +153,11 @@ doc_events = {
     "File": {
         "after_insert": "infintrix_atlas.events.file.on_file_insert",
     },
+    "Project": {
+        "after_insert": "infintrix_atlas.events.project.after_insert",
+        "before_insert": "infintrix_atlas.events.project.before_insert",
+        "validate": "infintrix_atlas.events.project.validate",
+    },
 }
 
 # Scheduled Tasks
@@ -197,9 +202,9 @@ scheduler_events = {
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
 # along with any modifications made in other Frappe apps
-# override_doctype_dashboards = {
-# 	"Task": "infintrix_atlas.task.get_dashboard_data"
-# }
+override_doctype_dashboards = {
+	"Project": "infintrix_atlas.dashboard.get_project_dashboard_data"
+}
 
 # exempt linked doctypes from being automatically cancelled
 #
@@ -263,19 +268,7 @@ scheduler_events = {
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
-doc_events = {
-    # "Task": {
-    #     "validate": "infintrix_atlas.events.task.validate_task_hierarchy",
-    #     "before_save": "infintrix_atlas.events.task.before_task_save",
-    #     "after_save": "infintrix_atlas.events.task.after_task_save",
-    #     # "has_permission": "infintrix_atlas.permissions.task_has_permission"
-    # },
-    "Project": {
-        "after_insert": "infintrix_atlas.events.project.after_insert",
-        # "before_insert": "infintrix_atlas.events.project.add_creator_to_users"
-        # "before_save": "infintrix_atlas.events.task.before_task_save"
-    },
-}
+
 fixtures = [
     {"dt": "Custom Field", "filters": [["module", "in", ["Infintrix Atlas"]]]},
     {"dt": "Property Setter", "filters": [
@@ -312,11 +305,25 @@ website_route_rules = [
 permission_query_conditions = {
     "Project": "infintrix_atlas.permissions.project_permission_query",
     "Task": "infintrix_atlas.permissions.task_permission_query",
+    "Requirement": "infintrix_atlas.permissions.requirement_permission_query",
+    "Scope Snapshot": "infintrix_atlas.permissions.scope_snapshot_permission_query",
+    "Change Request": "infintrix_atlas.permissions.change_request_permission_query",
+    "Project Resource": "infintrix_atlas.permissions.project_resource_permission_query",
+    "Project Action Request": "infintrix_atlas.permissions.project_action_request_permission_query",
+    "Project Phase": "infintrix_atlas.permissions.project_phase_permission_query",
+    "Cycle": "infintrix_atlas.permissions.cycle_permission_query",
     "Fathom Meeting": "infintrix_atlas.permissions.fathom_meeting_permission_query_conditions",
     "Fathom Account": "infintrix_atlas.permissions.fathom_account_permission_query_conditions",
 }
 
 has_permission = {
+    "Requirement": "infintrix_atlas.permissions.requirement_has_permission",
+    "Scope Snapshot": "infintrix_atlas.permissions.scope_snapshot_has_permission",
+    "Change Request": "infintrix_atlas.permissions.change_request_has_permission",
+    "Project Resource": "infintrix_atlas.permissions.project_resource_has_permission",
+    "Project Action Request": "infintrix_atlas.permissions.project_action_request_has_permission",
+    "Project Phase": "infintrix_atlas.permissions.project_phase_has_permission",
+    "Cycle": "infintrix_atlas.permissions.cycle_has_permission",
     "Fathom Meeting": "infintrix_atlas.permissions.fathom_meeting_has_permission",
     "Fathom Account": "infintrix_atlas.permissions.fathom_account_has_permission",
 }
@@ -327,5 +334,4 @@ has_permission = {
 
 override_doctype_class = {
     "Task": "infintrix_atlas.overrides.task.TaskOverride",
-    "Project": "infintrix_atlas.overrides.project.Project",
 }

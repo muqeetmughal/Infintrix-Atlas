@@ -12,12 +12,18 @@
   "description",
   "due_date",
   "column_break_uptf",
-  "assigned_to_user",
-  "is_portal_visible",
-  "action_type",
-  "status",
-  "blocking_task"
- ],
+   "assigned_to_user",
+   "is_portal_visible",
+   "action_type",
+   "status",
+   "blocking_task",
+   "completed_by",
+   "completed_date",
+   "rejected_by",
+   "rejection_date",
+   "expired_by",
+   "expiration_date"
+  ],
  "fields": [
   {
    "fieldname": "project",
@@ -94,6 +100,39 @@
    "fieldtype": "Link",
    "label": "Blocking Task",
    "options": "Task"
+  },
+  {
+   "fieldname": "completed_by",
+   "fieldtype": "Link",
+   "label": "Completed By",
+   "options": "User"
+  },
+  {
+   "fieldname": "completed_date",
+   "fieldtype": "Datetime",
+   "label": "Completed Date"
+  },
+  {
+   "fieldname": "rejected_by",
+   "fieldtype": "Link",
+   "label": "Rejected By",
+   "options": "User"
+  },
+  {
+   "fieldname": "rejection_date",
+   "fieldtype": "Datetime",
+   "label": "Rejection Date"
+  },
+  {
+   "fieldname": "expired_by",
+   "fieldtype": "Link",
+   "label": "Expired By",
+   "options": "User"
+  },
+  {
+   "fieldname": "expiration_date",
+   "fieldtype": "Datetime",
+   "label": "Expiration Date"
   }
  ],
  "grid_page_length": 50,

@@ -16,9 +16,13 @@
   "impact_hours",
   "impact_cost",
   "impact_days",
-  "approval_date",
-  "apprived_by"
- ],
+   "approval_date",
+   "apprived_by",
+   "rejection_date",
+   "rejected_by",
+   "implemented_date",
+   "implemented_by"
+  ],
  "fields": [
   {
    "fieldname": "project",
@@ -89,6 +93,28 @@
    "fieldname": "apprived_by",
    "fieldtype": "Link",
    "label": "Apprived By",
+   "options": "User"
+  },
+  {
+   "fieldname": "rejection_date",
+   "fieldtype": "Datetime",
+   "label": "Rejection Date"
+  },
+  {
+   "fieldname": "rejected_by",
+   "fieldtype": "Link",
+   "label": "Rejected By",
+   "options": "User"
+  },
+  {
+   "fieldname": "implemented_date",
+   "fieldtype": "Datetime",
+   "label": "Implemented Date"
+  },
+  {
+   "fieldname": "implemented_by",
+   "fieldtype": "Link",
+   "label": "Implemented By",
    "options": "User"
   }
  ],

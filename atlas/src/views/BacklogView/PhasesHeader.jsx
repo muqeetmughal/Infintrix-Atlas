@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryParams } from "../../hooks/useQueryParams";
-import { Check, Circle, Activity } from "lucide-react";
+import { Check, Circle, Activity, Edit2 } from "lucide-react";
+import { Input, message } from "antd";
 import DroppableZone from "./DroppableZone";
 
 const STATUS_CONFIG = {
@@ -24,11 +25,14 @@ const STATUS_CONFIG = {
   },
 };
 
-const PhasesHeader = ({ phases }) => {
+const PhasesHeader = ({ phases, onPhaseTitleUpdate }) => {
   const qp = useQueryParams();
   const selected_phase_qp = qp.get("custom_phase");
   const scrollContainerRef = useRef(null);
   const selectedPhaseRef = useRef(null);
+  const [editingPhase, setEditingPhase] = useState(null);
+  const [editValue, setEditValue] = useState("");
+  const editInputRef = useRef(null);
 
   useEffect(() => {
     if (selected_phase_qp && selectedPhaseRef.current) {
@@ -39,6 +43,25 @@ const PhasesHeader = ({ phases }) => {
       });
     }
   }, [selected_phase_qp, phases]);
+
+  useEffect(() => {
+    if (editingPhase && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [editingPhase]);
+
+  const handleTitleSave = useCallback(async (phaseName) => {
+    if (!editValue.trim()) {
+      setEditingPhase(null);
+      return;
+    }
+    try {
+      await onPhaseTitleUpdate(phaseName, editValue.trim());
+      setEditingPhase(null);
+    } catch {
+      message.error("Failed to update phase title");
+    }
+  }, [editValue, onPhaseTitleUpdate]);
 
   if (!phases.length) {
     return (
@@ -82,11 +105,36 @@ const PhasesHeader = ({ phases }) => {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4
-                        className={`text-sm font-bold truncate ${selected_phase_qp === phase.name ? (phase.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" : "text-indigo-600 dark:text-indigo-400") : "text-slate-900 dark:text-white"}`}
-                      >
-                        {phase.title}
-                      </h4>
+                      {editingPhase === phase.name ? (
+                        <Input
+                          ref={editInputRef}
+                          size="small"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onPressEnter={() => handleTitleSave(phase.name)}
+                          onBlur={() => handleTitleSave(phase.name)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-sm font-bold"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-1 group">
+                          <h4
+                            className={`text-sm font-bold truncate ${selected_phase_qp === phase.name ? (phase.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" : "text-indigo-600 dark:text-indigo-400") : "text-slate-900 dark:text-white"}`}
+                          >
+                            {phase.title}
+                          </h4>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditValue(phase.title);
+                              setEditingPhase(phase.name);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 rounded text-slate-400 hover:text-indigo-600"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                        </div>
+                      )}
                       <span
                         className={`inline-block mt-1 px-2 py-1 text-xs font-bold rounded ${config.bg} ${config.color}`}
                       >

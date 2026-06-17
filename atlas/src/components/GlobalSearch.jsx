@@ -6,15 +6,24 @@ import { useNavigate } from "react-router-dom";
 const GlobalSearch = () => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!open || query.length < 2) {
+      setDebouncedQuery("");
+      return;
+    }
+    const timer = setTimeout(() => setDebouncedQuery(query), 250);
+    return () => clearTimeout(timer);
+  }, [query, open]);
+
   const search_query = useFrappeGetCall(
     "infintrix_atlas.api.v1.global_search",
-    {
-      query: query,
-    },
+    debouncedQuery ? { query: debouncedQuery } : undefined,
+    debouncedQuery ? ["global_search", debouncedQuery] : null,
   );
 
  

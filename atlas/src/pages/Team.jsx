@@ -2,12 +2,12 @@ import { Badge } from "antd";
 import { useFrappeGetCall, useFrappeGetDocList } from "frappe-react-sdk";
 import { Search, UserPlus } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import RelativeTime from "../components/RelativeTime";
 import InvitedUserModal from "../modals/InvitedUser";
 
 const ROLES = {
-  PM: "Project Manager",
+  PM: "Projects Manager",
   STAFF: "Staff",
   CLIENT: "Client",
 };
@@ -108,6 +108,14 @@ const TeamMemberCard = ({ member }) => {
 };
 
 const Team = () => {
+  const customerPortalAccessQuery = useFrappeGetCall(
+    "infintrix_atlas.api.v1.has_any_customer_portal_access",
+  );
+  const isCustomerPortalUser = !!customerPortalAccessQuery.data?.message;
+  if (isCustomerPortalUser) {
+    return <Navigate to="/projects" replace />;
+  }
+
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("All");
   const userRole = ROLES.PM;

@@ -4,6 +4,7 @@ import frappe
 from frappe import _
 from erpnext.projects.doctype.task.task import Task
 from infintrix_atlas.api.v1 import switch_assignee_of_task
+from infintrix_atlas.role_utils import has_customer_portal_task_access
 print("ATLAS TASK OVERRIDE LOADED")
 class TaskOverride(Task):
 
@@ -115,11 +116,6 @@ class TaskOverride(Task):
         if user == "Administrator":
             return True
 
-        roles = frappe.get_roles(user)
-
-        if "System User" in roles:
-            return True
-
         if self.owner == user:
             return True
 
@@ -147,6 +143,9 @@ class TaskOverride(Task):
                 }
             ):
                 return True
+
+        if has_customer_portal_task_access(self.name, user=user):
+            return True
 
         return False
     def set_auto_assignee_when_status_changed(self):

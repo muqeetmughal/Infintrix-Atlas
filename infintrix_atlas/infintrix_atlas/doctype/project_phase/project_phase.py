@@ -105,6 +105,14 @@ class ProjectPhase(Document):
         if open_tasks > 0:
             frappe.throw("Cannot complete phase with open tasks.")
 
+        open_action_requests = frappe.db.count(
+            "Project Action Request",
+            {"phase": self.name, "status": "Pending"}
+        )
+
+        if open_action_requests > 0:
+            frappe.throw("Cannot complete phase with open action requests.")
+
     def validate_status_change(self):
         """Prevent status change if phase is already completed"""
         if not self.name:
@@ -124,12 +132,11 @@ class ProjectPhase(Document):
     def _set_sequence(self):
         """Assign sequence number if not provided"""
         if not self.sequence and self.project:
-            max_sequence = frappe.db.get_value(
-                "Project Phase",
-                {"project": self.project},
-                "MAX(sequence)"
-            ) or 0
-            self.sequence = max_sequence + 1
+            max_sequence = frappe.db.sql(
+                """SELECT MAX(sequence) FROM `tabProject Phase` WHERE project = %s""",
+                self.project,
+            )
+            self.sequence = (max_sequence[0][0] or 0) + 1
 
     def _set_title(self):
         """Set default title if not provided"""

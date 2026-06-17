@@ -4,9 +4,10 @@ import { useState } from "react";
 import { Archive, CheckCheck, ChevronRight, Clock, MenuIcon, Plus, Trash, Zap } from "lucide-react";
 import dayjs from "dayjs";
 import Badge from "./Badge";
+import TaskCard from "./TaskCard";
 import { Button, Dropdown } from "antd";
 
-const Cycle = ({ cycle }) => {
+const Cycle = ({ cycle, deleteMutation, cycles_query3, setCycleModal, selectedTasks, toggleTaskSelection }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isExpanded, setIsExpanded] = useState(false);
   const cycle_tasks = cycle?.tasks || [];
@@ -161,7 +162,7 @@ const Cycle = ({ cycle }) => {
       {isExpanded && (
         <div className="grid grid-cols-1 md:grid-cols-1 gap-4 animate-in fade-in duration-200">
           {cycle_tasks.map((t) => (
-            <TaskCard key={t.id} task={t} />
+            <TaskCard key={t.id} task={t} selectedTasks={selectedTasks} toggleTaskSelection={toggleTaskSelection} />
           ))}
           <button className="border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-300 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 hover:border-indigo-100 dark:hover:border-indigo-800 transition-all">
             <Plus size={16} />
