@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { Plus, MoreHorizontal, Ellipsis, Check } from "lucide-react";
+import { Plus, MoreHorizontal, Ellipsis, Check, RotateCcw, Eye } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -87,6 +87,33 @@ const IssueCard = React.memo(
 
             {issue.id !== "new_item" && <TaskActions task={issue} />}
           </div>
+
+          {/* Review / Reopen Status Badges */}
+          {(issue.custom_reopen_count > 0 || issue.custom_review_cycles > 0 || issue.status === "Pending Review") && (
+            <div className="flex items-center gap-2 mb-2">
+              {issue.status === "Pending Review" && (
+                <Tooltip title="Pending Review">
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20 px-1.5 py-0.5 rounded">
+                    <Eye size={10} /> Pending
+                  </span>
+                </Tooltip>
+              )}
+              {issue.custom_review_cycles > 0 && (
+                <Tooltip title={`Review cycles: ${issue.custom_review_cycles}`}>
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">
+                    <RotateCcw size={10} /> {issue.custom_review_cycles}
+                  </span>
+                </Tooltip>
+              )}
+              {issue.custom_reopen_count > 0 && (
+                <Tooltip title={`Reopened ${issue.custom_reopen_count} time(s)`}>
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20 px-1.5 py-0.5 rounded">
+                    <RotateCcw size={10} /> {issue.custom_reopen_count}
+                  </span>
+                </Tooltip>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-between items-center mt-1">
             <div className="flex items-center gap-2">
@@ -186,7 +213,7 @@ const SortableIssue = React.memo(({ issue }) => {
   );
 });
 
-const Column = React.memo(({ id, title, tasks_list, createTask }) => {
+const Column = React.memo(({ id, title, tasks_list, createTask, isDropTarget }) => {
   const [addNew, setAddNew] = useState(false);
   const qp = useQueryParams();
   const project = qp.get("project") || null;
@@ -226,7 +253,11 @@ const Column = React.memo(({ id, title, tasks_list, createTask }) => {
   return (
     <div
       ref={setNodeRef}
-      className="flex flex-col min-w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 border border-slate-200/50 dark:border-slate-700 h-full min-h-100"
+      className={`flex flex-col min-w-80 bg-slate-100/80 dark:bg-slate-800 rounded-xl p-3 h-full min-h-100 transition-all duration-150 ${
+        isDropTarget
+          ? "border-2 border-blue-400 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 shadow-lg shadow-blue-200/30 dark:shadow-blue-900/30"
+          : "border border-slate-200/50 dark:border-slate-700"
+      }`}
     >
       <div className="sticky top-0 z-9 bg-slate-100/80 dark:bg-slate-800 flex items-center justify-between px-1 pb-3">
         <h3 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
@@ -303,6 +334,7 @@ const Column = React.memo(({ id, title, tasks_list, createTask }) => {
 
 export default function KanbanView() {
   const [activeIssue, setActiveIssue] = useState(null);
+  const [destinationColumn, setDestinationColumn] = useState(null);
   const { mutate } = useSWRConfig();
   // const { project } = useParams();
   const qp = useQueryParams();
@@ -399,8 +431,23 @@ export default function KanbanView() {
   );
   const handleDragOver = useCallback(
     (event) => {
-      const { active } = event;
+      const { active, over } = event;
       if (!active) return;
+
+      // Track destination column for visual indicator
+      if (over) {
+        const overId = over.id;
+        if (options.includes(overId)) {
+          setDestinationColumn(overId);
+        } else {
+          const overTask = tasksById[overId];
+          if (overTask) {
+            setDestinationColumn(overTask.status);
+          }
+        }
+      } else {
+        setDestinationColumn(null);
+      }
 
       // If already set, do nothing
       if (activeIssue && activeIssue.id === active.id) return;
@@ -410,7 +457,7 @@ export default function KanbanView() {
 
       setActiveIssue(task);
     },
-    [activeIssue, tasksById],
+    [activeIssue, tasksById, options],
   );
 
   const mutateTaskStatus = useCallback(async (task, newStatus) => {
@@ -507,6 +554,7 @@ export default function KanbanView() {
   });
 
   const handleDragEnd = useCallback(async (event) => {
+    setDestinationColumn(null);
     const { active, over } = event;
     if (!over) return;
 
@@ -677,6 +725,7 @@ export default function KanbanView() {
           sensors={sensors}
           collisionDetection={collisionDetectionStrategy}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
           {COLUMNS.map((col) => {
@@ -689,13 +738,21 @@ export default function KanbanView() {
                 title={col.title}
                 tasks_list={columnTasks}
                 createTask={createNewTask}
+                isDropTarget={activeIssue && destinationColumn === col.id}
               />
             );
           })}
 
           <DragOverlay dropAnimation={dropAnimation}>
             {activeIssue ? (
-              <IssueCard issue={activeIssue} isOverlay={true} />
+              <div className="relative">
+                <IssueCard issue={activeIssue} isOverlay={true} />
+                {destinationColumn && destinationColumn !== activeIssue.status && (
+                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap">
+                    → {destinationColumn}
+                  </div>
+                )}
+              </div>
             ) : null}
           </DragOverlay>
         </DndContext>
