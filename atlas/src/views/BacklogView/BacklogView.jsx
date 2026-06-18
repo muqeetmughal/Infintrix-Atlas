@@ -31,7 +31,7 @@ import {
   useSWRConfig,
 } from "frappe-react-sdk";
 import { useParams } from "react-router-dom";
-import { Button, Input, message, Select, Space, Spin, Tooltip } from "antd";
+import { Button, Input, message, Modal, Select, Space, Spin, Tooltip } from "antd";
 import { useQueryParams } from "../../hooks/useQueryParams";
 import { useProjectDetailsQuery } from "../../hooks/query";
 import PhasesHeader from "./PhasesHeader";
@@ -78,6 +78,9 @@ const phaseInputRef = useRef(null);
   const deleteMutation = useFrappeDeleteDoc();
   const complete_cycle_mutation = useFrappePostCall(
     "infintrix_atlas.api.v1.complete_cycle",
+  );
+  const bulkDeleteTasks = useFrappePostCall(
+    "infintrix_atlas.api.v1.bulk_delete_tasks",
   );
   const [activeId, setActiveId] = useState(null);
   const [selectedTasks, setSelectedTasks] = useState(new Set());
@@ -249,6 +252,11 @@ const phaseInputRef = useRef(null);
     return phases.find((p) => p.name === custom_phase) || defaultPhase;
   }, [phases, custom_phase, defaultPhase]);
 
+  const selectedTaskRecords = useMemo(
+    () => all_tasks.filter((task) => selectedTasks.has(task.id)),
+    [all_tasks, selectedTasks],
+  );
+
 
 
 
@@ -273,6 +281,40 @@ const handlePhaseUpdate = async () => {
     message.error("Failed to update phase title");
   }
 };
+
+  const handleBulkDelete = useCallback(() => {
+    const taskIds = Array.from(selectedTasks);
+    if (!taskIds.length) return;
+
+    Modal.confirm({
+      title: `Delete ${taskIds.length} selected task(s)?`,
+      content: "This action cannot be undone.",
+      okText: "Delete",
+      okType: "danger",
+      onOk: async () => {
+        try {
+          const response = await bulkDeleteTasks.call({
+            task_names: JSON.stringify(taskIds),
+          });
+          const result = response?.message || {};
+
+          if (result.success) {
+            if (result.failed?.length) {
+              message.warning(result.message || "Some tasks could not be deleted");
+            } else {
+              message.success(result.message || "Tasks deleted successfully");
+            }
+            setSelectedTasks(new Set());
+            await Promise.all([cycles_query3.mutate(), project_query.mutate()]);
+          } else {
+            message.error(result.message || "Failed to delete tasks");
+          }
+        } catch (error) {
+          message.error(error?.message || "Failed to delete tasks");
+        }
+      },
+    });
+  }, [selectedTasks, bulkDeleteTasks, cycles_query3, project_query]);
 
 
 
@@ -302,189 +344,40 @@ const handlePhaseUpdate = async () => {
         {phases.length !== 0 && selectedPhase && (
           <div className="flex flex-col lg:flex-row gap-6 p-4 sm:p-6 h-full">
             {/* Left Panel - Phase Details */}
-            <div className="w-full lg:w-80 shrink-0">
-              <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
-                <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40">
-                  <div className="min-w-0">
-                    <Badge
-                      variant={
-                        selectedPhase?.status === "Completed"
-                          ? "success"
-                          : selectedPhase?.status === "Active"
-                            ? "info"
-                            : "neutral"
-                      }
-                    >
-                      Phase {selectedPhase?.sequence}
-                    </Badge>
-
-
-                    <div className="flex items-center justify-between mt-2">
-                      {isEditingPhase ? (
-                        <Input
-                          ref={phaseInputRef}
-                          size="small"
-                          value={phaseTitle}
-                          onChange={(e) => setPhaseTitle(e.target.value)}
-                          onPressEnter={handlePhaseUpdate}
-                          onBlur={handlePhaseUpdate}
-                          className="text-lg font-black tracking-tight"
-                        />
-                      ) : (
-                        <>
-                          <h3 className="text-lg sm:text-xl font-black tracking-tight truncate">
-                            {selectedPhase?.title}
-                          </h3>
-                          <Button
-                            type="text"
-                            size="small"
-                            className="text-slate-400 hover:text-indigo-600 transition-colors"
-                            icon={<Edit2 size={14} />}
-                            onClick={() => {
-                              setPhaseTitle(selectedPhase?.title || "");
-                              setIsEditingPhase(true);
-                            }}
-                          />
-                        </>
-                      )}
-                    </div>
-
-
-
-                  </div>
-                </div>
-
-                <div className="p-4 sm:p-6 space-y-4">
-                  <Space size={8} className="w-full">
-                    <Button
-                      type="text"
-                      size="small"
-                      onClick={() => {
-                        window.open(
-                          `/app/project-phase/${selectedPhase.name}`,
-                          "_blank",
-                        );
-                      }}
-                    >
-                      <ArrowUpRight size={16} />
-                    </Button>
-                    <Tooltip
-                      title={
-                        !deleteMutation.loading && (backlogTasks.length > 0 || cycles.length > 0)
-                          ? "Remove all tasks and cycles before deleting"
-                          : undefined
-                      }
-                    >
-                      <Button
-                        disabled={
-                          deleteMutation.loading ||
-                          backlogTasks.length > 0 ||
-                          cycles.length > 0
-                        }
-                        type="text"
-                        size="small"
-                        danger
-                        icon={<Trash size={16} />}
-                        onClick={() => {
-                          const previousPhase = phases.find(
-                            (p) =>
-                              phases.indexOf(p) ===
-                              phases.indexOf(selectedPhase) - 1,
-                          );
-
-                          deleteMutation
-                            .deleteDoc("Project Phase", selectedPhase.name)
-                            .then(() => {
-                              cycles_query3.mutate().then(() => {
-                                if (previousPhase) {
-                                  qp.set("custom_phase", previousPhase.name);
-                                }
-                              });
-                            });
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </Tooltip>
-                      <Select
-                        value={selectedPhase?.status || "Planned"}
-                      variant="borderless"
-                      size="small"
-                      popupMatchSelectWidth={false}
-                      style={{ width: "100%" }}
-                      options={[
-                        { value: "Planned", label: "Planned" },
-                        { value: "Active", label: "Active" },
-                        { value: "Completed", label: "Completed" },
-                      ]}
-                      onChange={(value) => {
-                        updateMutation
-                          .updateDoc("Project Phase", selectedPhase.name, {
-                            status: value,
-                          })
-                          .then(() => {
-                            cycles_query3.mutate();
-                          });
-                      }}
-                    />
-                  </Space>
-
-                  {/* Phase Progress */}
-                  <div className="bg-slate-900 dark:bg-slate-800 rounded-2xl p-4 text-white relative overflow-hidden">
-                    <div className="relative">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2">
-                        Phase Progress
-                      </div>
-                      <div className="flex items-end justify-between mb-3 gap-2">
-                        <span className="text-3xl sm:text-4xl font-black tracking-tighter">
-                          {0}%
-                        </span>
-                        <span className="text-xs font-bold text-slate-400 mb-1">
-                          {0} Tasks
-                        </span>
-                      </div>
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-indigo-500 transition-all duration-1000"
-                          style={{ width: `${0}%` }}
-                        />
-                      </div>
-                    </div>
-                    <TrendingUp
-                      className="absolute -right-2 -bottom-2 text-white/5"
-                      size={80}
-                    />
-                  </div>
-
-                  {/* Dates Grid */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
-                      <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">
-                        Start Date
-                      </div>
-                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {selectedPhase?.start_date || "-"}
-                      </div>
-                    </div>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
-                      <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">
-                        End Date
-                      </div>
-                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {selectedPhase?.end_date || "-"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button className="w-full py-2 bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider hover:bg-indigo-600 transition-all">
-                    Phase Report
-                  </button>
-                </div>
-              </div>
-            </div>
-
+     
             {/* Right Panel - Tasks */}
             <div className="flex-1 min-w-0">
+              {selectedTasks.size > 0 && (
+                <div className="mb-4 rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-red-800">
+                      {selectedTasks.size} task{selectedTasks.size === 1 ? "" : "s"} selected
+                    </p>
+                    <p className="text-xs text-red-600 truncate">
+                      {selectedTaskRecords.slice(0, 3).map((task) => task.subject).join(", ")}
+                      {selectedTaskRecords.length > 3 ? ` +${selectedTaskRecords.length - 3} more` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="small"
+                      onClick={() => setSelectedTasks(new Set())}
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      danger
+                      size="small"
+                      icon={<Trash size={14} />}
+                      loading={bulkDeleteTasks.loading}
+                      onClick={handleBulkDelete}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid gap-4 overflow-y-auto pr-2 custom-scrollbar max-h-[calc(100vh-200px)]">
                 {/* Cycles */}
                 {isScrum && (

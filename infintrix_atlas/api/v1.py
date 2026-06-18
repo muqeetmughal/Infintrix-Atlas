@@ -1522,13 +1522,15 @@ def create_action_request(
 
 
 @frappe.whitelist()
-def create_project_resource(project, phase, title=None, file_url=None, link=None, visibility="Internal"):
+def create_project_resource(project, phase, title=None, file_url=None, link=None, visibility="Internal", content=None):
     _ensure_project_access(project, require_write=True)
 
     if file_url and link:
         frappe.throw("Use either a file or a link, not both.")
 
-    if link and not file_url:
+    if content:
+        resource_type = "Plain Text"
+    elif link and not file_url:
         resource_type = "Link"
     elif file_url:
         ext = os.path.splitext(file_url)[1].lower().lstrip(".")
@@ -1545,10 +1547,14 @@ def create_project_resource(project, phase, title=None, file_url=None, link=None
         else:
             resource_type = "DOC"
     else:
-        frappe.throw("Either a file or a link is required.")
+        frappe.throw("Either a file, a link, or content is required.")
 
     if not title:
-        title = link or file_url or "Untitled"
+        if content:
+            first_line = content.strip().split("\n")[0]
+            title = first_line[:100] if first_line else "Untitled"
+        else:
+            title = link or file_url or "Untitled"
 
     doc = frappe.get_doc(
         {
@@ -1557,6 +1563,7 @@ def create_project_resource(project, phase, title=None, file_url=None, link=None
             "phase": phase,
             "title": title,
             "type": resource_type,
+            "content": content,
             "file": file_url,
             "link": link,
             "visibility": visibility,
@@ -1685,7 +1692,7 @@ def list_project_resources(project, include_internal=False):
     rows = frappe.get_all(
         "Project Resource",
         filters={"project": project, "visibility": ["in", visibility]},
-        fields=["name", "title", "type", "link", "file", "visibility", "phase", "modified"],
+        fields=["name", "title", "type", "content", "link", "file", "visibility", "phase", "modified"],
         order_by="modified desc",
     )
 
@@ -2708,6 +2715,50 @@ def remove_task(task_name):
         frappe.log_error(
             f"Error removing task: {e}", "Remove Task Error")
         return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def bulk_delete_tasks(task_names):
+    task_names = frappe.parse_json(task_names) if task_names else []
+    task_names = [name for name in task_names if name]
+
+    if not task_names:
+        return {"success": False, "message": "No tasks selected"}
+
+    deleted = []
+    failed = []
+
+    for task_name in task_names:
+        try:
+            frappe.delete_doc("Task", task_name)
+            deleted.append(task_name)
+        except Exception as e:
+            failed.append({"task_name": task_name, "error": str(e)})
+
+    frappe.db.commit()
+
+    if deleted and not failed:
+        return {
+            "success": True,
+            "message": f"{len(deleted)} task(s) deleted successfully",
+            "deleted": deleted,
+            "failed": failed,
+        }
+
+    if deleted:
+        return {
+            "success": True,
+            "message": f"{len(deleted)} task(s) deleted, {len(failed)} failed",
+            "deleted": deleted,
+            "failed": failed,
+        }
+
+    return {
+        "success": False,
+        "message": failed[0]["error"] if failed else "Failed to delete tasks",
+        "deleted": deleted,
+        "failed": failed,
+    }
 
 
 @frappe.whitelist()
