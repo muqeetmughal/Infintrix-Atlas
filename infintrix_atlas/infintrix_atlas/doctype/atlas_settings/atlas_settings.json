@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "llm_provider",
+  "api_base",
   "gemini_api_key",
   "openai_api_key",
   "enable_ai_architect",
@@ -17,7 +18,7 @@
    "fieldname": "llm_provider",
    "fieldtype": "Select",
    "label": "LLM Provider",
-   "options": "Gemini\nOpenAI"
+   "options": "Gemini\nOpenAI\nOpenAI Compatible"
   },
   {
    "depends_on": "eval:doc.llm_provider===\"Gemini\"",
@@ -26,10 +27,17 @@
    "label": "Gemini API Key"
   },
   {
-   "depends_on": "eval:doc.llm_provider===\"OpenAI\"",
+   "depends_on": "eval:doc.llm_provider===\"OpenAI\" || doc.llm_provider===\"OpenAI Compatible\"",
    "fieldname": "openai_api_key",
    "fieldtype": "Password",
-   "label": "OpenAI API Key"
+   "label": "API Key"
+  },
+  {
+   "depends_on": "eval:doc.llm_provider===\"OpenAI Compatible\"",
+   "fieldname": "api_base",
+   "fieldtype": "Data",
+   "label": "API Base URL",
+   "description": "e.g. https://openrouter.ai/api/v1"
   },
   {
    "default": 1,
@@ -40,9 +48,8 @@
   {
    "default": "gpt-4o-mini",
    "fieldname": "openai_model",
-   "fieldtype": "Select",
-   "label": "OpenAI Model",
-   "options": "gpt-4o-mini"
+   "fieldtype": "Data",
+   "label": "Model Name"
   }
  ],
  "grid_page_length": 50,

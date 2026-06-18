@@ -511,6 +511,7 @@ const ResourcesTab = ({ projectId }) => {
 
   const columns = [
     { title: "Title", dataIndex: "title", key: "title", render: (t) => <span className="font-semibold">{t}</span> },
+    { title: "Phase", dataIndex: "phase_title", key: "phase", render: (p) => p || "-" },
     { title: "Type", dataIndex: "type", key: "type" },
     { title: "Visibility", dataIndex: "visibility", key: "visibility" },
     { title: "Link", dataIndex: "link", key: "link", render: (l) => l ? <a href={l} target="_blank" rel="noopener noreferrer"><EyeOutlined /> View</a> : "-" },

@@ -5,13 +5,15 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "project",
-  "title",
-  "type",
-  "link",
-  "file",
-  "visibility"
- ],
+   "project",
+   "phase",
+   "title",
+   "type",
+   "content",
+   "link",
+   "file",
+   "visibility"
+  ],
  "fields": [
   {
    "fieldname": "project",
@@ -21,16 +23,28 @@
    "options": "Project",
    "reqd": 1
   },
-  {
-   "fieldname": "title",
-   "fieldtype": "Data",
-   "label": "Title"
-  },
+   {
+    "fieldname": "phase",
+    "fieldtype": "Link",
+    "label": "Phase",
+    "options": "Project Phase"
+   },
+   {
+    "fieldname": "title",
+    "fieldtype": "Data",
+    "label": "Title"
+   },
   {
    "fieldname": "type",
    "fieldtype": "Select",
    "label": "Type",
-   "options": "PDF\nDOC\nLink"
+   "options": "PDF\nDOC\nLink\nSpreadsheet\nPresentation\nDocument\nImage\nPlain Text"
+  },
+  {
+   "depends_on": "eval:doc.type===\"Plain Text\"",
+   "fieldname": "content",
+   "fieldtype": "Long Text",
+   "label": "Content"
   },
   {
    "fieldname": "link",

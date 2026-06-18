@@ -8,6 +8,8 @@ from frappe.model.document import Document
 class AtlasSettings(Document):
     def validate(self):
         if self.llm_provider == "OpenAI" and not self.openai_api_key:
-            frappe.throw("OpenAI API Key is required when provider is OpenAI.")
+            frappe.throw("API Key is required when provider is OpenAI.")
+        if self.llm_provider == "OpenAI Compatible" and not self.openai_api_key:
+            frappe.throw("API Key is required when provider is OpenAI Compatible.")
         if self.llm_provider == "Gemini" and not self.gemini_api_key:
             frappe.throw("Gemini API Key is required when provider is Gemini.")

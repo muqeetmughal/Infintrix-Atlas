@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from openai import OpenAI
 from frappe.utils import now
 import uuid
+from frappe import _
 # ============================================================
 # SCHEMAS FOR STRUCTURED OUTPUTS
 # ============================================================
@@ -54,19 +55,23 @@ def make_ai_request(
 ):
     """
     Makes a request to the LLM using the OpenAI SDK with Structured Outputs (Pydantic).
+    Supports OpenAI, OpenAI Compatible (OpenRouter, etc.), and Gemini.
     Includes exponential backoff for rate limits.
     """
     settings = frappe.get_single("Atlas Settings")
 
-    if settings.llm_provider != "OpenAI":
-        raise RuntimeError("OpenAI provider not enabled")
+    if settings.llm_provider not in ("OpenAI", "OpenAI Compatible"):
+        raise RuntimeError("Only OpenAI / OpenAI Compatible provider is supported for structured outputs")
 
     api_key = settings.get_password(fieldname="openai_api_key", raise_exception=True)
 
-    model = settings.openai_model or "gpt-4o-2024-08-06"
+    model = settings.openai_model or "gpt-4o-mini"
 
-    # Initialize the OpenAI client
-    client = OpenAI(api_key=api_key)
+    client_kwargs = {"api_key": api_key}
+    if settings.llm_provider == "OpenAI Compatible" and settings.api_base:
+        client_kwargs["base_url"] = settings.api_base
+
+    client = OpenAI(**client_kwargs)
 
     messages = [
         {"role": "system", "content": system_prompt.strip()},
@@ -320,3 +325,118 @@ def request_intent_decomposition(prompt, project):
 def request_task_drafting(intents, project):
     project_doc = frappe.get_doc("Project", project)
     return _draft_tasks(intents, project_doc)
+
+
+@frappe.whitelist()
+def run_phase_pipeline(project, phase, prompt, resource_context=None, context_resources=None):
+    """
+    Unified pipeline for phase-level AI task generation.
+    Creates an AI Task Session, decomposes prompt into intents,
+    drafts tasks, creates AI Task Draft records, and returns results.
+    """
+    project_doc = frappe.get_doc("Project", project)
+    phase_doc = frappe.get_doc("Project Phase", phase) if phase else None
+
+    if context_resources and isinstance(context_resources, str):
+        context_resources = json.loads(context_resources)
+
+    enriched_prompt = prompt
+    if context_resources:
+        resource_lines = []
+        for r in context_resources:
+            parts = [f"- {r.get('title', 'Untitled')} ({r.get('type', 'DOC')})"]
+            if r.get("description"):
+                parts.append(f": {r['description']}")
+            resource_lines.append("".join(parts))
+        enriched_prompt += "\n\nReferenced Resources:\n" + "\n".join(resource_lines)
+
+    session = frappe.get_doc({
+        "doctype": "AI Task Session",
+        "project": project,
+        "phase": phase,
+        "execution_mode": project_doc.custom_execution_mode,
+        "prompt": prompt,
+        "resource_context": resource_context or "",
+        "status": "Decomposing",
+        "started_on": now(),
+    }).insert(ignore_permissions=True)
+
+    # STEP 1: Decomposition
+    intents = _decompose(enriched_prompt)
+    if not intents:
+        session.status = "Blocked"
+        session.blocked_reason = "No actionable intents found"
+        session.save()
+        return {"session": session.name, "status": "BLOCKED", "reason": session.blocked_reason}
+
+    session.status = "Guarding"
+    session.save()
+
+    # STEP 2: Guard
+    guard = _feasibility_guard(enriched_prompt, project_doc)
+    if guard["status"] == "BLOCK":
+        session.status = "Blocked"
+        session.blocked_reason = guard["reason"]
+        session.save()
+        return {"session": session.name, "status": "BLOCKED", "reason": session.blocked_reason}
+
+    # STEP 3: Drafting
+    session.status = "Creating"
+    session.save()
+    drafts = _draft_tasks(intents, project_doc)
+
+    if not drafts:
+        session.status = "Failed"
+        session.blocked_reason = "Failed to generate task drafts"
+        session.save()
+        return {"session": session.name, "status": "FAILED", "reason": session.blocked_reason}
+
+    # STEP 4: Create AI Task Draft records + validate
+    session.status = "Reviewing"
+    validated = []
+    for d in drafts:
+        validation = _validate_task(d)
+
+        # Check for duplicate in the same phase
+        duplicate = frappe.db.exists("Task", {
+            "subject": d["subject"],
+            "project": project,
+            "custom_phase": phase,
+            "status": ["!=", "Cancelled"],
+        })
+        if duplicate:
+            validation["errors"].append("Duplicate: similar task already exists in this phase")
+            validation["valid"] = False
+
+        doc = frappe.get_doc({
+            "doctype": "AI Task Draft",
+            "session": session.name,
+            "project": project,
+            "subject": d["subject"],
+            "priority": d["priority"],
+            "weight": d["weight"],
+            "confidence": d["confidence"],
+            "status": "Draft",
+            "validation_errors": ", ".join(validation["errors"]),
+        }).insert(ignore_permissions=True)
+
+        validated.append({
+            "id": doc.name,
+            "subject": doc.subject,
+            "description": d.get("description", ""),
+            "priority": doc.priority,
+            "weight": doc.weight,
+            "confidence": doc.confidence,
+            "status": "PENDING",
+            "validation": validation,
+        })
+
+    session.completed_on = now()
+    session.save()
+
+    return {
+        "session": session.name,
+        "status": "REVIEWING",
+        "intents": intents,
+        "drafts": validated,
+    }

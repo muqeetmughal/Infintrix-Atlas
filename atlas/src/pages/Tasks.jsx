@@ -31,6 +31,7 @@ import ProjectDetail from "../views/ProjectDetail";
 import Phases from "../views/Phases";
 import Filters from "../components/Filters";
 import TaskFilters from "../components/TaskFilters";
+import ProjectResourcesTab from "../views/ProjectResourcesTab";
 import { useHasRole } from "../hooks/useRole";
 const TasksContent = ({ project }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -92,7 +93,6 @@ const TasksContent = ({ project }) => {
   const active_cycle_name = cycle?.name;
 
   const tabs = [
-    // { id: "ai-architect", label: "AI Architect" },
     ...(canViewManagerDashboard ? [{ id: "dashboard", label: "Dashboard" }] : []),
     ...(canViewInsights ? [{ id: "insights", label: "Insights" }] : []),
     { id: "list", label: "List" },
@@ -100,6 +100,7 @@ const TasksContent = ({ project }) => {
     // { id: "tree", label: "Tree" },
     { id: "kanban", label: "Kanban" },
     // { id: "kanban2", label: "Kanban 2" },
+    { id: "resources", label: "Resources" },
   ];
   const allowedViewIds = tabs.map((tab) => tab.id);
 
@@ -423,13 +424,13 @@ const TasksContent = ({ project }) => {
           </div>
         )} */}
 
-        {/* View Content */}
+          {/* View Content */}
         <div className="overflow-x-auto">
-          {/* {view === "ai-architect" && <AIArchitect />} */}
           {view === "list" && <TableView />}
           {view === "kanban" && <KanbanView />}
           {view === "backlog" && <BacklogView />}
           {/* {view === "tree" && <TreeView />} */}
+          {view === "resources" && <ProjectResourcesTab projectId={project} />}
           {view === "insights" && canViewInsights && <InsightsView />}
           {view === "dashboard" && canViewManagerDashboard && <ProjectDetail />}
         </div>

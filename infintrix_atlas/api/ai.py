@@ -78,7 +78,7 @@ def validate_tasks(drafts):
 
 
 @frappe.whitelist()
-def create_from_ai(project, tasks):
+def create_from_ai(project, tasks, phase=None):
     if isinstance(tasks, str):
         tasks = json.loads(tasks)
 
@@ -88,15 +88,34 @@ def create_from_ai(project, tasks):
 
     for t in tasks:
         try:
+            subject = t["subject"]
+            target_phase = phase or t.get("phase")
+
+            # Dedup: skip if same subject + phase already exists
+            duplicate = frappe.db.exists("Task", {
+                "subject": subject,
+                "project": project,
+                "custom_phase": target_phase,
+                "status": ["!=", "Cancelled"],
+            })
+            if duplicate:
+                results.append({
+                    "subject": subject,
+                    "status": "DUPLICATE",
+                    "task": duplicate,
+                })
+                continue
+
             doc = frappe.get_doc({
                 "doctype": "Task",
-                "subject": t["subject"],
+                "subject": subject,
                 "project": project,
                 "priority": t["priority"],
                 "status": "Open",
                 "custom_weight": t["weight"],
-                "custom_created_by": "AI",
-                "description": t.get("description", "")
+                "custom_phase": target_phase,
+                "description": t.get("description", ""),
+                "custom_created_by_ai": 1,
             })
             doc.insert(ignore_permissions=True)
 

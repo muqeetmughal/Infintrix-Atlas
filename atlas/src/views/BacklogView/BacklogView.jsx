@@ -288,8 +288,13 @@ const handlePhaseUpdate = async () => {
       >
         <PhasesHeader
           phases={phases}
+          project={project_id}
           onPhaseTitleUpdate={async (phaseName, newTitle) => {
             await updateMutation.updateDoc("Project Phase", phaseName, { title: newTitle })
+            await cycles_query3.mutate()
+          }}
+          onStatusChange={async (phaseName, status) => {
+            await updateMutation.updateDoc("Project Phase", phaseName, { status })
             await cycles_query3.mutate()
           }}
         />

@@ -8,6 +8,8 @@
   "project",
   "execution_mode",
   "cycle",
+  "phase",
+  "resource_context",
   "prompt",
   "status",
   "blocked_reason",
@@ -34,6 +36,17 @@
    "fieldtype": "Link",
    "label": "Cycle",
    "options": "Cycle"
+  },
+  {
+   "fieldname": "phase",
+   "fieldtype": "Link",
+   "label": "Phase",
+   "options": "Project Phase"
+  },
+  {
+   "fieldname": "resource_context",
+   "fieldtype": "Long Text",
+   "label": "Resource Context"
   },
   {
    "fieldname": "prompt",
