@@ -11,7 +11,11 @@ class ProjectResource(Document):
             frappe.throw("Project is required.")
 
         if not self.title:
-            self.title = self.file or self.link or "Untitled"
+            if self.content:
+                first_line = self.content.strip().split("\n")[0]
+                self.title = first_line[:100] if first_line else "Untitled"
+            else:
+                self.title = self.file or self.link or "Untitled"
 
         if self.phase:
             phase_project = frappe.db.get_value("Project Phase", self.phase, "project")
@@ -30,8 +34,8 @@ class ProjectResource(Document):
         if self.visibility not in {"Internal", "Client", "Both"}:
             frappe.throw("Visibility must be Internal, Client, or Both.")
 
-        if self.type not in {"PDF", "DOC", "Link", "Spreadsheet", "Presentation", "Document", "Image"}:
-            frappe.throw("Type must be PDF, DOC, Link, Spreadsheet, Presentation, Document, or Image.")
+        if self.type not in {"PDF", "DOC", "Link", "Spreadsheet", "Presentation", "Document", "Image", "Plain Text"}:
+            frappe.throw("Type must be PDF, DOC, Link, Spreadsheet, Presentation, Document, Image, or Plain Text.")
 
         if self.type == "Link" and not self.link:
             frappe.throw("Link type resources must include a URL.")

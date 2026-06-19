@@ -5,53 +5,46 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "llm_provider",
-  "api_base",
-  "gemini_api_key",
-  "openai_api_key",
-  "enable_ai_architect",
-  "openai_model"
- ],
+   "api_key",
+   "api_base",
+   "openai_model",
+   "refresh_models",
+   "enable_ai_architect"
+  ],
  "fields": [
-  {
-   "default": "Gemini",
-   "fieldname": "llm_provider",
-   "fieldtype": "Select",
-   "label": "LLM Provider",
-   "options": "Gemini\nOpenAI\nOpenAI Compatible"
-  },
-  {
-   "depends_on": "eval:doc.llm_provider===\"Gemini\"",
-   "fieldname": "gemini_api_key",
-   "fieldtype": "Password",
-   "label": "Gemini API Key"
-  },
-  {
-   "depends_on": "eval:doc.llm_provider===\"OpenAI\" || doc.llm_provider===\"OpenAI Compatible\"",
-   "fieldname": "openai_api_key",
-   "fieldtype": "Password",
-   "label": "API Key"
-  },
-  {
-   "depends_on": "eval:doc.llm_provider===\"OpenAI Compatible\"",
-   "fieldname": "api_base",
-   "fieldtype": "Data",
-   "label": "API Base URL",
-   "description": "e.g. https://openrouter.ai/api/v1"
-  },
-  {
-   "default": 1,
-   "fieldname": "enable_ai_architect",
-   "fieldtype": "Check",
-   "label": "Enable AI Architect"
-  },
-  {
-   "default": "gpt-4o-mini",
-   "fieldname": "openai_model",
-   "fieldtype": "Data",
-   "label": "Model Name"
-  }
- ],
+   {
+    "fieldname": "api_key",
+    "fieldtype": "Password",
+    "label": "API Key",
+    "description": "Your OpenRouter API key"
+   },
+   {
+    "default": "https://openrouter.ai/api/v1",
+    "fieldname": "api_base",
+    "fieldtype": "Data",
+    "label": "API Base URL",
+    "description": "OpenRouter endpoint"
+   },
+   {
+    "default": "openai/gpt-4o-mini",
+    "fieldname": "openai_model",
+    "fieldtype": "Data",
+    "label": "Model Name",
+    "description": "Any OpenRouter model ID. Click Refresh Models to fetch the latest list."
+   },
+   {
+    "depends_on": "eval:doc.api_key",
+    "fieldname": "refresh_models",
+    "fieldtype": "Button",
+    "label": "🔄 Refresh Models"
+   },
+   {
+    "default": 1,
+    "fieldname": "enable_ai_architect",
+    "fieldtype": "Check",
+    "label": "Enable AI Architect"
+   }
+  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
@@ -62,17 +55,19 @@
  "name": "Atlas Settings",
  "owner": "Administrator",
  "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "print": 1,
-   "read": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  }
- ],
+   {
+    "create": 1,
+    "delete": 1,
+    "email": 1,
+    "export": 1,
+    "print": 1,
+    "read": 1,
+    "report": 1,
+    "role": "System Manager",
+    "share": 1,
+    "write": 1
+   }
+  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",

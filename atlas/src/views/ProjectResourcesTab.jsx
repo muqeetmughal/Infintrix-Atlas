@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Button, Input, Modal, Select, Spin, Upload, message } from "antd";
-import { UploadOutlined, LinkOutlined, FilePdfOutlined, FileWordOutlined, FileExcelOutlined, FilePptOutlined, FileImageOutlined, FileOutlined, DeleteOutlined, EyeOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { Button, Input, Modal, Select, Segmented, Spin, Upload, message } from "antd";
+import { UploadOutlined, LinkOutlined, FilePdfOutlined, FileWordOutlined, FileExcelOutlined, FilePptOutlined, FileImageOutlined, FileTextOutlined, FileOutlined, DeleteOutlined, EyeOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { useFrappeFileUpload, useFrappeGetCall, useFrappePostCall, useFrappeDeleteDoc } from "frappe-react-sdk";
 import { Document, Page, pdfjs } from "react-pdf";
 import { useHasRole } from "../hooks/useRole";
@@ -16,6 +16,7 @@ const fileIcon = (type) => {
   if (t === "image" || ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(t)) return <FileImageOutlined style={{ color: "#8e44ad" }} />;
   if (t === "document" || ["doc", "docx", "odt", "rtf"].includes(t)) return <FileWordOutlined style={{ color: "#2b5797" }} />;
   if (t === "link") return <LinkOutlined style={{ color: "#6366f1" }} />;
+  if (t === "plain text") return <FileTextOutlined style={{ color: "#64748b" }} />;
   if (["md", "txt"].includes(t)) return <FileOutlined style={{ color: "#3498db" }} />;
   return <FileOutlined style={{ color: "#6366f1" }} />;
 };
@@ -102,7 +103,7 @@ const ResourceCard = ({ resource, onPreview, onDelete }) => {
   );
 };
 
-const PreviewModal = ({ resource, open, onClose }) => {
+  const PreviewModal = ({ resource, open, onClose }) => {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [pdfLoading, setPdfLoading] = useState(true);
@@ -111,8 +112,10 @@ const PreviewModal = ({ resource, open, onClose }) => {
 
   const previewCall = useFrappePostCall("infintrix_atlas.api.v1.preview_document");
 
+  const isPlainText = resource?.type === "Plain Text";
+
   useEffect(() => {
-    if (open && resource) {
+    if (open && resource && !isPlainText) {
       setDocContent(null);
       const fileUrl = resource.file;
       if (!fileUrl) return;
@@ -127,7 +130,7 @@ const PreviewModal = ({ resource, open, onClose }) => {
         }).finally(() => setDocLoading(false));
       }
     }
-  }, [open, resource]);
+  }, [open, resource, isPlainText]);
 
   if (!resource) return null;
   const fileUrl = resource.file || resource.link;
@@ -153,7 +156,13 @@ const PreviewModal = ({ resource, open, onClose }) => {
       destroyOnClose
     >
       <div className="flex items-center justify-center min-h-[300px] bg-slate-50 dark:bg-slate-800 rounded-lg overflow-hidden">
-        {isImg ? (
+        {isPlainText && resource.content ? (
+          <div className="w-full max-h-[70vh] overflow-y-auto p-6 bg-white dark:bg-slate-800">
+            <div className="prose prose-sm max-w-none dark:text-slate-300 whitespace-pre-wrap font-mono text-sm leading-relaxed">
+              {resource.content}
+            </div>
+          </div>
+        ) : isImg ? (
           <img src={fileUrl} alt={resource.title} className="max-w-full max-h-[70vh] object-contain" />
         ) : isPdf ? (
           <div className="w-full flex flex-col items-center">
@@ -227,10 +236,12 @@ const PreviewModal = ({ resource, open, onClose }) => {
 };
 
 const ProjectResourcesTab = ({ projectId }) => {
+  const [mode, setMode] = useState("file");
   const [title, setTitle] = useState("");
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [link, setLink] = useState("");
+  const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState("Internal");
   const [previewResource, setPreviewResource] = useState(null);
   const { has: isInternal } = useHasRole("Projects Manager");
@@ -259,12 +270,14 @@ const ProjectResourcesTab = ({ projectId }) => {
         title: title.trim(),
         file_url: fileUrl,
         link: link || null,
+        content: content.trim() || null,
         visibility: isCustomer ? "Both" : visibility,
       });
       message.success("Resource added");
       setTitle("");
       setFile(null);
       setLink("");
+      setContent("");
       setVisibility("Internal");
       mutate();
     } catch {
@@ -298,82 +311,139 @@ const ProjectResourcesTab = ({ projectId }) => {
     <div className="p-6 space-y-8">
       {/* Upload Section */}
       <div className="max-w-2xl mx-auto w-full">
-        <div className="rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors">
-          <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-5 text-center">Upload Resource</h4>
-          <div className="flex flex-col sm:flex-row gap-3 items-start">
-            <div className="flex-1 w-full space-y-2">
-              <Input
-                placeholder="Title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                size="large"
-                className="font-semibold"
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden transition-all hover:shadow-md">
+          {/* Header */}
+          <div className="px-6 pt-5 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">Add Resource</h4>
+              <Segmented
+                value={mode}
+                onChange={(val) => { setMode(val); setFile(null); setLink(""); setContent(""); }}
+                options={[
+                  { value: "file", icon: <UploadOutlined />, label: "File" },
+                  { value: "link", icon: <LinkOutlined />, label: "Link" },
+                  { value: "text", icon: <FileTextOutlined />, label: "Plain Text" },
+                ]}
+                size="small"
               />
-              <Input
-                placeholder="Link URL (optional — leave blank to upload a file)"
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-                size="large"
-                prefix={<LinkOutlined />}
-                disabled={!!file}
-              />
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="p-6 space-y-4">
+            {mode === "file" && (
+              <>
+                <Input
+                  placeholder="Title (optional)"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  size="large"
+                  className="font-semibold"
+                />
+                <Upload
+                  beforeUpload={(f) => { setFile(f); return false; }}
+                  onRemove={() => setFile(null)}
+                  fileList={file ? [{ uid: "-1", name: file.name }] : []}
+                  maxCount={1}
+                  className="w-full"
+                >
+                  <Button
+                    icon={<UploadOutlined />}
+                    size="large"
+                    className="w-full h-20 text-sm border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-400"
+                    style={{ background: "transparent" }}
+                  >
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span>Click or drag to upload</span>
+                      <span className="text-[10px] text-slate-400 font-normal">PDF, DOCX, XLSX, images, and more</span>
+                    </div>
+                  </Button>
+                </Upload>
+                {file && (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
+                    <span style={{ fontSize: 24 }}>{fileIcon(file.name?.split(".").pop())}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold truncate">{file.name}</p>
+                      <p className="text-[10px] text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {mode === "link" && (
+              <div className="space-y-4">
+                <Input
+                  placeholder="Title (optional)"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  size="large"
+                  className="font-semibold"
+                />
+                <Input
+                  placeholder="https://example.com/document"
+                  value={link}
+                  onChange={(e) => setLink(e.target.value)}
+                  size="large"
+                  prefix={<LinkOutlined className="text-slate-400" />}
+                />
+              </div>
+            )}
+
+            {mode === "text" && (
+              <div className="space-y-4">
+                <Input
+                  placeholder="Title (optional)"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  size="large"
+                  className="font-semibold"
+                />
+                <Input.TextArea
+                  placeholder="Paste or type resource content here…"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  rows={6}
+                  size="large"
+                  className="font-mono text-sm"
+                />
+                <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                  <FileTextOutlined /> Plain text content — preview will show as-is
+                </div>
+              </div>
+            )}
+
+            {/* Footer actions */}
+            <div className="flex items-center justify-between pt-1">
               {isCustomer ? (
-                <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5 px-1">
+                <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  Visible to you and client
+                  Visible to team and client
                 </div>
               ) : (
                 <Select
                   value={visibility}
                   onChange={setVisibility}
-                  size="large"
-                  className="w-full"
+                  size="small"
+                  className="min-w-[180px]"
                   options={[
                     { value: "Internal", label: "Internal (team only)" },
                     { value: "Both", label: "Both (team + client)" },
                   ]}
                 />
               )}
-            </div>
-            <div className="flex flex-col gap-2 w-full sm:w-auto">
-              <Upload
-                beforeUpload={(f) => { setFile(f); return false; }}
-                onRemove={() => setFile(null)}
-                fileList={file ? [{ uid: "-1", name: file.name }] : []}
-                maxCount={1}
-                disabled={!!link}
-                className="w-full"
-              >
-                <Button
-                  icon={<UploadOutlined />}
-                  disabled={!!link}
-                  size="large"
-                  className="w-full"
-                >
-                  {file ? "Change File" : "Select File"}
-                </Button>
-              </Upload>
               <Button
                 type="primary"
                 onClick={handleUpload}
                 loading={uploading}
                 size="large"
-                className="w-full"
-                icon={file || link ? <UploadOutlined /> : null}
+                icon={!uploading ? <UploadOutlined /> : null}
+                className="font-semibold"
               >
-                {uploading ? "Uploading..." : "Add Resource"}
+                {uploading ? "Adding..." : "Add Resource"}
               </Button>
             </div>
           </div>
-          {file && (
-            <div className="mt-3 flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-              <span style={{ fontSize: 24 }}>{fileIcon(fileExt)}</span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold truncate">{file.name}</p>
-                <p className="text-[10px] text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
