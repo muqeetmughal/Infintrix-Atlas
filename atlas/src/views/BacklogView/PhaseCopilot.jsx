@@ -42,7 +42,7 @@ const PhaseCopilot = ({ phase, project, onClose }) => {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
+  }, [chatMessages.length]);
 
   useEffect(() => {
     if (!drafts.length) return;
