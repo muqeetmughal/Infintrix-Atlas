@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useFrappeGetCall, useFrappePostCall, useFrappeFileUpload } from "frappe-react-sdk";
 import { BrainCircuit, Loader2, Sparkles, Check, X, Send, Paperclip, FileText, Upload, AlertCircle } from "lucide-react";
-import { Modal, message } from "antd";
+import { message } from "antd";
 
-const PhaseCopilot = ({ open, phase, project, onClose }) => {
+const PhaseCopilot = ({ phase, project, onClose }) => {
   const [chatMessages, setChatMessages] = useState([]);
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -18,7 +18,6 @@ const PhaseCopilot = ({ open, phase, project, onClose }) => {
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
-
   const runPipeline = useFrappePostCall("infintrix_atlas.api.ai_pipeline.run_phase_pipeline");
   const createTasksCall = useFrappePostCall("infintrix_atlas.api.ai.create_from_ai");
   const fileUpload = useFrappeFileUpload();
@@ -59,9 +58,14 @@ const PhaseCopilot = ({ open, phase, project, onClose }) => {
     });
   }, [drafts]);
 
-  // On open: get/create session + load messages
+  // Init session + load messages on mount
   useEffect(() => {
-    if (!open || !project || !phase?.name) return;
+    if (!project || !phase?.name) return;
+
+    const phaseName = phase.name;
+    const phaseTitle = phase.title || "this phase";
+    let cancelled = false;
+
     setLoading(true);
     setChatMessages([]);
     setDrafts([]);
@@ -71,29 +75,36 @@ const PhaseCopilot = ({ open, phase, project, onClose }) => {
     setPrompt("");
     setGenerating(false);
     setCreating(false);
+    setSessionId(null);
 
-    getOrCreateSession.call({ project, phase: phase.name }).then(async (res) => {
+    getOrCreateSession.call({ project, phase: phaseName }).then(async (res) => {
+      if (cancelled) return;
       const sid = res.message;
       setSessionId(sid);
       const msgsRes = await getMsgs.call({ session: sid });
+      if (cancelled) return;
       const msgs = msgsRes.message || [];
       if (msgs.length === 0) {
-        const welcome = `I'm your AI architect for **${phase?.title || "this phase"}**. Describe what tasks need to be created and I'll generate them.\n\nYou can also attach resources from Project Resources for context, or upload new documents.`;
+        const welcome = `I'm your AI architect for **${phaseTitle}**. Describe what tasks need to be created and I'll generate them.\n\nYou can also attach resources from Project Resources for context, or upload new documents.`;
         setChatMessages([{ role: "assistant", text: welcome }]);
-        // persist welcome message
-        try { await saveMsg.call({ session: sid, role: "assistant", text: welcome }); } catch {}
+        saveMsg.call({ session: sid, role: "assistant", text: welcome }).catch(() => {});
       } else {
         setChatMessages(msgs);
         const latestTaskMessage = [...msgs].reverse().find(msg => Array.isArray(msg.taskSnapshot) && msg.taskSnapshot.length > 0);
-        if (latestTaskMessage) {
+        if (latestTaskMessage && !cancelled) {
           setDrafts(latestTaskMessage.taskSnapshot);
           setShowReview(true);
         }
       }
     }).catch(() => {
+      if (cancelled) return;
       setChatMessages([{ role: "assistant", text: "Failed to initialize chat session." }]);
-    }).finally(() => setLoading(false));
-  }, [open, project, phase?.name]);
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [project, phase?.name, phase?.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addMessage = (role, text, extra = {}) => {
     setChatMessages(prev => [...prev, { role, text, ...extra }]);
@@ -295,20 +306,19 @@ const PhaseCopilot = ({ open, phase, project, onClose }) => {
   };
 
   return (
-    <Modal
-      title={
+    <div className="phase-ai-architect border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 shadow-lg">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <BrainCircuit size={18} className="text-indigo-600" />
-          <span>AI Architect — {phase?.title || "Phase"}</span>
+          <span className="text-sm font-bold">AI Architect — {phase?.title || "Phase"}</span>
         </div>
-      }
-      open={open}
-      onCancel={onClose}
-      width={720}
-      footer={null}
-      destroyOnClose
-      styles={{ body: { padding: 0 } }}
-    >
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <X size={16} />
+        </button>
+      </div>
       <div className="flex flex-col" style={{ height: 560 }}>
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -495,7 +505,7 @@ const PhaseCopilot = ({ open, phase, project, onClose }) => {
           </div>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 };
 

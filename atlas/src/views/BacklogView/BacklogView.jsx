@@ -2,7 +2,6 @@ import React, {
   useState,
   useMemo,
   useCallback,
-  use,
   useRef,
   useEffect,
 } from "react";
@@ -30,11 +29,11 @@ import {
   useFrappeUpdateDoc,
   useSWRConfig,
 } from "frappe-react-sdk";
-import { useParams } from "react-router-dom";
 import { Button, Input, message, Modal, Select, Space, Spin, Tooltip } from "antd";
 import { useQueryParams } from "../../hooks/useQueryParams";
 import { useProjectDetailsQuery } from "../../hooks/query";
 import PhasesHeader from "./PhasesHeader";
+import PhaseCopilot from "./PhaseCopilot";
 import DroppableZone from "./DroppableZone";
 import Badge from "./Badge";
 import TaskCard from "./TaskCard";
@@ -54,7 +53,6 @@ const TASK_STATUS_COLORS = {
 
 const BacklogView = () => {
   // const [tasks, setTasks] = useState(initialTasks);
-  const params = useParams();
   const qp = useQueryParams();
   const custom_phase = qp.get("custom_phase") || null;
   // const [selectedPhase, setSelectedPhase] = useState(null);
@@ -85,6 +83,7 @@ const phaseInputRef = useRef(null);
   const [activeId, setActiveId] = useState(null);
   const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [isBacklogExpanded, setIsBacklogExpanded] = useState(true);
+  const [phaseCopilotPhase, setPhaseCopilotPhase] = useState(null);
 
   const toggleTaskSelection = useCallback((taskId, ctrlKey) => {
     if (!ctrlKey) {
@@ -137,18 +136,22 @@ const phaseInputRef = useRef(null);
   const phases = useMemo(() => {
     return cycles_query3?.data?.message?.phases || [];
   }, [cycles_query3.data]);
+  const prevCustomPhase = useRef(custom_phase);
+
+  useEffect(() => {
+    if (custom_phase && custom_phase !== prevCustomPhase.current && phases.length) {
+      const phase = phases.find(p => p.name === custom_phase);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (phase) setPhaseCopilotPhase(phase);
+    }
+    prevCustomPhase.current = custom_phase;
+  }, [custom_phase, phases]);
 
   const defaultPhase = useMemo(() => {
     const active = cycles_query3?.data?.message?.active_phase || null;
     if (active) return active
     return phases.length > 0 ? phases[phases.length - 1] : null
   }, [cycles_query3.data, phases]);
-
-  useEffect(() => {
-    if (!custom_phase && defaultPhase) {
-      qp.set("custom_phase", defaultPhase.name);
-    }
-  }, [defaultPhase, custom_phase]);
 
   const all_tasks = useMemo(() => {
     return cycles_query3?.data?.message?.all_tasks || [];
@@ -330,7 +333,6 @@ const handlePhaseUpdate = async () => {
       >
         <PhasesHeader
           phases={phases}
-          project={project_id}
           onPhaseTitleUpdate={async (phaseName, newTitle) => {
             await updateMutation.updateDoc("Project Phase", phaseName, { title: newTitle })
             await cycles_query3.mutate()
@@ -339,12 +341,24 @@ const handlePhaseUpdate = async () => {
             await updateMutation.updateDoc("Project Phase", phaseName, { status })
             await cycles_query3.mutate()
           }}
+          onOpenArchitect={setPhaseCopilotPhase}
         />
 
         {phases.length !== 0 && selectedPhase && (
           <div className="flex flex-col lg:flex-row gap-6 p-4 sm:p-6 h-full">
-            {/* Left Panel - Phase Details */}
-     
+            {/* Left Panel - AI Architect */}
+            {phaseCopilotPhase && (
+              <div className="w-full lg:w-[480px] xl:w-[560px] shrink-0">
+                <div className="phase-ai-architect">
+                  <PhaseCopilot
+                    phase={phaseCopilotPhase}
+                    project={project_id}
+                    onClose={() => setPhaseCopilotPhase(null)}
+                  />
+                </div>
+              </div>
+            )}
+      
             {/* Right Panel - Tasks */}
             <div className="flex-1 min-w-0">
               {selectedTasks.size > 0 && (

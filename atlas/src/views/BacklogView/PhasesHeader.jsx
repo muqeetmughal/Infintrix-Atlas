@@ -5,7 +5,7 @@ import DroppableZone from "./DroppableZone";
 import { DatePicker, Input, InputNumber, Modal, Select, message } from "antd";
 import { useFrappeUpdateDoc } from "frappe-react-sdk";
 import dayjs from "dayjs";
-import PhaseCopilot from "./PhaseCopilot";
+
 
 const STATUS_CONFIG = {
   Completed: {
@@ -152,7 +152,7 @@ const EditPhaseModal = ({ open, phase, onClose, onSaved }) => {
   );
 };
 
-const PhasesHeader = ({ phases, project, onPhaseTitleUpdate, onStatusChange }) => {
+const PhasesHeader = ({ phases, onPhaseTitleUpdate, onStatusChange, onOpenArchitect }) => {
   const qp = useQueryParams();
   const selected_phase_qp = qp.get("custom_phase");
   const scrollContainerRef = useRef(null);
@@ -161,7 +161,7 @@ const PhasesHeader = ({ phases, project, onPhaseTitleUpdate, onStatusChange }) =
   const [editValue, setEditValue] = useState("");
   const editInputRef = useRef(null);
   const [editPhase, setEditPhase] = useState(null);
-  const [phaseCopilotPhase, setPhaseCopilotPhase] = useState(null);
+  const closeEditPhase = useCallback(() => setEditPhase(null), []);
 
   useEffect(() => {
     if (selected_phase_qp && selectedPhaseRef.current) {
@@ -247,7 +247,7 @@ const PhasesHeader = ({ phases, project, onPhaseTitleUpdate, onStatusChange }) =
                             <Settings size={10} />
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); setPhaseCopilotPhase(phase); }}
+                            onClick={(e) => { e.stopPropagation(); onOpenArchitect?.(phase); }}
                             className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 rounded text-slate-400 hover:text-indigo-600"
                             title="AI Architect for this phase"
                           >
@@ -290,14 +290,8 @@ const PhasesHeader = ({ phases, project, onPhaseTitleUpdate, onStatusChange }) =
       <EditPhaseModal
         open={!!editPhase}
         phase={editPhase}
-        onClose={() => setEditPhase(null)}
+        onClose={closeEditPhase}
         onSaved={() => {}}
-      />
-      <PhaseCopilot
-        open={!!phaseCopilotPhase}
-        phase={phaseCopilotPhase}
-        project={project}
-        onClose={() => setPhaseCopilotPhase(null)}
       />
     </div>
   );

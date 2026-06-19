@@ -1,56 +1,63 @@
-import { Edit, ExternalLink, Filter, Menu, Plus, RefreshCcw, User } from "lucide-react";
-import React, { useEffect } from "react";
-import { TASK_PRIORITY_COLORS, TASK_STATUS_COLORS } from "../data/constants";
+import React, { useEffect, useMemo } from "react";
 import {
-  useFrappeCreateDoc,
   useFrappeGetCall,
   useFrappeGetDoc,
-  useFrappeGetDocList,
-  useFrappePostCall,
-  useFrappeUpdateDoc,
-  useSWRConfig,
 } from "frappe-react-sdk";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import TaskDetail from "../modals/TaskDetail";
 import TableView from "../views/TableView";
 import KanbanView from "../views/KanbanView";
-import { Button, Dropdown, Input, Select, Tag, message } from "antd";
 import BacklogView from "../views/BacklogView/BacklogView";
 import CycleModal from "../components/custom/CycleModal";
 import CompleteCycleModal from "../components/custom/CompleteCycleModal";
 import { useQueryParams } from "../hooks/useQueryParams";
-import { RequireRole } from "../components/auth/RequireRole";
-import ProjectHealth from "../components/ProjectHealth";
 import ManageProjectPeople from "../modals/ManageProjectPeople";
-import TreeView from "../views/TreeView";
-import InsightsView from "../views/InsightsView/InsightsView";
-
-// import KanbanView2 from "../views/KanbanView2";
-import TestView from "../views/TestView";
-import ProjectDetail from "../views/ProjectDetail";
-import Phases from "../views/Phases";
-import Filters from "../components/Filters";
-import TaskFilters from "../components/TaskFilters";
-import ProjectResourcesTab from "../views/ProjectResourcesTab";
 import { useHasRole } from "../hooks/useRole";
+import InsightsView from "../views/InsightsView/InsightsView";
+import ProjectDetail from "../views/ProjectDetail";
+import ProjectResourcesTab from "../views/ProjectResourcesTab";
+import ProjectActionBar from "../components/ProjectActionBar";
+import ProjectViewTabs from "../components/ProjectViewTabs";
+
 const TasksContent = ({ project }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
   const qp = useQueryParams();
   const navigate = useNavigate();
-  const [showFilters, setShowFilters] = React.useState(false);
-  const filtersRef = React.useRef(null);
   const { has: isProjectsManager } = useHasRole("Projects Manager");
   const canViewManagerDashboard = isProjectsManager;
 
   const view = params.view || "table";
   const custom_phase = qp.get("custom_phase") || null;
+
+  const phases_query = useFrappeGetCall(
+    "infintrix_atlas.api.v1.list_project_phases",
+    project ? { project } : null,
+    project ? ["project_phases_active", project] : null,
+  );
+  const phases = useMemo(
+    () => phases_query?.data?.message || [],
+    [phases_query?.data?.message],
+  );
+  const defaultPhase = useMemo(() => {
+    const active = phases.find((p) => p.status === "Active");
+    if (active) return active;
+    return phases.length > 0 ? phases[phases.length - 1] : null;
+  }, [phases]);
+
+  useEffect(() => {
+    if (!custom_phase && defaultPhase) {
+      qp.set("custom_phase", defaultPhase.name);
+    }
+  }, [defaultPhase, custom_phase, qp]);
+
   const project_query = useFrappeGetDoc(
     "Project",
     project,
     project ? ["Project", project] : null,
   );
   const project_data = project_query?.data || {};
+
   const customerPortalAccessQuery = useFrappeGetCall(
     "infintrix_atlas.api.v1.has_customer_portal_access",
     project ? { project } : null,
@@ -62,78 +69,20 @@ const TasksContent = ({ project }) => {
     !isProjectsManager &&
     project &&
     (customerPortalAccessQuery.isLoading ?? customerPortalAccessQuery.loading ?? false);
-  const [pendingMode, setPendingMode] = React.useState(null);
-
-  const statusFilter = qp.getArray("status");
-  const priorityFilter = qp.getArray("priority");
-  const { mutate } = useSWRConfig();
-  const createMutation = useFrappeCreateDoc();
-  const updateMutation = useFrappeUpdateDoc();
-  const change_mode_mutation = useFrappePostCall(
-    "infintrix_atlas.api.v1.set_project_mode",
-  );
-
-  const create_cycles_for_project_mutatation = useFrappePostCall(
-    "infintrix_atlas.api.v1.create_cycles_for_project",
-  );
-  const active_cycle_query = useFrappeGetDocList("Cycle", {
-    filters: { project: project, status: "Active" },
-  });
-
-  const projects_options_query = useFrappeGetDocList("Project", {
-    fields: ["name as value", "project_name as label"],
-    limit_page_length: 100,
-  });
-
-  const cycles_template_options_query = useFrappeGetDocList("Phase Template", {
-    fields: ["name as value", "name as label"],
-    limit_page_length: 100,
-  });
-  const cycle = (active_cycle_query?.data || [])[0];
-  const active_cycle_name = cycle?.name;
 
   const tabs = [
     ...(canViewManagerDashboard ? [{ id: "dashboard", label: "Dashboard" }] : []),
     ...(canViewInsights ? [{ id: "insights", label: "Insights" }] : []),
     { id: "list", label: "List" },
     { id: "backlog", label: "Backlog" },
-    // { id: "tree", label: "Tree" },
     { id: "kanban", label: "Kanban" },
-    // { id: "kanban2", label: "Kanban 2" },
     { id: "resources", label: "Resources" },
   ];
   const allowedViewIds = tabs.map((tab) => tab.id);
 
-  const assignees = (project_data?.users || []).map((u) => u.user);
-
-  const hasActiveFilters =
-    (statusFilter && statusFilter.length > 0) ||
-    (priorityFilter && priorityFilter.length > 0) ||
-    !!qp.get("search");
-
   useEffect(() => {
-    if (!showFilters) return;
-
-    const handleClickOutside = (event) => {
-      if (filtersRef.current && !filtersRef.current.contains(event.target)) {
-        setShowFilters(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showFilters]);
-
-  useEffect(() => {
-    if (isCustomerPortalAccessLoading) {
-      return;
-    }
-
-    if (!allowedViewIds.length || allowedViewIds.includes(view)) {
-      return;
-    }
+    if (isCustomerPortalAccessLoading) return;
+    if (!allowedViewIds.length || allowedViewIds.includes(view)) return;
 
     const oldSearchParams = new URLSearchParams(searchParams.toString());
     navigate(`/tasks/${allowedViewIds[0]}`);
@@ -147,289 +96,26 @@ const TasksContent = ({ project }) => {
     view,
   ]);
 
-  if (active_cycle_query.isLoading || projects_options_query.isLoading) {
-    return <div>Loading...</div>;
-  }
   return (
     <>
       <div className="space-y-2 md:space-y-1">
-        {/* Header Section */}
         <div className="flex items-center justify-between space-x-3">
           <div>
             {project_data.project_name && (
               <h1 className="text-xl font-bold">{project_data.project_name}</h1>
             )}
           </div>
-            {project_data.project_name && (
-            <RequireRole
-              role="Projects Manager"
-              fallback={
-                <Tag color="default" style={{ fontSize: "14px", fontWeight: 600, padding: "4px 12px" }}>
-                  {project_data.custom_execution_mode || "Kanban"}
-                </Tag>
-              }
-            >
-              <Select
-                variant="borderless"
-                placeholder="Execution Mode"
-                style={{
-                  size: "large",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-                value={pendingMode || project_data.custom_execution_mode || "Kanban"}
-                onChange={(value) => {
-                  setPendingMode(value)
-                  change_mode_mutation
-                    .call({
-                      mode: value,
-                      project: project,
-                    })
-                    .then((response) => {
-                      if (response?.message?.success) {
-                        window.location.reload()
-                        message.success("Project mode updated successfully")
-                      } else {
-                        setPendingMode(null)
-                        message.error(response?.message?.message)
-                      }
-                    });
-                }}
-                options={[
-                  { label: "Scrum", value: "Scrum" },
-                  { label: "Kanban", value: "Kanban" },
-                ]}
-              />
-            </RequireRole>
-          )}
         </div>
+
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-          {/* Tabs */}
-
-          <div className="flex items-center border-b border-slate-100 dark:border-slate-700 overflow-x-auto">
-            <div className="flex space-x-4 md:space-x-6 min-w-max">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    const oldSearchParams = new URLSearchParams(
-                      searchParams.toString(),
-                    );
-                    navigate(`/tasks/${tab.id}`);
-                    setSearchParams(oldSearchParams);
-                  }}
-                  className={`cursor-pointer pb-2 text-sm font-semibold transition-all relative whitespace-nowrap ${
-                    view === tab.id
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                  }`}
-                >
-                  {tab.label}
-                  {view === tab.id && (
-                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 animate-in slide-in-from-left-2" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            <Button
-                  onClick={() => {
-                    createMutation
-                      .createDoc("Project Phase", {
-                        project: project,
-                      })
-                      .then((response) => {
-                        console.log("Create Phase response:", response);
-                        qp.set("custom_phase", response?.name);
-                        mutate(["backlog_with_phases", project]);
-                      });
-                  }}
-                >
-                  Create Phase
-                </Button>
-
-            {project_data.custom_execution_mode === "Scrum" && (
-              <>
-                <Button
-                  onClick={() => {
-                    createMutation
-                      .createDoc("Cycle", {
-                        project: project,
-                        phase : custom_phase
-                      })
-                      .then(() => {
-                        mutate(["backlog_with_phases", project]);
-                      });
-                  }}
-                >
-                  Create Cycle
-                </Button>
-                
-                <Select
-                  placeholder="Create Cycle From Template"
-                  style={{ width: 200 }}
-                  onChange={(value) => {
-                    create_cycles_for_project_mutatation.call({
-                      cycle_template_name: value,
-                      project_id: project,
-                    });
-                  }}
-                  options={cycles_template_options_query?.data || []}
-                />
-
-                {active_cycle_name && (
-                  <Button
-                    type="dashed"
-                    onClick={() => {
-                      searchParams.set("complete_cycle", active_cycle_name);
-                      setSearchParams(searchParams);
-                    }}
-                  >
-                    Complete Cycle
-                  </Button>
-                )}
-              </>
-            )}
-         
-            <TaskFilters/>
-
-            <Dropdown
-              trigger={"click"}
-              menu={{
-                items: [
-                  {
-                    key: "open_in_desk",
-                    label: "Open in Desk",
-                    icon: <ExternalLink size={14} />,
-                    onClick: () => {
-                      window.open(`/app/project/${project}`, "_blank");
-                    },
-                  },
-                  {
-                    key: "manage_people",
-                    label: "Manage People",
-                    icon : <User size={14} />,
-                    onClick: () => {
-                      qp.set("manage_project_people", "1");
-                    },
-                  },
-                  {
-                    key: "edit_project",
-                    label: "Edit Project",
-                    icon : <Edit size={14} />,
-                    onClick: () => {
-                      qp.set("project_modal", project);
-                    },
-                  },
-                ],
-              }}
-            >
-              <Button icon={<Menu size={16} />}></Button>
-            </Dropdown>
-            <Button
-              onClick={() => {
-                // Invalidate tasks query to refetch data
-              }}
-              icon={<RefreshCcw size={16} />}
-            ></Button>
-
-            <Button
-              type="primary"
-              onClick={() => {
-                searchParams.set("doctype", "Task");
-                searchParams.set("mode", "create" || "");
-                setSearchParams(searchParams);
-              }}
-            >
-              <Plus size={16} className="md:w-5 md:h-5" />
-              <span className="text-sm md:text-base">Create Task</span>
-            </Button>
-          </div>
+          <ProjectViewTabs tabs={tabs} view={view} />
+          <ProjectActionBar />
         </div>
-        {/* 
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="hidden md:block" style={{ width: 200 }} />
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
-            <div className="flex -space-x-2">
-            </div>
-
-            <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium">
-              <button className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors whitespace-nowrap">
-                Only my issues
-              </button>
-              <button className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors whitespace-nowrap">
-                Recently updated
-              </button>
-            </div>
-          </div>
-        </div> */}
-
-        {/* Advanced Filters Panel */}
-        {/* {showFilters && (
-          <div
-            ref={filtersRef}
-            className="flex flex-wrap items-center gap-3 md:gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3"
-          >
-            <Input
-              placeholder="Search by task name"
-              style={{ minWidth: 220, maxWidth: 260 }}
-              value={qp.get("search") || ""}
-              onChange={(e) => qp.set("search", e.target.value)}
-            />
-            <Select
-              mode="multiple"
-              allowClear
-              placeholder="Filter by status"
-              style={{ minWidth: 220 }}
-              value={statusFilter}
-              options={Object.keys(TASK_STATUS_COLORS)
-                .filter((status) => status !== "Backlog")
-                .map((status) => ({
-                  label: status,
-                  value: status,
-                }))}
-              getPopupContainer={() => filtersRef.current || document.body}
-              onChange={(values) => qp.setArray("status", values)}
-            />
-            <Select
-              mode="multiple"
-              allowClear
-              placeholder="Filter by priority"
-              style={{ minWidth: 220 }}
-              value={priorityFilter}
-              options={Object.keys(TASK_PRIORITY_COLORS).map((priority) => ({
-                label: priority,
-                value: priority,
-              }))}
-              getPopupContainer={() => filtersRef.current || document.body}
-              onChange={(values) => qp.setArray("priority", values)}
-            />
-            <Button
-              type="link"
-              onClick={() => {
-                const params = new URLSearchParams(searchParams);
-                params.delete("status");
-                params.delete("priority");
-                params.delete("search");
-                setSearchParams(params, { replace: true });
-              }}
-              className="px-0 text-xs md:text-sm"
-            >
-              Clear filters
-            </Button>
-          </div>
-        )} */}
-
-          {/* View Content */}
         <div className="overflow-x-auto">
           {view === "list" && <TableView />}
           {view === "kanban" && <KanbanView />}
           {view === "backlog" && <BacklogView />}
-          {/* {view === "tree" && <TreeView />} */}
           {view === "resources" && <ProjectResourcesTab projectId={project} />}
           {view === "insights" && canViewInsights && <InsightsView />}
           {view === "dashboard" && canViewManagerDashboard && <ProjectDetail />}
@@ -439,8 +125,6 @@ const TasksContent = ({ project }) => {
       <CycleModal />
       <ManageProjectPeople />
       <TaskDetail />
-
-      {/* <ProjectHealth project_id={project} collapsible={true} /> */}
     </>
   );
 };
