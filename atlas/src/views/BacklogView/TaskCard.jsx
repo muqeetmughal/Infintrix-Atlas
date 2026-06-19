@@ -5,7 +5,11 @@ import { useSearchParams } from "react-router-dom";
 import WorkItemTypeWidget from "../../components/widgets/WorkItemTypeWidget";
 import StatusWidget from "../../components/widgets/StatusWidget";
 
-const TaskCard = ({ task, isOverlay = false, selectedTasks, toggleTaskSelection }) => {
+import useBacklogStore from "../../store/useBacklogStore";
+
+const TaskCard = ({ task, isOverlay = false }) => {
+  const selectedTasks = useBacklogStore((s) => s.selectedTasks);
+  const toggleTaskSelection = useBacklogStore((s) => s.toggleTaskSelection);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,

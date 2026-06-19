@@ -240,6 +240,23 @@ bench --site yoursite install-app infintrix_atlas
 - Creates default `Project Phase` records for projects with tasks but missing phase assignment
 - Post-migrate logic also loads fixtures and keeps legacy data aligned
 
+## Frontend State Management
+
+All shared frontend state lives in Zustand stores under `atlas/src/store/`.
+
+| Store | Purpose | Key State |
+|---|---|---|
+| `useUiStore.js` | UI-level preferences and transient UX state | Theme, sidebar visibility, etc. |
+| `useBacklogStore.js` | Backlog view state (multi-select, inline creator, cycle edit modal) | `selectedTasks`, `isBacklogExpanded`, `showBacklogCreator`, `cycleModal` |
+| `usePhaseArchitect.js` | AI Architect panel per phase | `phase` (open), `open(phase)`, `close()` |
+
+### Conventions
+
+- Components read state via selectors: `useBacklogStore((s) => s.selectedTasks)`
+- Mutations are functions on the store (no separate actions file)
+- API-calling hooks (`useFrappePostCall`, `useFrappeGetCall`) stay in components — stores hold only UI state
+- Props passed across >1 component level in the tree should be moved to a store
+
 ## Important Code Files
 
 | File | Purpose |

@@ -5,6 +5,7 @@ import DroppableZone from "./DroppableZone";
 import { DatePicker, Input, InputNumber, Modal, Select, message } from "antd";
 import { useFrappeUpdateDoc } from "frappe-react-sdk";
 import dayjs from "dayjs";
+import usePhaseArchitect from "../../store/usePhaseArchitect";
 
 
 const STATUS_CONFIG = {
@@ -152,7 +153,8 @@ const EditPhaseModal = ({ open, phase, onClose, onSaved }) => {
   );
 };
 
-const PhasesHeader = ({ phases, onPhaseTitleUpdate, onStatusChange, onOpenArchitect }) => {
+const PhasesHeader = ({ phases, onPhaseTitleUpdate, onStatusChange }) => {
+  const openPhaseArchitect = usePhaseArchitect((s) => s.open);
   const qp = useQueryParams();
   const selected_phase_qp = qp.get("custom_phase");
   const scrollContainerRef = useRef(null);
@@ -247,7 +249,7 @@ const PhasesHeader = ({ phases, onPhaseTitleUpdate, onStatusChange, onOpenArchit
                             <Settings size={10} />
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); onOpenArchitect?.(phase); }}
+                            onClick={(e) => { e.stopPropagation(); openPhaseArchitect(phase); }}
                             className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 rounded text-slate-400 hover:text-indigo-600"
                             title="AI Architect for this phase"
                           >

@@ -34,6 +34,8 @@ import { useQueryParams } from "../../hooks/useQueryParams";
 import { useProjectDetailsQuery } from "../../hooks/query";
 import PhasesHeader from "./PhasesHeader";
 import PhaseCopilot from "./PhaseCopilot";
+import usePhaseArchitect from "../../store/usePhaseArchitect";
+import useBacklogStore from "../../store/useBacklogStore";
 import DroppableZone from "./DroppableZone";
 import Badge from "./Badge";
 import TaskCard from "./TaskCard";
@@ -56,12 +58,9 @@ const BacklogView = () => {
   const qp = useQueryParams();
   const custom_phase = qp.get("custom_phase") || null;
   // const [selectedPhase, setSelectedPhase] = useState(null);
-  const [showBacklogCreator, setShowBacklogCreator] = useState(false);
-  const [cycleModal, setCycleModal] = useState(null);
-  // edit button logic
-const [isEditingPhase, setIsEditingPhase] = useState(false);
-const [phaseTitle, setPhaseTitle] = useState("");
-const phaseInputRef = useRef(null);
+  const phaseInputRef = useRef(null);
+  const [isEditingPhase, setIsEditingPhase] = useState(false);
+  const [phaseTitle, setPhaseTitle] = useState("");
 
   const { mutate } = useSWRConfig();
   const project_id = qp.get("project") || null;
@@ -81,25 +80,16 @@ const phaseInputRef = useRef(null);
     "infintrix_atlas.api.v1.bulk_delete_tasks",
   );
   const [activeId, setActiveId] = useState(null);
-  const [selectedTasks, setSelectedTasks] = useState(new Set());
-  const [isBacklogExpanded, setIsBacklogExpanded] = useState(true);
-  const [phaseCopilotPhase, setPhaseCopilotPhase] = useState(null);
+  const phaseArchitectPhase = usePhaseArchitect((s) => s.phase);
+  const openPhaseArchitect = usePhaseArchitect((s) => s.open);
+  const closePhaseArchitect = usePhaseArchitect((s) => s.close);
 
-  const toggleTaskSelection = useCallback((taskId, ctrlKey) => {
-    if (!ctrlKey) {
-      setSelectedTasks(new Set());
-      return;
-    }
-    setSelectedTasks(prev => {
-      const next = new Set(prev);
-      if (next.has(taskId)) {
-        next.delete(taskId);
-      } else {
-        next.add(taskId);
-      }
-      return next;
-    });
-  }, []);
+  const selectedTasks = useBacklogStore((s) => s.selectedTasks);
+  const isBacklogExpanded = useBacklogStore((s) => s.isBacklogExpanded);
+  const showBacklogCreator = useBacklogStore((s) => s.showBacklogCreator);
+  const clearTaskSelection = useBacklogStore((s) => s.clearTaskSelection);
+  const toggleBacklogExpanded = useBacklogStore((s) => s.toggleBacklogExpanded);
+  const setShowBacklogCreator = useBacklogStore((s) => s.setShowBacklogCreator);
   const project_query = useProjectDetailsQuery(project_id);
 
   const cycles_query3 = useFrappeGetCall(
@@ -142,7 +132,7 @@ const phaseInputRef = useRef(null);
     if (custom_phase && custom_phase !== prevCustomPhase.current && phases.length) {
       const phase = phases.find(p => p.name === custom_phase);
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (phase) setPhaseCopilotPhase(phase);
+      if (phase) openPhaseArchitect(phase);
     }
     prevCustomPhase.current = custom_phase;
   }, [custom_phase, phases]);
@@ -163,7 +153,7 @@ const phaseInputRef = useRef(null);
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
     if (!selectedTasks.has(event.active.id)) {
-      setSelectedTasks(new Set());
+      clearTaskSelection();
     }
   };
 
@@ -182,7 +172,7 @@ const phaseInputRef = useRef(null);
       handleMoveTask(taskIds, over.id, type);
     }
     setActiveId(null);
-    setSelectedTasks(new Set());
+    clearTaskSelection();
   };
 
   const handleMoveTask = useCallback(
@@ -307,7 +297,7 @@ const handlePhaseUpdate = async () => {
             } else {
               message.success(result.message || "Tasks deleted successfully");
             }
-            setSelectedTasks(new Set());
+            clearTaskSelection();
             await Promise.all([cycles_query3.mutate(), project_query.mutate()]);
           } else {
             message.error(result.message || "Failed to delete tasks");
@@ -341,19 +331,18 @@ const handlePhaseUpdate = async () => {
             await updateMutation.updateDoc("Project Phase", phaseName, { status })
             await cycles_query3.mutate()
           }}
-          onOpenArchitect={setPhaseCopilotPhase}
         />
 
         {phases.length !== 0 && selectedPhase && (
           <div className="flex flex-col lg:flex-row gap-6 p-4 sm:p-6 h-full">
             {/* Left Panel - AI Architect */}
-            {phaseCopilotPhase && (
+            {phaseArchitectPhase && (
               <div className="w-full lg:w-[480px] xl:w-[560px] shrink-0">
                 <div className="phase-ai-architect">
                   <PhaseCopilot
-                    phase={phaseCopilotPhase}
+                    phase={phaseArchitectPhase}
                     project={project_id}
-                    onClose={() => setPhaseCopilotPhase(null)}
+                    onClose={closePhaseArchitect}
                   />
                 </div>
               </div>
@@ -375,7 +364,7 @@ const handlePhaseUpdate = async () => {
                   <div className="flex items-center gap-2">
                     <Button
                       size="small"
-                      onClick={() => setSelectedTasks(new Set())}
+                      onClick={() => clearTaskSelection()}
                     >
                       Clear
                     </Button>
@@ -397,7 +386,7 @@ const handlePhaseUpdate = async () => {
                 {isScrum && (
                   <div className="space-y-3">
                     {cycles.map((cycle) => (
-                      <Cycle key={cycle.name} cycle={cycle} deleteMutation={deleteMutation} cycles_query3={cycles_query3} setCycleModal={setCycleModal} selectedTasks={selectedTasks} toggleTaskSelection={toggleTaskSelection} />
+                      <Cycle key={cycle.name} cycle={cycle} deleteMutation={deleteMutation} cycles_query3={cycles_query3} />
                     ))}
                   </div>
                 )}
@@ -412,7 +401,7 @@ const handlePhaseUpdate = async () => {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3 flex-1">
                       <ChevronRight
-                        onClick={() => setIsBacklogExpanded(!isBacklogExpanded)}
+                        onClick={toggleBacklogExpanded}
                         size={18}
                         className={`text-slate-400 dark:text-slate-500 transition-transform cursor-pointer ${
                           isBacklogExpanded ? "rotate-90" : ""
@@ -441,11 +430,7 @@ const handlePhaseUpdate = async () => {
                         <InlineTaskCreator
                           project_id={project_id}
                           phase_id={custom_phase}
-                          onCreated={() => {
-                            setShowBacklogCreator(false);
-                            cycles_query3.mutate();
-                          }}
-                          onCancel={() => setShowBacklogCreator(false)}
+                          onCreated={() => cycles_query3.mutate()}
                         />
                       ) : (
                         <button
@@ -460,7 +445,7 @@ const handlePhaseUpdate = async () => {
                       )}
 
                       {backlogTasks.map((t) => (
-                        <TaskCard key={t.id} task={t} selectedTasks={selectedTasks} toggleTaskSelection={toggleTaskSelection} />
+                        <TaskCard key={t.id} task={t} />
                       ))}
                     </div>
                   )}
