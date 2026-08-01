@@ -7,7 +7,6 @@
  "engine": "InnoDB",
  "field_order": [
   "project",
-  "phase",
   "cycle_name",
   "project_name",
   "duration",
@@ -67,21 +66,12 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Cycle Name "
-  },
-  {
-   "fieldname": "phase",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Phase",
-   "link_filters": "[[\"Project Phase\",\"project\",\"=\",\"eval:doc.project\"]]",
-   "options": "Project Phase",
-   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-11 02:21:45.899084",
+ "modified": "2026-07-31 20:12:35.089355",
  "modified_by": "Administrator",
  "module": "Infintrix Atlas",
  "name": "Cycle",
