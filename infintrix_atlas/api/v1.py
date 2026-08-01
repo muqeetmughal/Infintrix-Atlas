@@ -940,23 +940,8 @@ def get_customer_portal_data(project=None):
     task_rows = frappe.get_all(
         "Task",
         filters={"project": project},
-        fields=["name", "subject", "status", "custom_phase", "exp_end_date"],
+        fields=["name", "subject", "status", "exp_end_date"],
         order_by="modified desc",
-    )
-
-    phase_rows = frappe.get_all(
-        "Project Phase",
-        filters={"project": project},
-        fields=[
-            "name",
-            "title",
-            "sequence",
-            "status",
-            "start_date",
-            "end_date",
-            "completion_percentage",
-        ],
-        order_by="sequence asc, creation asc",
     )
 
     action_rows = frappe.get_all(
@@ -969,7 +954,6 @@ def get_customer_portal_data(project=None):
             "action_type",
             "status",
             "due_date",
-            "phase",
             "modified",
         ],
         order_by="due_date asc, modified desc",
@@ -997,12 +981,8 @@ def get_customer_portal_data(project=None):
         "pending": 0,
         "overdue": 0,
     }
-    tasks_by_phase = {}
 
     for task in task_rows:
-        phase_name = task.custom_phase or "__unassigned__"
-        tasks_by_phase.setdefault(phase_name, []).append(task)
-
         if task.status == "Completed":
             task_counts["completed"] += 1
         elif task.status in ("Working", "Pending Review"):
@@ -1014,78 +994,25 @@ def get_customer_portal_data(project=None):
             task_counts["overdue"] += 1
 
     total_tasks = len(task_rows)
+    fallback_completion = int(round(project_doc.percent_complete or 0))
+    fallback_completed_tasks = task_counts["completed"]
 
-    def get_phase_completion(phase_doc_tasks, saved_completion):
-        if saved_completion is not None:
-            return int(round(float(saved_completion or 0)))
-        if not phase_doc_tasks:
-            return 0
-        completed = sum(1 for task in phase_doc_tasks if task.status == "Completed")
-        return int(round((completed / len(phase_doc_tasks)) * 100))
-
-    phases = []
-    active_phase = None
-    next_milestone_date = None
-
-    for phase_row in phase_rows:
-        phase_tasks = tasks_by_phase.get(phase_row.name, [])
-        completed_tasks = sum(1 for task in phase_tasks if task.status == "Completed")
-        open_tasks = len(phase_tasks) - completed_tasks
-        completion = get_phase_completion(phase_tasks, phase_row.completion_percentage)
-        deliverables = [task.subject for task in phase_tasks[:4] if task.subject]
-
-        phase_item = {
-            "id": phase_row.name,
-            "title": phase_row.title or phase_row.name,
-            "start_date": phase_row.start_date,
-            "end_date": phase_row.end_date,
-            "status": phase_row.status,
-            "completion": completion,
-            "tasks_count": len(phase_tasks),
-            "completed_tasks": completed_tasks,
-            "open_tasks": open_tasks,
-            "deliverables": deliverables,
+    phases = [
+        {
+            "id": f"{project}-delivery",
+            "title": "Delivery",
+            "start_date": project_doc.expected_start_date or project_doc.actual_start_date,
+            "end_date": project_doc.expected_end_date or project_doc.actual_end_date,
+            "status": "Completed" if project_doc.status == "Completed" else "Active",
+            "completion": fallback_completion,
+            "tasks_count": total_tasks,
+            "completed_tasks": fallback_completed_tasks,
+            "open_tasks": max(total_tasks - fallback_completed_tasks, 0),
+            "deliverables": [task.subject for task in task_rows[:4] if task.subject],
         }
-        phases.append(phase_item)
-
-        if not active_phase and phase_row.status == "Active":
-            active_phase = phase_item
-
-        if (
-            not next_milestone_date
-            and phase_row.end_date
-            and phase_row.status in ("Active", "Planned")
-            and getdate(phase_row.end_date) >= getdate(nowdate())
-        ):
-            next_milestone_date = phase_row.end_date
-
-    if not phase_rows:
-        fallback_completion = int(round(project_doc.percent_complete or 0))
-        fallback_completed_tasks = task_counts["completed"]
-        phases = [
-            {
-                "id": f"{project}-delivery",
-                "title": "Delivery",
-                "start_date": project_doc.expected_start_date or project_doc.actual_start_date,
-                "end_date": project_doc.expected_end_date or project_doc.actual_end_date,
-                "status": "Completed" if project_doc.status == "Completed" else "Active",
-                "completion": fallback_completion,
-                "tasks_count": total_tasks,
-                "completed_tasks": fallback_completed_tasks,
-                "open_tasks": max(total_tasks - fallback_completed_tasks, 0),
-                "deliverables": [task.subject for task in task_rows[:4] if task.subject],
-            }
-        ]
-        active_phase = phases[0]
-
-    if not active_phase and phases:
-        active_phase = next(
-            (phase for phase in phases if phase["status"] == "Planned"),
-            phases[-1],
-        )
-
-    if not next_milestone_date:
-        next_milestone_date = project_doc.expected_end_date
+    ]
+    active_phase = phases[0]
+    next_milestone_date = project_doc.expected_end_date
 
     if project_doc.status == "Completed":
         overall_status = "Completed"
@@ -1116,7 +1043,7 @@ def get_customer_portal_data(project=None):
                 "due_date": action.due_date,
                 "status": action.status,
                 "priority": "High" if action.due_date and getdate(action.due_date) <= getdate(nowdate()) else "Medium",
-                "phase": frappe.db.get_value("Project Phase", action.phase, "title") if action.phase else None,
+
             }
         )
 
@@ -1245,17 +1172,6 @@ def list_project_requirements(project):
 
 
 @frappe.whitelist()
-def list_project_phases(project):
-    _ensure_project_access(project, allow_customer_portal=True)
-    return frappe.get_all(
-        "Project Phase",
-        filters={"project": project},
-        fields=["name", "title", "status", "sequence"],
-        order_by="sequence asc",
-    )
-
-
-@frappe.whitelist()
 def update_requirement_status(requirement, status):
     doc = frappe.get_doc("Requirement", requirement)
     _ensure_project_access(doc.project, require_write=True)
@@ -1271,17 +1187,12 @@ def update_requirement_status(requirement, status):
 
 
 @frappe.whitelist()
-def create_task_from_requirement(requirement, subject=None, type=None, priority="Medium", phase=None):
+def create_task_from_requirement(requirement, subject=None, type=None, priority="Medium"):
     req = frappe.get_doc("Requirement", requirement)
     _ensure_project_access(req.project, require_write=True)
 
     if not subject:
         subject = req.title
-
-    if not phase:
-        phase = frappe.db.get_value("Project Phase", {"project": req.project, "status": "Active"}, "name")
-    if not phase:
-        phase = frappe.db.get_value("Project Phase", {"project": req.project, "status": "Planned"}, "name", order_by="sequence asc")
 
     task = frappe.get_doc(
         {
@@ -1292,7 +1203,6 @@ def create_task_from_requirement(requirement, subject=None, type=None, priority=
             "priority": priority,
             "description": req.description or "",
             "custom_requirement": req.name,
-            "custom_phase": phase,
             "status": "Open",
         }
     )
@@ -1488,19 +1398,11 @@ def create_action_request(
     title,
     description,
     action_type="Approval",
-    phase=None,
     due_date=None,
     related_task=None,
     is_portal_visible=1,
 ):
     _ensure_project_access(project, require_write=True)
-
-    if not phase:
-        active = frappe.db.get_value("Project Phase", {"project": project, "status": "Active"}, "name")
-        if active:
-            phase = active
-        else:
-            phase = frappe.db.get_value("Project Phase", {"project": project, "status": "Planned"}, "name", order_by="sequence asc")
 
     doc = frappe.get_doc(
         {
@@ -1509,7 +1411,6 @@ def create_action_request(
             "title": title,
             "description": description,
             "action_type": action_type,
-            "phase": phase,
             "due_date": due_date,
             "related_task": related_task,
             "is_portal_visible": cint(is_portal_visible),
@@ -1522,7 +1423,7 @@ def create_action_request(
 
 
 @frappe.whitelist()
-def create_project_resource(project, phase, title=None, file_url=None, link=None, visibility="Internal", content=None):
+def create_project_resource(project, title=None, file_url=None, link=None, visibility="Internal", content=None):
     _ensure_project_access(project, require_write=True)
 
     if file_url and link:
@@ -1560,7 +1461,6 @@ def create_project_resource(project, phase, title=None, file_url=None, link=None
         {
             "doctype": "Project Resource",
             "project": project,
-            "phase": phase,
             "title": title,
             "type": resource_type,
             "content": content,
@@ -1696,11 +1596,6 @@ def list_project_resources(project, include_internal=False):
         order_by="modified desc",
     )
 
-    for row in rows:
-        row["phase_title"] = (
-            frappe.db.get_value("Project Phase", row.phase, "title") if row.phase else None
-        )
-
     return rows
 
 
@@ -1734,11 +1629,6 @@ def list_project_action_requests(project, include_completed=True):
         ],
         order_by="due_date asc, modified desc",
     )
-
-    for row in rows:
-        row["phase_title"] = (
-            frappe.db.get_value("Project Phase", row.phase, "title") if row.phase else None
-        )
 
     return rows
 
@@ -1898,8 +1788,6 @@ def list_tasks(project, group_by=None, filters=None, limit=None, offset=0):
     ProjectUser = DocType("Project User")
     PortalUser = DocType("Portal User")
 
-    ProjectPhase = DocType("Project Phase")
-
     query = (
         frappe.qb.from_(Task)
         .select(
@@ -1913,14 +1801,11 @@ def list_tasks(project, group_by=None, filters=None, limit=None, offset=0):
             Task.modified,
             Task.project,
             Project.project_name,
-            Task.custom_phase,
-            ProjectPhase.title.as_("phase_name"),
             Task.custom_reopen_count,
             Task.custom_review_cycles,
             Task.custom_last_reopened_on,
             fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
         ).inner_join(Project).on(Project.name == Task.project)
-        .left_join(ProjectPhase).on(ProjectPhase.name == Task.custom_phase)
         .left_join(ToDo).on(
             (ToDo.reference_name == Task.name)
             & (ToDo.reference_type == "Task")
@@ -1983,8 +1868,6 @@ def list_tasks(project, group_by=None, filters=None, limit=None, offset=0):
             query = query.where(Task.priority == value)
         elif key == "type":
             query = query.where(Task.type == value)
-        elif key == "custom_phase":
-            query = query.where(Task.custom_phase == value)
         elif key == "custom_cycle":
 
             query = query.where(Task.custom_cycle == value)
@@ -2052,141 +1935,6 @@ def list_subtasks(parent_task):
     )
 
     return subtasks
-
-
-@frappe.whitelist()
-def backlog_with_phases(project=None):
-    if not project:
-        return {"error": "Project parameter is required"}
-    isScrum = frappe.db.get_value(
-        "Project", project, "custom_execution_mode") == "Scrum"
-    filters = {"project": project}
-    Task = DocType("Task")
-    ToDo = DocType("ToDo")
-    active_phase = frappe.db.get_value(
-        "Project Phase",
-        {"project": project, "status": "Active"},
-        ["name", "title", "start_date", "end_date", "status"],
-        as_dict=True,
-    )
-    phases = frappe.qb.from_(DocType("Project Phase")).select(
-        DocType("Project Phase").name,
-        DocType("Project Phase").title,
-        DocType("Project Phase").start_date,
-        DocType("Project Phase").end_date,
-        DocType("Project Phase").status,
-        DocType("Project Phase").sequence,
-    ).where(DocType("Project Phase").project == project).orderby(DocType("Project Phase").sequence, order=frappe.qb.asc).run(as_dict=True)
-
-    # Calculate phase_progress for each phase
-    for phase in phases:
-        total_tasks = frappe.db.count(
-            "Task",
-            filters={"custom_phase": phase["name"], "project": project}
-        )
-        completed_tasks = frappe.db.count(
-            "Task",
-            filters={"custom_phase": phase["name"],
-                     "project": project, "status": "Completed"}
-        )
-        phase["phase_progress"] = round(
-            (completed_tasks / total_tasks * 100)) if total_tasks > 0 else 0
-
-    all_tasks = frappe.qb.from_(Task).select(
-        Task.name.as_("id"),
-        Task.name,
-        Task.subject,
-        Task.status,
-        Task.type,
-        Task.custom_cycle.as_("cycle"),
-        Task.priority,
-        Task.modified,
-        Task.project,
-        Task.custom_phase,
-        fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
-    ).left_join(ToDo).on(
-        (ToDo.reference_name == Task.name)
-        & (ToDo.reference_type == "Task")
-        & (ToDo.status == "Open")
-    ).where(Task.project == project).groupby(Task.name).orderby(Task.modified, order=frappe.qb
-                                                                .desc).run(as_dict=True)
-
-    tasks_by_phases = {}
-    cycles_by_phase = {}
-    for phase in phases:
-        phase_tasks = frappe.qb.from_(Task).select(
-            Task.name.as_("id"),
-            Task.name,
-            Task.subject,
-            Task.status,
-            Task.type,
-            Task.custom_cycle.as_("cycle"),
-            Task.priority,
-            Task.modified,
-            Task.project,
-            Task.custom_phase,
-            fn.GroupConcat(ToDo.allocated_to).as_("assignee"),
-        ).left_join(ToDo).on(
-            (ToDo.reference_name == Task.name)
-            & (ToDo.reference_type == "Task")
-            & (ToDo.status == "Open")
-        ).where(
-            (Task.project == project) &
-            (Task.custom_phase == phase["name"])
-        ).groupby(Task.name).orderby(Task.modified, order=frappe.qb.desc).run(as_dict=True)
-        phase_cycles = frappe.qb.from_(DocType("Cycle")).select(
-            DocType("Cycle").name,
-            DocType("Cycle").cycle_name,
-            DocType("Cycle").start_date,
-            DocType("Cycle").end_date,
-            DocType("Cycle").status,
-        ).where(
-            (DocType("Cycle").project == project) &
-            (DocType("Cycle").phase == phase["name"])
-        ).orderby(DocType("Cycle").start_date, order=frappe.qb.asc).run(as_dict=True)
-        cycles_by_phase[phase["name"]] = phase_cycles
-        tasks_by_phases[phase["name"]] = {
-            "phase": phase,
-            "tasks": phase_tasks
-        }
-
-    cycles = frappe.qb.from_(DocType("Cycle")).select(
-        DocType("Cycle").name,
-        DocType("Cycle").cycle_name,
-        DocType("Cycle").start_date,
-        DocType("Cycle").end_date,
-        DocType("Cycle").status,
-    ).where(DocType("Cycle").project == project).orderby(DocType("Cycle").start_date, order=frappe.qb.asc).run(as_dict=True)
-    active_cycle = next((c for c in cycles if c["status"] == "Active"), None)
-
-    cycles_by_tasks = {}
-    for task in all_tasks:
-        cycle = task.get("cycle")
-        if cycle:
-            if cycle not in cycles_by_tasks:
-                cycles_by_tasks[cycle] = []
-            cycles_by_tasks[cycle].append(task)
-    for phase_name, phase_cycles in cycles_by_phase.items():
-        for cycle in phase_cycles:
-            cycle["tasks"] = cycles_by_tasks.get(cycle["name"], [])
-    return {
-        "is_scrum": isScrum,
-        "active_phase": active_phase,
-        "phases": phases,
-        "tasks_by_phases": tasks_by_phases,
-        "cycles_by_phase": cycles_by_phase,
-        "all_tasks": all_tasks,
-        "cycles": cycles,
-        "active_cycle_name": active_cycle["cycle_name"] if active_cycle else None,
-        "cycles_by_tasks": cycles_by_tasks,
-        "backlog_by_phase": {
-            phase["name"]: [t for t in tasks_by_phases[phase["name"]]
-                            ["tasks"] if (not t["cycle"] if isScrum else True) and t["status"] == "Open"]
-            for phase in phases
-        }
-
-    }
-    # open_tasks =
 
 
 @frappe.whitelist()
@@ -2263,7 +2011,7 @@ def backlog(project=None):
     else:
         cycles = None
 
-    # Fetch open tasks (backlog) not assigned to any cycle
+    # Fetch backlog tasks not assigned to any cycle (all statuses)
     if isScrum:
         open_tasks = (
             frappe.qb.from_(Task)
@@ -2285,15 +2033,14 @@ def backlog(project=None):
             .where(
                 (Task.project == project)
                 & (Task.custom_cycle.isnull())
-                & (Task.status.isin(["Open"]))
             )
             .groupby(Task.name)
             .orderby(Task.modified, order=frappe.qb.desc)
-            # Only return parent tasks (exclude subtasks)
             .where((Task.parent_task.isnull()))
             .run(as_dict=True)
         )
     else:
+        # Kanban: show all tasks
         open_tasks = (
             frappe.qb.from_(Task)
             .select(
@@ -2313,11 +2060,9 @@ def backlog(project=None):
             )
             .where(
                 (Task.project == project)
-                & (Task.status == "Open")
             )
             .groupby(Task.name)
             .orderby(Task.modified, order=frappe.qb.desc)
-            # Only return parent tasks (exclude subtasks)
             .where(Task.parent_task.isnull())
             .run(as_dict=True)
         )
@@ -2815,20 +2560,6 @@ def _move_task(task_name, target_type, target_id):
         frappe.db.commit()
         return {"success": True, "message": f"Task '{task_doc.subject}' moved to backlog"}
 
-    elif target_type == "phase":
-        phase_name = target_id
-        phase_title = "None"
-        if phase_name:
-            phase_doc = frappe.get_doc("Project Phase", phase_name)
-            if phase_doc.project != project_doc.name:
-                return {"success": False, "message": f"Phase '{phase_doc.title}' does not belong to project '{project_doc.project_name}'"}
-            phase_title = phase_doc.title
-
-        task_doc.custom_phase = phase_name
-        task_doc.save()
-        frappe.db.commit()
-        return {"success": True, "message": f"Task '{task_doc.subject}' moved to phase '{phase_title}'"}
-
     return {"success": False, "message": "Unknown target type"}
 
 @frappe.whitelist()
@@ -2868,36 +2599,6 @@ def set_task_status(task_name, new_status):
     except Exception as e:
         frappe.log_error(
             f"Error setting task status: {e}", "Set Task Status Error")
-        return {"success": False, "message": str(e)}
-
-
-@frappe.whitelist()
-def create_phases_for_project(project_name, phase_template_name):
-    try:
-        project_doc = frappe.get_doc("Project", project_name)
-        if project_doc.custom_execution_mode != "Scrum":
-            return {"success": False, "message": f"Project '{project_doc.project_name}' is not in Scrum mode"}
-
-        template_doc = frappe.get_doc("Phase Template", phase_template_name)
-        if not template_doc:
-            return {"success": False, "message": f"Phase Template '{phase_template_name}' not found"}
-
-        for phase in template_doc.phases:
-            new_cycle = frappe.get_doc({
-                "doctype": "Cycle",
-                "cycle_name": phase.phase_name,
-                "project": project_name,
-                "start_date": phase.start_date,
-                "end_date": phase.end_date,
-                "status": "Planned"
-            })
-            new_cycle.insert()
-
-        frappe.db.commit()
-        return {"success": True, "message": f"Phases from template '{phase_template_name}' created for project '{project_doc.project_name}'"}
-    except Exception as e:
-        frappe.log_error(
-            f"Error creating phases from template: {e}", "Create Phases Error")
         return {"success": False, "message": str(e)}
 
 

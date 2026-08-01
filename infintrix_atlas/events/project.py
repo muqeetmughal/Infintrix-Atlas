@@ -3,19 +3,8 @@ from frappe import _
 from infintrix_atlas.role_utils import has_projects_manager_role
 
 
-def create_default_phase(doc):
-    phase = frappe.new_doc("Project Phase")
-    phase.project = doc.name
-    phase.title = "Execution"
-    phase.sequence = 1
-    phase.status = "Planned"
-    phase.insert()
-
-
 def after_insert(doc, method):
-    
-    print("Creating default phase for new project...")
-    create_default_phase(doc)
+    pass
 
 
 def validate(doc, method):

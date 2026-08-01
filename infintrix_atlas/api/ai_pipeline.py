@@ -478,7 +478,6 @@ def run_phase_pipeline(project, phase, prompt, resource_context=None, context_re
     Accepts optional existing session name to reuse.
     """
     project_doc = frappe.get_doc("Project", project)
-    phase_doc = frappe.get_doc("Project Phase", phase) if phase else None
 
     selected_resource_names = []
     if resource_context:
@@ -591,15 +590,14 @@ def run_phase_pipeline(project, phase, prompt, resource_context=None, context_re
     for d in drafts:
         validation = _validate_task(d)
 
-        # Check for duplicate in the same phase
+        # Check for duplicate
         duplicate = frappe.db.exists("Task", {
             "subject": d["subject"],
             "project": project,
-            "custom_phase": phase,
             "status": ["!=", "Cancelled"],
         })
         if duplicate:
-            validation["errors"].append("Duplicate: similar task already exists in this phase")
+            validation["errors"].append("Duplicate: similar task already exists in this project")
             validation["valid"] = False
 
         doc = frappe.get_doc({

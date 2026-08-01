@@ -90,13 +90,11 @@ def create_from_ai(project, tasks, phase=None):
         try:
             draft_id = t.get("id")
             subject = t["subject"]
-            target_phase = phase or t.get("phase")
 
-            # Dedup: skip if same subject + phase already exists
+            # Dedup: skip if same subject already exists
             duplicate = frappe.db.exists("Task", {
                 "subject": subject,
                 "project": project,
-                "custom_phase": target_phase,
                 "status": ["!=", "Cancelled"],
             })
             if duplicate:
@@ -126,7 +124,6 @@ def create_from_ai(project, tasks, phase=None):
                 "priority": t["priority"],
                 "status": "Open",
                 "custom_weight": t["weight"],
-                "custom_phase": target_phase,
                 "description": t.get("description", ""),
                 "custom_created_by_ai": 1,
                 "custom_ai_session": t.get("session"),

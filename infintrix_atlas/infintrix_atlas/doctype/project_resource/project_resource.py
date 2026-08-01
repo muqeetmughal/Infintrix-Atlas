@@ -17,11 +17,6 @@ class ProjectResource(Document):
             else:
                 self.title = self.file or self.link or "Untitled"
 
-        if self.phase:
-            phase_project = frappe.db.get_value("Project Phase", self.phase, "project")
-            if phase_project != self.project:
-                frappe.throw("Phase must belong to the same project.")
-
         if not self.link and not self.file:
             if self.type != "Plain Text":
                 frappe.throw("Either a link or a file is required for this resource type.")

@@ -214,14 +214,6 @@ def project_action_request_has_permission(doc, user):
     return _project_linked_has_permission(doc, user)
 
 
-def project_phase_permission_query(user):
-    return _project_linked_permission_query(user, "Project Phase")
-
-
-def project_phase_has_permission(doc, user):
-    return _project_linked_has_permission(doc, user)
-
-
 def cycle_permission_query(user):
     return _project_linked_permission_query(user, "Cycle")
 
