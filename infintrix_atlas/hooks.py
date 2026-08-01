@@ -55,7 +55,7 @@ required_apps = ["erpnext", "hrms"]
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Project": "public/js/project.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -270,11 +270,8 @@ override_doctype_dashboards = {
 
 
 fixtures = [
-    {"dt": "Custom Field", "filters": [["module", "in", ["Infintrix Atlas"]]]},
-    {"dt": "Property Setter", "filters": [
-        ["module", "in", ["Infintrix Atlas"]]]},
+ 
     {"dt": "Task Type"},
-    {"dt": "Phase Template"},
     {
         "dt": "Custom DocPerm",
         "filters": [
@@ -283,13 +280,11 @@ fixtures = [
                 "in",
                 [
                     "Task",
-                    "Phase Template",
                     "Cycle",
                     "Customer",
                     "Comment",
                     "Version",
                     "User",
-                    "Project Phase"
                 ],
             ]
         ],
@@ -310,7 +305,6 @@ permission_query_conditions = {
     "Change Request": "infintrix_atlas.permissions.change_request_permission_query",
     "Project Resource": "infintrix_atlas.permissions.project_resource_permission_query",
     "Project Action Request": "infintrix_atlas.permissions.project_action_request_permission_query",
-    "Project Phase": "infintrix_atlas.permissions.project_phase_permission_query",
     "Cycle": "infintrix_atlas.permissions.cycle_permission_query",
     "Fathom Meeting": "infintrix_atlas.permissions.fathom_meeting_permission_query_conditions",
     "Fathom Account": "infintrix_atlas.permissions.fathom_account_permission_query_conditions",
@@ -322,7 +316,6 @@ has_permission = {
     "Change Request": "infintrix_atlas.permissions.change_request_has_permission",
     "Project Resource": "infintrix_atlas.permissions.project_resource_has_permission",
     "Project Action Request": "infintrix_atlas.permissions.project_action_request_has_permission",
-    "Project Phase": "infintrix_atlas.permissions.project_phase_has_permission",
     "Cycle": "infintrix_atlas.permissions.cycle_has_permission",
     "Fathom Meeting": "infintrix_atlas.permissions.fathom_meeting_has_permission",
     "Fathom Account": "infintrix_atlas.permissions.fathom_account_has_permission",
