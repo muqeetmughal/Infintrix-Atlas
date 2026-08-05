@@ -4,23 +4,23 @@ app_publisher = "Muqeet Mughal"
 app_description = "A Project Management Software Built Specifically for the Software Development Teams"
 app_email = "muqeetmughal786@gmail.com"
 app_license = "mit"
-app_icon_url = "/assets/infintrix_atlas/atlas/images/logo.svg"
-app_icon_title = "Atlas"
-app_icon_route = "/atlas"
-add_to_apps_screen = [
-    {
-        "name": "atlas",
-        "logo": "/assets/infintrix_atlas/atlas/images/logo.svg",
-        "title": "Atlas",
-        "route": "/atlas",
-        "has_permission": "infintrix_atlas.api.check_app_permission",
-    }
-]
+# app_icon_url = "/assets/infintrix_atlas/atlas/images/logo.svg"
+# app_icon_title = "Atlas"
+# app_icon_route = "/atlas"
+# add_to_apps_screen = [
+#     {
+#         "name": "atlas",
+#         "logo": "/assets/infintrix_atlas/atlas/images/logo.svg",
+#         "title": "Atlas",
+#         "route": "/desk/atlas",
+#         "has_permission": "infintrix_atlas.api.check_app_permission",
+#     }
+# ]
 
 # Apps
 # ------------------
 
-required_apps = ["erpnext", "hrms"]
+required_apps = ["hrms"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -38,7 +38,7 @@ required_apps = ["erpnext", "hrms"]
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/infintrix_atlas/css/infintrix_atlas.css"
-# app_include_js = "/assets/infintrix_atlas/js/infintrix_atlas.js"
+app_include_js = ["/assets/infintrix_atlas/js/atlas_backlog.js", "/assets/infintrix_atlas/js/user_avatar_in_link.js"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/infintrix_atlas/css/infintrix_atlas.css"
@@ -55,7 +55,7 @@ required_apps = ["erpnext", "hrms"]
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {"Project": "public/js/project.js"}
+doctype_js = {"Project": "public/js/project.js", "Task": "public/js/task.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -157,6 +157,9 @@ doc_events = {
         "after_insert": "infintrix_atlas.events.project.after_insert",
         "before_insert": "infintrix_atlas.events.project.before_insert",
         "validate": "infintrix_atlas.events.project.validate",
+    },
+    "ToDo": {
+        "after_insert": "infintrix_atlas.events.todo.enforce_single_assignee",
     },
 }
 
@@ -272,6 +275,7 @@ override_doctype_dashboards = {
 fixtures = [
  
     {"dt": "Task Type"},
+    {"dt": "Client Script"},
     {
         "dt": "Custom DocPerm",
         "filters": [
