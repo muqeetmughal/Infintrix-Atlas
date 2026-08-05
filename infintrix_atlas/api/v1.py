@@ -2154,11 +2154,19 @@ def add_watcher(doctype, docname, user):
             return {"success": False, "message": f"User {user} is already a watcher"}
 
         # Add watcher directly to child table
+        parentfield = None
+        for df in frappe.get_meta(doctype).get_table_fields():
+            if df.options == "Watcher":
+                parentfield = df.fieldname
+                break
+        if not parentfield:
+            return {"success": False, "message": f"No Watcher child table found on {doctype}"}
+
         frappe.get_doc({
             "doctype": "Watcher",
             "parent": docname,
             "parenttype": doctype,
-            # "parentfield": "watcher",
+            "parentfield": parentfield,
             "user": user
         }).insert(ignore_permissions=True)
 
