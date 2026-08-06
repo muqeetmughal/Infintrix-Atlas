@@ -53,13 +53,7 @@ def project_permission_query(user):
 
 
 def task_permission_query(user):
-        if user == "Administrator":
-            return ""
-
         roles = frappe.get_roles(user)
-
-        if "System Manager" in roles:
-            return ""
 
         escaped_user = frappe.db.escape(user)
         portal_customers = get_customer_portal_customers(user) or []
@@ -73,6 +67,28 @@ def task_permission_query(user):
                         WHERE customer IN ({escaped_customers})
                     )
                 """
+
+        # Scrum projects only show tasks that belong to an Active cycle;
+        # Kanban projects show all tasks of the user. Applies to everyone,
+        # including Administrator and System Manager.
+        scrum_condition = f"""
+            (
+                `tabTask`.project IN (
+                    SELECT name
+                    FROM `tabProject`
+                    WHERE custom_execution_mode IS NULL
+                       OR custom_execution_mode != "Scrum"
+                )
+                OR `tabTask`.custom_cycle IN (
+                    SELECT name
+                    FROM `tabCycle`
+                    WHERE status = "Active"
+                )
+            )
+        """
+
+        if user == "Administrator" or "System Manager" in roles:
+            return scrum_condition
 
         # Projects Manager logic
         if has_projects_manager_role(roles=roles):
@@ -98,24 +114,6 @@ def task_permission_query(user):
                 {customer_condition}
                 )
             """
-
-        # Scrum projects only show tasks that belong to an Active cycle;
-        # Kanban projects show all tasks of the user.
-        scrum_condition = f"""
-            (
-                `tabTask`.project IN (
-                    SELECT name
-                    FROM `tabProject`
-                    WHERE custom_execution_mode IS NULL
-                       OR custom_execution_mode != "Scrum"
-                )
-                OR `tabTask`.custom_cycle IN (
-                    SELECT name
-                    FROM `tabCycle`
-                    WHERE status = "Active"
-                )
-            )
-        """
 
         return f"({project_condition}) AND {scrum_condition}"
 
