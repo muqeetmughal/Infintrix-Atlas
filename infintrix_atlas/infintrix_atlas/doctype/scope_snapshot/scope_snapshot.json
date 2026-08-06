@@ -25,29 +25,34 @@
    "options": "Scope Snapshot",
    "print_hide": 1,
    "read_only": 1,
-   "search_index": 1
+   "search_index": 1,
+   "description": "Original snapshot this one amends."
   },
   {
    "fieldname": "project",
    "fieldtype": "Link",
    "label": "Project",
-   "options": "Project"
+   "options": "Project",
+   "description": "The project this document belongs to."
   },
   {
    "fieldname": "version",
    "fieldtype": "Float",
-   "label": "Version"
+   "label": "Version",
+   "description": "Snapshot version number."
   },
   {
    "fieldname": "snapshot_date",
    "fieldtype": "Datetime",
-   "label": "Snapshot Date"
+   "label": "Snapshot Date",
+   "description": "When the snapshot was taken."
   },
   {
    "fieldname": "requirements",
    "fieldtype": "Table",
    "label": "Requirements",
-   "options": "Requirement CT"
+   "options": "Requirement CT",
+   "description": "Requirements captured in this baseline."
   }
  ],
  "grid_page_length": 50,

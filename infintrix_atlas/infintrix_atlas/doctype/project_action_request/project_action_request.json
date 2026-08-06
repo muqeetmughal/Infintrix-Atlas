@@ -12,18 +12,18 @@
   "description",
   "due_date",
   "column_break_uptf",
-   "assigned_to_user",
-   "is_portal_visible",
-   "action_type",
-   "status",
-   "blocking_task",
-   "completed_by",
-   "completed_date",
-   "rejected_by",
-   "rejection_date",
-   "expired_by",
-   "expiration_date"
-  ],
+  "assigned_to_user",
+  "is_portal_visible",
+  "action_type",
+  "status",
+  "blocking_task",
+  "completed_by",
+  "completed_date",
+  "rejected_by",
+  "rejection_date",
+  "expired_by",
+  "expiration_date"
+ ],
  "fields": [
   {
    "fieldname": "project",
@@ -31,57 +31,66 @@
    "in_list_view": 1,
    "label": "Project",
    "options": "Project",
-   "reqd": 1
+   "reqd": 1,
+   "description": "The project this document belongs to."
   },
   {
    "fieldname": "related_task",
    "fieldtype": "Link",
    "label": "Related Task",
-   "options": "Task"
+   "options": "Task",
+   "description": "Task this action request is linked to, if any."
   },
   {
    "fieldname": "title",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Title",
-   "reqd": 1
+   "reqd": 1,
+   "description": "Short summary of the requested change."
   },
   {
    "fieldname": "description",
    "fieldtype": "Small Text",
    "in_list_view": 1,
    "label": "Description",
-   "reqd": 1
+   "reqd": 1,
+   "description": "Detailed description of the change."
   },
   {
    "fieldname": "action_type",
    "fieldtype": "Select",
    "label": "Action Type",
-   "options": "Approval\nDocument Submission\nPayment\nFeedback\nSignature"
+   "options": "Approval\nDocument Submission\nPayment\nFeedback\nSignature",
+   "description": "Category of action (Approval, Information, Review, etc.)."
   },
   {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Pending\nCompleted\nRejected\nExpired"
+   "options": "Pending\nCompleted\nRejected\nExpired",
+   "description": "Lifecycle status of the session."
   },
   {
    "fieldname": "due_date",
    "fieldtype": "Date",
-   "label": "Due Date"
+   "label": "Due Date",
+   "description": "Date by which the action should be completed."
   },
   {
    "fieldname": "assigned_to_user",
    "fieldtype": "Link",
    "label": "Assigned To User",
-   "options": "User"
+   "options": "User",
+   "description": "User responsible for completing the action."
   },
   {
    "default": "0",
    "fieldname": "is_portal_visible",
    "fieldtype": "Check",
    "label": "Is Portal Visible",
-   "options": "User"
+   "options": "User",
+   "description": "Whether this request is visible to the customer portal."
   },
   {
    "fieldname": "column_break_uptf",
@@ -93,46 +102,54 @@
    "in_list_view": 1,
    "label": "Phase",
    "options": "Project Phase",
-   "reqd": 1
+   "reqd": 1,
+   "description": "Target phase for generated tasks."
   },
   {
    "fieldname": "blocking_task",
    "fieldtype": "Link",
    "label": "Blocking Task",
-   "options": "Task"
+   "options": "Task",
+   "description": "Task that blocks or is blocked by this action."
   },
   {
    "fieldname": "completed_by",
    "fieldtype": "Link",
    "label": "Completed By",
-   "options": "User"
+   "options": "User",
+   "description": "User who completed the action."
   },
   {
    "fieldname": "completed_date",
    "fieldtype": "Datetime",
-   "label": "Completed Date"
+   "label": "Completed Date",
+   "description": "Date the action was completed."
   },
   {
    "fieldname": "rejected_by",
    "fieldtype": "Link",
    "label": "Rejected By",
-   "options": "User"
+   "options": "User",
+   "description": "User who rejected the action."
   },
   {
    "fieldname": "rejection_date",
    "fieldtype": "Datetime",
-   "label": "Rejection Date"
+   "label": "Rejection Date",
+   "description": "Date the action was rejected."
   },
   {
    "fieldname": "expired_by",
    "fieldtype": "Link",
    "label": "Expired By",
-   "options": "User"
+   "options": "User",
+   "description": "User who expired the action."
   },
   {
    "fieldname": "expiration_date",
    "fieldtype": "Datetime",
-   "label": "Expiration Date"
+   "label": "Expiration Date",
+   "description": "Date the action was expired."
   }
  ],
  "grid_page_length": 50,

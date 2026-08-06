@@ -5,44 +5,61 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-   "api_key",
-   "api_base",
-   "openai_model",
-   "refresh_models",
-   "enable_ai_architect"
-  ],
+  "api_key",
+  "api_base",
+  "openai_model",
+  "refresh_models",
+  "enable_ai_architect",
+  "section_break_permissions",
+  "allow_administrator_bypass"
+ ],
  "fields": [
-   {
-    "fieldname": "api_key",
-    "fieldtype": "Password",
-    "label": "API Key",
-    "description": "Your OpenRouter API key"
-   },
-   {
-    "default": "https://openrouter.ai/api/v1",
-    "fieldname": "api_base",
-    "fieldtype": "Data",
-    "label": "API Base URL",
-    "description": "OpenRouter endpoint"
-   },
-   {
-    "default": "openai/gpt-4o-mini",
-    "fieldname": "openai_model",
-    "fieldtype": "Data",
-    "label": "Model Name",
-    "description": "Any OpenRouter model ID. Click Refresh Models to fetch the latest list."
-   },
-   {
-    "depends_on": "eval:doc.api_key",
-    "fieldname": "refresh_models",
-    "fieldtype": "Button",
-    "label": "🔄 Refresh Models"
-   },
+  {
+   "fieldname": "api_key",
+   "fieldtype": "Password",
+   "label": "API Key",
+   "description": "Your OpenRouter API key"
+  },
+  {
+   "default": "https://openrouter.ai/api/v1",
+   "fieldname": "api_base",
+   "fieldtype": "Data",
+   "label": "API Base URL",
+   "description": "OpenRouter endpoint"
+  },
+  {
+   "default": "openai/gpt-4o-mini",
+   "fieldname": "openai_model",
+   "fieldtype": "Data",
+   "label": "Model Name",
+   "description": "Any OpenRouter model ID. Click Refresh Models to fetch the latest list."
+  },
+  {
+   "depends_on": "eval:doc.api_key",
+   "fieldname": "refresh_models",
+   "fieldtype": "Button",
+   "label": "\ud83d\udd04 Refresh Models",
+   "description": "Fetch the latest model list from OpenRouter."
+  },
+  {
+   "default": 1,
+   "fieldname": "enable_ai_architect",
+   "fieldtype": "Check",
+   "label": "Enable AI Architect",
+   "description": "Toggle the AI Architect feature for this site."
+  },
+  {
+   "fieldname": "section_break_permissions",
+   "fieldtype": "Section Break",
+   "label": "Permissions"
+  },
    {
     "default": 1,
-    "fieldname": "enable_ai_architect",
+    "fieldname": "allow_administrator_bypass",
     "fieldtype": "Check",
-    "label": "Enable AI Architect"
+    "label": "Allow Administrator to bypass project permission filters",
+    "description": "When enabled, Administrator and System Manager see all Tasks/Projects regardless of project membership. When disabled, they are filtered like any other user (only tasks/projects they own or are added to).",
+    "permlevel": 1
    }
   ],
  "grid_page_length": 50,
@@ -54,7 +71,7 @@
  "module": "Infintrix Atlas",
  "name": "Atlas Settings",
  "owner": "Administrator",
- "permissions": [
+  "permissions": [
    {
     "create": 1,
     "delete": 1,
@@ -65,6 +82,12 @@
     "report": 1,
     "role": "System Manager",
     "share": 1,
+    "write": 1
+   },
+   {
+    "permlevel": 1,
+    "read": 1,
+    "role": "System Manager",
     "write": 1
    }
   ],

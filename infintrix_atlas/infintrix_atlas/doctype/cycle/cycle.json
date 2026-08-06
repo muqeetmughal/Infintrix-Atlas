@@ -22,35 +22,41 @@
    "in_list_view": 1,
    "label": "Project",
    "options": "Project",
-   "reqd": 1
+   "reqd": 1,
+   "description": "The project this document belongs to."
   },
   {
    "fieldname": "start_date",
    "fieldtype": "Datetime",
-   "label": "Start Date"
+   "label": "Start Date",
+   "description": "When the sprint starts (set on activation)."
   },
   {
    "fieldname": "end_date",
    "fieldtype": "Datetime",
-   "label": "End Date"
+   "label": "End Date",
+   "description": "When the sprint is expected to end."
   },
   {
    "default": "Planned",
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Planned\nActive\nCompleted\nArchived"
+   "options": "Planned\nActive\nCompleted\nArchived",
+   "description": "Lifecycle status of the session."
   },
   {
    "fieldname": "duration",
    "fieldtype": "Select",
    "label": "Duration",
-   "options": "1 Week\n2 Week\n3 Week\n4 Week\nCustom"
+   "options": "1 Week\n2 Week\n3 Week\n4 Week\nCustom",
+   "description": "Preset sprint length used to compute the end date."
   },
   {
    "fieldname": "actual_end_date",
    "fieldtype": "Datetime",
-   "label": "Actual End Date"
+   "label": "Actual End Date",
+   "description": "Actual date the sprint ended."
   },
   {
    "fetch_from": "project.project_name",
@@ -59,13 +65,15 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Project Name",
-   "read_only": 1
+   "read_only": 1,
+   "description": "Denormalized project name for display."
   },
   {
    "fieldname": "cycle_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Cycle Name "
+   "label": "Cycle Name ",
+   "description": "Human-readable sprint name."
   }
  ],
  "grid_page_length": 50,

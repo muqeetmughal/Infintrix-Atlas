@@ -18,18 +18,21 @@
    "fieldname": "relation_type",
    "fieldtype": "Select",
    "label": "Relation Type",
-   "options": "Blocks\nIs Blocked By\nDuplicates\nIs Duplicated By\nRelates To\nIs Related To\nClones\nIs Cloned By"
+   "options": "Blocks\nIs Blocked By\nDuplicates\nIs Duplicated By\nRelates To\nIs Related To\nClones\nIs Cloned By",
+   "description": "Type of relationship between the two items."
   },
   {
    "default": "0",
    "fieldname": "is_reverse",
    "fieldtype": "Check",
-   "label": "Is Reverse"
+   "label": "Is Reverse",
+   "description": "Whether this is the reverse direction of the relationship."
   },
   {
    "fieldname": "notes",
    "fieldtype": "Small Text",
-   "label": "Notes"
+   "label": "Notes",
+   "description": "Optional notes about the relationship."
   },
   {
    "default": "Task",

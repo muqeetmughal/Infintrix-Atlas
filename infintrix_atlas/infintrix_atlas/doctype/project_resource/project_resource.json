@@ -5,15 +5,15 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-   "project",
-   "phase",
-   "title",
-   "type",
-   "content",
-   "link",
-   "file",
-   "visibility"
-  ],
+  "project",
+  "phase",
+  "title",
+  "type",
+  "content",
+  "link",
+  "file",
+  "visibility"
+ ],
  "fields": [
   {
    "fieldname": "project",
@@ -21,46 +21,54 @@
    "in_list_view": 1,
    "label": "Project",
    "options": "Project",
-   "reqd": 1
+   "reqd": 1,
+   "description": "The project this document belongs to."
   },
-   {
-    "fieldname": "phase",
-    "fieldtype": "Link",
-    "label": "Phase",
-    "options": "Project Phase"
-   },
-   {
-    "fieldname": "title",
-    "fieldtype": "Data",
-    "label": "Title"
-   },
+  {
+   "fieldname": "phase",
+   "fieldtype": "Link",
+   "label": "Phase",
+   "options": "Project Phase",
+   "description": "Target phase for generated tasks."
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "description": "Short summary of the requested change."
+  },
   {
    "fieldname": "type",
    "fieldtype": "Select",
    "label": "Type",
-   "options": "PDF\nDOC\nLink\nSpreadsheet\nPresentation\nDocument\nImage\nPlain Text"
+   "options": "PDF\nDOC\nLink\nSpreadsheet\nPresentation\nDocument\nImage\nPlain Text",
+   "description": "Resource type (Link, File, Plain Text, etc.)."
   },
   {
    "depends_on": "eval:doc.type===\"Plain Text\"",
    "fieldname": "content",
    "fieldtype": "Long Text",
-   "label": "Content"
+   "label": "Content",
+   "description": "Inline text content for plain-text resources."
   },
   {
    "fieldname": "link",
    "fieldtype": "Data",
-   "label": "Link"
+   "label": "Link",
+   "description": "External URL for link resources."
   },
   {
    "fieldname": "file",
    "fieldtype": "Attach",
-   "label": "File"
+   "label": "File",
+   "description": "Attached file for file-based resources."
   },
   {
    "fieldname": "visibility",
    "fieldtype": "Select",
    "label": "Visibility",
-   "options": "Internal\nClient\nBoth"
+   "options": "Internal\nClient\nBoth",
+   "description": "Visibility level: Internal, Client, or Both."
   }
  ],
  "grid_page_length": 50,

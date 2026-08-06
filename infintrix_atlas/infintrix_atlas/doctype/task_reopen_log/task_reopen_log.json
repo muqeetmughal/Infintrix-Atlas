@@ -21,28 +21,32 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Employee",
-   "options": "Employee"
+   "options": "Employee",
+   "description": "Employee associated with the reopen."
   },
   {
    "fieldname": "user",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "User",
-   "options": "User"
+   "options": "User",
+   "description": "User who reopened the task."
   },
   {
    "fieldname": "reopened_on",
    "fieldtype": "Datetime",
    "in_list_view": 1,
    "label": "Reopened On",
-   "reqd": 1
+   "reqd": 1,
+   "description": "When the task was reopened."
   },
   {
    "fieldname": "reason",
    "fieldtype": "Small Text",
    "in_list_view": 1,
    "label": "Reason",
-   "reqd": 1
+   "reqd": 1,
+   "description": "Why the task was reopened."
   },
   {
    "fieldname": "reopen_type",
@@ -50,25 +54,29 @@
    "in_list_view": 1,
    "label": "Reopen Type",
    "options": "Client Feedback\nBug Found\nQA Failure\nRequirement Missed\nChange Request\nOther",
-   "reqd": 1
+   "reqd": 1,
+   "description": "Type/category of reopen."
   },
   {
    "fieldname": "from_status",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "From Status"
+   "label": "From Status",
+   "description": "Status before the change."
   },
   {
    "fieldname": "to_status",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "To Status"
+   "label": "To Status",
+   "description": "Status after the change."
   },
   {
    "fieldname": "reopen_sequence",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Reopen Sequence"
+   "label": "Reopen Sequence",
+   "description": "Sequence number of this reopen."
   }
  ],
  "grid_page_length": 50,

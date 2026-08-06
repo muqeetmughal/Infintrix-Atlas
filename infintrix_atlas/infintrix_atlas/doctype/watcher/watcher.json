@@ -16,7 +16,8 @@
    "in_list_view": 1,
    "label": "User",
    "options": "User",
-   "reqd": 1
+   "reqd": 1,
+   "description": "User who reopened the task."
   },
   {
    "default": "Instant",
@@ -24,7 +25,8 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Notify Mode",
-   "options": "Instant\nBatch\nAI Summary"
+   "options": "Instant\nBatch\nAI Summary",
+   "description": "How the watcher wants to be notified."
   }
  ],
  "grid_page_length": 50,
