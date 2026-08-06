@@ -5,77 +5,119 @@
  "creation": "2026-01-01 20:00:35.740749",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": [
-  "project",
-  "cycle_name",
-  "project_name",
-  "duration",
-  "start_date",
-  "end_date",
-  "status",
-  "actual_end_date"
- ],
- "fields": [
-  {
-   "fieldname": "project",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Project",
-   "options": "Project",
-   "reqd": 1,
-   "description": "The project this document belongs to."
-  },
-  {
-   "fieldname": "start_date",
-   "fieldtype": "Datetime",
-   "label": "Start Date",
-   "description": "When the sprint starts (set on activation)."
-  },
-  {
-   "fieldname": "end_date",
-   "fieldtype": "Datetime",
-   "label": "End Date",
-   "description": "When the sprint is expected to end."
-  },
-  {
-   "default": "Planned",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "Planned\nActive\nCompleted\nArchived",
-   "description": "Lifecycle status of the session."
-  },
-  {
-   "fieldname": "duration",
-   "fieldtype": "Select",
-   "label": "Duration",
-   "options": "1 Week\n2 Week\n3 Week\n4 Week\nCustom",
-   "description": "Preset sprint length used to compute the end date."
-  },
-  {
-   "fieldname": "actual_end_date",
-   "fieldtype": "Datetime",
-   "label": "Actual End Date",
-   "description": "Actual date the sprint ended."
-  },
-  {
-   "fetch_from": "project.project_name",
-   "fetch_if_empty": 1,
-   "fieldname": "project_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Project Name",
-   "read_only": 1,
-   "description": "Denormalized project name for display."
-  },
-  {
-   "fieldname": "cycle_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Cycle Name ",
-   "description": "Human-readable sprint name."
-  }
- ],
+  "field_order": [
+   "section_break_details",
+   "project",
+   "column_break_details",
+   "cycle_name",
+   "column_break_duration",
+   "duration",
+   "column_break_status",
+   "status",
+   "section_break_schedule",
+   "start_date",
+   "column_break_schedule",
+   "end_date",
+   "column_break_actual",
+   "actual_end_date",
+   "column_break_pn",
+   "project_name"
+  ],
+  "fields": [
+   {
+    "fieldname": "section_break_details",
+    "fieldtype": "Section Break",
+    "label": "Details"
+   },
+   {
+    "fieldname": "project",
+    "fieldtype": "Link",
+    "in_list_view": 1,
+    "label": "Project",
+    "options": "Project",
+    "reqd": 1,
+    "description": "The project this document belongs to."
+   },
+   {
+    "fieldname": "column_break_details",
+    "fieldtype": "Column Break"
+   },
+   {
+    "fieldname": "cycle_name",
+    "fieldtype": "Data",
+    "in_list_view": 1,
+    "label": "Cycle Name ",
+    "description": "Human-readable sprint name."
+   },
+   {
+    "fieldname": "column_break_duration",
+    "fieldtype": "Column Break"
+   },
+   {
+    "fieldname": "duration",
+    "fieldtype": "Select",
+    "label": "Duration",
+    "options": "1 Week\n2 Week\n3 Week\n4 Week\nCustom",
+    "description": "Preset sprint length used to compute the end date."
+   },
+   {
+    "fieldname": "column_break_status",
+    "fieldtype": "Column Break"
+   },
+   {
+    "default": "Planned",
+    "fieldname": "status",
+    "fieldtype": "Select",
+    "label": "Status",
+    "options": "Planned\nActive\nCompleted\nArchived",
+    "description": "Lifecycle status of the session."
+   },
+   {
+    "fieldname": "section_break_schedule",
+    "fieldtype": "Section Break",
+    "label": "Schedule"
+   },
+   {
+    "fieldname": "start_date",
+    "fieldtype": "Datetime",
+    "label": "Start Date",
+    "description": "When the sprint starts (set on activation)."
+   },
+   {
+    "fieldname": "column_break_schedule",
+    "fieldtype": "Column Break"
+   },
+   {
+    "fieldname": "end_date",
+    "fieldtype": "Datetime",
+    "label": "End Date",
+    "description": "When the sprint is expected to end."
+   },
+   {
+    "fieldname": "column_break_actual",
+    "fieldtype": "Column Break"
+   },
+   {
+    "fieldname": "actual_end_date",
+    "fieldtype": "Datetime",
+    "label": "Actual End Date",
+    "description": "Actual date the sprint ended."
+   },
+   {
+    "fieldname": "column_break_pn",
+    "fieldtype": "Column Break"
+   },
+   {
+    "fetch_from": "project.project_name",
+    "fetch_if_empty": 1,
+    "fieldname": "project_name",
+    "fieldtype": "Data",
+    "in_list_view": 1,
+    "label": "Project Name",
+    "read_only": 1,
+    "description": "Denormalized project name for display."
+   }
+  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
