@@ -2,6 +2,7 @@ frappe.ui.form.on("Project", {
 	refresh(frm) {
 		if (frm.is_new()) return;
 		add_mode_action_item(frm);
+		add_kanban_button(frm);
 		add_backlog_buttons(frm);
 		embed_backlog(frm);
 	},
@@ -48,6 +49,23 @@ function switch_execution_mode(frm) {
 			});
 		}
 	);
+}
+
+function add_kanban_button(frm) {
+	if (frm._atlas_kanban_btn_added) return;
+	frm._atlas_kanban_btn_added = true;
+
+	frm.add_custom_button(__("View Kanban"), () => {
+		frappe.call({
+			method: "infintrix_atlas.api.v1.get_project_kanban",
+			args: { project: frm.doc.name },
+			callback: (r) => {
+				if (r.message) {
+					frappe.set_route("List", "Task", "Kanban", r.message);
+				}
+			},
+		});
+	});
 }
 
 function add_backlog_buttons(frm) {

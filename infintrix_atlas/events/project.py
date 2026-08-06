@@ -4,7 +4,27 @@ from infintrix_atlas.role_utils import has_projects_manager_role
 
 
 def after_insert(doc, method):
-    pass
+    create_task_kanban_board(doc.name)
+
+
+def create_task_kanban_board(project=None):
+    """Create the Task Kanban Board (idempotent).
+
+    project=None creates a general "Task Kanban" board covering all tasks.
+    """
+    board_name = f"Task Kanban - {project}" if project else "Task Kanban"
+    if frappe.db.exists("Kanban Board", board_name):
+        return board_name
+
+    from frappe.desk.doctype.kanban_board.kanban_board import quick_kanban_board
+
+    quick_kanban_board(
+        doctype="Task",
+        board_name=board_name,
+        field_name="status",
+        project=project or None,
+    )
+    return board_name
 
 
 def validate(doc, method):
