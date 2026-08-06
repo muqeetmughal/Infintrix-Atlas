@@ -6,15 +6,22 @@ from infintrix_atlas.role_utils import (
 )
 
 
+def _administrator_can_bypass():
+    """Whether Administrator/System Manager bypass project membership filters."""
+    return bool(
+        frappe.db.get_single_value("Atlas Settings", "allow_administrator_bypass")
+    )
+
+
 def project_permission_query(user):
     # 1. Full access users
-    if user == "Administrator":
+    if user == "Administrator" and _administrator_can_bypass():
         return ""
 
     user_roles = frappe.get_roles(user)
 
     # System Manager: see everything
-    if "System Manager" in user_roles:
+    if "System Manager" in user_roles and _administrator_can_bypass():
         return ""
 
     escaped_user = frappe.db.escape(user)
@@ -69,8 +76,7 @@ def task_permission_query(user):
                 """
 
         # Scrum projects only show tasks that belong to an Active cycle;
-        # Kanban projects show all tasks of the user. Applies to everyone,
-        # including Administrator and System Manager.
+        # Kanban projects show all tasks of the user. Applies to everyone.
         scrum_condition = f"""
             (
                 `tabTask`.project IN (
@@ -87,10 +93,12 @@ def task_permission_query(user):
             )
         """
 
-        if user == "Administrator" or "System Manager" in roles:
+        # Everyone (including Administrator / System Manager) only sees tasks
+        # from projects they own or are a member of, unless the Administrator
+        # bypass is enabled in Atlas Settings.
+        if (user == "Administrator" or "System Manager" in roles) and _administrator_can_bypass():
             return scrum_condition
 
-        # Projects Manager logic
         if has_projects_manager_role(roles=roles):
             project_condition = f"""
                     (
@@ -119,13 +127,10 @@ def task_permission_query(user):
 
 
 def _project_linked_permission_query(user, table, project_field="project"):
-    if user == "Administrator":
+    if (user == "Administrator" or "System Manager" in frappe.get_roles(user)) and _administrator_can_bypass():
         return ""
 
     roles = frappe.get_roles(user)
-
-    if "System Manager" in roles:
-        return ""
 
     escaped_user = frappe.db.escape(user)
     portal_customers = get_customer_portal_customers(user) or []
@@ -172,12 +177,10 @@ def _project_linked_permission_query(user, table, project_field="project"):
 
 
 def _project_linked_has_permission(doc, user, project_field="project"):
-    if user == "Administrator":
+    if (user == "Administrator" or "System Manager" in frappe.get_roles(user)) and _administrator_can_bypass():
         return True
 
     roles = frappe.get_roles(user)
-    if "System Manager" in roles:
-        return True
 
     project = getattr(doc, project_field, None)
     if not project:
