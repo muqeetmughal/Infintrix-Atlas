@@ -1,0 +1,75 @@
+{
+ "app": "infintrix_atlas",
+ "creation": "2026-08-06 13:02:36.582544",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Cycle",
+   "link_to": "Cycle",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "AI Task Session",
+   "link_to": "AI Task Session",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "icon": "panel-top",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Backlog View",
+   "link_to": "project_backlog",
+   "link_type": "Page",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "icon": "panel-top",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Task Detail",
+   "link_to": "task_detail",
+   "link_type": "Page",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Projects",
+   "link_to": "Project",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-08-06 13:48:06.916477",
+ "modified_by": "Administrator",
+ "module": "Infintrix Atlas",
+ "name": "Infintrix Atlas",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Infintrix Atlas"
+}
