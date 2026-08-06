@@ -55,7 +55,7 @@ function add_kanban_button(frm) {
 	if (frm._atlas_kanban_btn_added) return;
 	frm._atlas_kanban_btn_added = true;
 
-	frm.add_custom_button(__("View Kanban"), () => {
+	frm.add_custom_button(`${frappe.utils.icon("kanban", "xs")} ${__("View Kanban")}`, () => {
 		frappe.call({
 			method: "infintrix_atlas.api.kanban.get_project_kanban",
 			args: { project: frm.doc.name },
@@ -72,11 +72,11 @@ function add_backlog_buttons(frm) {
 	if (frm._atlas_buttons_added) return;
 	frm._atlas_buttons_added = true;
 
-	frm.add_custom_button(__("Refresh"), () => {
+	frm.add_custom_button(`${frappe.utils.icon("refresh-cw", "xs")} ${__("Refresh")}`, () => {
 		if (frm._atlas_backlog) frm._atlas_backlog.fetch_data();
 	});
 
-	const $new_sprint_btn = frm.add_custom_button(__("New Sprint"), () => {
+	const $new_sprint_btn = frm.add_custom_button(`${frappe.utils.icon("plus", "xs")} ${__("New Sprint")}`, () => {
 		if (!frm._atlas_backlog) return;
 		if (!frm._atlas_backlog.is_scrum) {
 			frappe.show_alert({

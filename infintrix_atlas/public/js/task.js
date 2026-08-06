@@ -15,14 +15,14 @@ frappe.ui.form.on("Task", {
 	refresh(frm) {
 		if (!frm.is_new()) {
 			frm.add_custom_button(
-				__("Detail View"),
+				`${frappe.utils.icon("layout", "xs")} ${__("Detail View")}`,
 				function () {
 					frappe.set_route("task_detail", frm.doc.name);
 				},
 				__("View")
 			);
 
-			frm.add_custom_button(__("Edit Description"), function () {
+			frm.add_custom_button(`${frappe.utils.icon("pencil", "xs")} ${__("Edit Description")}`, function () {
 				edit_description(frm);
 			});
 
@@ -31,7 +31,7 @@ frappe.ui.form.on("Task", {
 				docname: frm.doc.name
 			}).then((r) => {
 				frm.add_custom_button(
-					r.message ? "Stop Watching" : "Start Watching",
+					r.message ? `<i class="fa fa-eye-slash"></i> Stop Watching` : `<i class="fa fa-eye"></i> Start Watching`,
 					() => toggle_self_watch(frm)
 				);
 			});

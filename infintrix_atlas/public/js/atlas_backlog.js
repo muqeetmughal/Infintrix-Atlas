@@ -485,7 +485,7 @@ class AtlasBacklog {
 						<div class="atlas-error">
 							${frappe.utils.icon("circle-alert", "sm")}
 							<div>${__("Failed to load backlog.")}</div>
-							<button class="btn btn-default btn-xs atlas-retry" style="margin-top: 10px;">${__("Retry")}</button>
+							<button class="btn btn-default btn-xs atlas-retry" style="margin-top: 10px;">${frappe.utils.icon("refresh-cw", "xs")} ${__("Retry")}</button>
 						</div>
 					`);
 					this.$body.find(".atlas-retry").on("click", () => this.fetch_data());
@@ -712,9 +712,9 @@ class AtlasBacklog {
 					<div class="ellipsis">${frappe.utils.escape_html(task_names)}${more}</div>
 				</div>
 				<div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-					<button class="btn btn-primary btn-xs detail-selected">${__("Detail View")}</button>
-					<button class="btn btn-default btn-xs clear-selection">${__("Clear")}</button>
-					<button class="btn btn-danger btn-xs delete-selected">${__("Delete")}</button>
+					<button class="btn btn-primary btn-xs detail-selected">${frappe.utils.icon("layout", "xs")} ${__("Detail View")}</button>
+					<button class="btn btn-default btn-xs clear-selection">${frappe.utils.icon("x", "xs")} ${__("Clear")}</button>
+					<button class="btn btn-danger btn-xs delete-selected">${frappe.utils.icon("trash", "xs")} ${__("Delete")}</button>
 				</div>
 			</div>
 		`);
@@ -1011,7 +1011,7 @@ class AtlasBacklog {
 				</div>
 				<div class="atlas-creator" style="${is_expanded ? '' : 'display: none;'}">
 					<input type="text" class="new-task-input form-control" placeholder="${__("Add a task to backlog...")}">
-					<button class="btn btn-primary btn-xs add-task-btn">${__("Add")}</button>
+					<button class="btn btn-primary btn-xs add-task-btn">${frappe.utils.icon("plus", "xs")} ${__("Add")}</button>
 				</div>
 				<div class="atlas-dropzone backlog-dropzone ${is_expanded ? '' : 'collapsed'}" data-backlog="true"></div>
 			</div>
