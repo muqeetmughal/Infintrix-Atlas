@@ -76,7 +76,7 @@ def task_permission_query(user):
 
         # Projects Manager logic
         if has_projects_manager_role(roles=roles):
-            return f"""
+            project_condition = f"""
                     (
                         `tabTask`.owner = {escaped_user}
                         OR `tabTask`.project IN (
@@ -86,9 +86,9 @@ def task_permission_query(user):
                         )
                     )
                 """
-        
         # Regular Project User - see only tasks from projects where user is in Project User child table
-        return f"""
+        else:
+            project_condition = f"""
                 (
                 `tabTask`.project IN (
                     SELECT parent
@@ -98,6 +98,26 @@ def task_permission_query(user):
                 {customer_condition}
                 )
             """
+
+        # Scrum projects only show tasks that belong to an Active cycle;
+        # Kanban projects show all tasks of the user.
+        scrum_condition = f"""
+            (
+                `tabTask`.project IN (
+                    SELECT name
+                    FROM `tabProject`
+                    WHERE custom_execution_mode IS NULL
+                       OR custom_execution_mode != "Scrum"
+                )
+                OR `tabTask`.custom_cycle IN (
+                    SELECT name
+                    FROM `tabCycle`
+                    WHERE status = "Active"
+                )
+            )
+        """
+
+        return f"({project_condition}) AND {scrum_condition}"
 
 
 def _project_linked_permission_query(user, table, project_field="project"):
