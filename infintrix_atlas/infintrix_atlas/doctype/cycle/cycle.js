@@ -7,8 +7,34 @@ frappe.ui.form.on("Cycle", {
 
     duration(frm) {
         apply_duration_logic(frm);
+    },
+
+    status(frm) {
+        // Flow-wise: activating without dates asks for them in a dialog
+        // instead of blocking on save.
+        if (frm.doc.status === "Active" && !frm.doc.start_date && !frm.doc.end_date) {
+            ask_for_dates(frm);
+        }
     }
 });
+
+function ask_for_dates(frm) {
+    const d = new frappe.ui.Dialog({
+        title: __("Start Sprint"),
+        fields: [
+            { fieldname: "start_date", label: __("Start Date"), fieldtype: "Datetime", reqd: 1, default: frappe.datetime.now_datetime() },
+            { fieldname: "end_date", label: __("End Date"), fieldtype: "Datetime", reqd: 1, default: frappe.datetime.add_days(frappe.datetime.now_datetime(), 7) },
+        ],
+        primary_action_label: __("Start"),
+        primary_action: (values) => {
+            frm.set_value("start_date", values.start_date);
+            frm.set_value("end_date", values.end_date);
+            frm.save();
+            d.hide();
+        },
+    });
+    d.show();
+}
 
 function apply_duration_logic(frm) {
     const duration = frm.doc.duration;

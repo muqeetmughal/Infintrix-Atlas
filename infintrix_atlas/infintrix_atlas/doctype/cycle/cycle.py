@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 
@@ -22,7 +23,10 @@ class Cycle(Document):
 			frappe.throw("Status must be one of: Planned, Active, Completed, Archived")
 
 		if self.status == "Active" and (not self.start_date or not self.end_date):
-			frappe.throw("Cycle cannot be active without start and end date")
+			frappe.throw(
+				_("Please set start and end dates before activating the cycle."),
+				title=_("Dates Required"),
+			)
 		if self.start_date and self.end_date and self.start_date > self.end_date:
 			frappe.throw("End date cannot be before start date")
 
