@@ -2033,6 +2033,7 @@ def backlog(project=None):
             .where(
                 (Task.project == project)
                 & (Task.custom_cycle.isnull())
+                & (Task.status == "Open")
             )
             .groupby(Task.name)
             .orderby(Task.modified, order=frappe.qb.desc)
@@ -2060,6 +2061,7 @@ def backlog(project=None):
             )
             .where(
                 (Task.project == project)
+                & (Task.status == "Open")
             )
             .groupby(Task.name)
             .orderby(Task.modified, order=frappe.qb.desc)
