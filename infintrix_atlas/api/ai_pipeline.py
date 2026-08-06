@@ -348,7 +348,7 @@ def _build_resource_context(project, resource_names):
 
         if not resource_content and resource.file:
             try:
-                from infintrix_atlas.api.v1 import preview_document
+                from infintrix_atlas.api.resources import preview_document
 
                 preview = preview_document(resource.file)
                 resource_content = (preview or {}).get("content", "").strip()

@@ -467,7 +467,7 @@ class AtlasBacklog {
 			</div>
 		`);
 		frappe.call({
-			method: "infintrix_atlas.api.v1.backlog",
+			method: "infintrix_atlas.api.tasks.backlog",
 			args: { project: this.project_name },
 			callback: (r) => {
 				if (r.message && !r.message.error) {
@@ -664,6 +664,11 @@ class AtlasBacklog {
 			],
 			primary_action_label: __("Save"),
 			primary_action: (values) => {
+				// Flow-wise: setting Active without dates asks for them instead of throwing.
+				if (values.status === "Active" && (!values.start_date || !values.end_date)) {
+					frappe.show_alert({ message: __("Set start and end dates before activating a sprint."), indicator: "orange" });
+					return;
+				}
 				frappe.call({
 					method: "frappe.client.set_value",
 					args: {
@@ -682,6 +687,9 @@ class AtlasBacklog {
 							this.fetch_data();
 							d.hide();
 						}
+					},
+					error: (r) => {
+						frappe.show_alert({ message: r.message || __("Could not update cycle"), indicator: "orange" });
 					},
 				});
 			},
@@ -808,10 +816,10 @@ class AtlasBacklog {
 	show_cycle_menu(cycle, $btn) {
 		const items = [];
 		if (cycle.status === "Planned" && !this.active_cycle_name) {
-			items.push({ label: __("Start Sprint"), action: () => this.update_cycle_status(cycle.name, "Active"), color: "var(--green-500)" });
+			items.push({ label: __("Start Sprint"), action: () => this.start_cycle(cycle), color: "var(--green-500)" });
 		}
 		if (cycle.status === "Active") {
-			items.push({ label: __("Complete Sprint"), action: () => this.complete_cycle(cycle.name), color: "var(--blue-500)" });
+			items.push({ label: __("Complete Sprint"), action: () => this.complete_cycle(cycle), color: "var(--blue-500)" });
 		}
 		items.push({ label: __("Edit"), action: () => this.show_edit_cycle_dialog(cycle), color: "var(--text-color)" });
 		if (cycle.status !== "Active") {
@@ -845,39 +853,123 @@ class AtlasBacklog {
 		}, 0);
 	}
 
-	update_cycle_status(cycle_name, status) {
-		frappe.call({
-			method: "frappe.client.set_value",
-			args: { doctype: "Cycle", name: cycle_name, fieldname: { status } },
-			callback: (r) => {
-				if (r.message) {
-					frappe.show_alert({ message: __(`Sprint ${status.toLowerCase()}`), indicator: "green" });
-					this.fetch_data();
-				}
+	start_cycle(cycle) {
+		const do_start = (values) => {
+			frappe.call({
+				method: "infintrix_atlas.api.cycles.start_cycle",
+				args: {
+					name: cycle.name,
+					cycle_name: cycle.cycle_name,
+					duration: cycle.duration,
+					start_date: values.start_date || cycle.start_date,
+					end_date: values.end_date || cycle.end_date,
+				},
+				callback: (r) => {
+					const msg = r.message || {};
+					if (msg.success) {
+						frappe.show_alert({ message: msg.message || __("Sprint started"), indicator: "green" });
+						this.fetch_data();
+					} else if (msg.code === "another_active") {
+						this.handle_active_cycle_conflict(msg);
+					} else {
+						frappe.show_alert({ message: msg.message || __("Could not start sprint"), indicator: "orange" });
+					}
+				},
+			});
+		};
+
+		// Already has dates? Start directly. Otherwise ask for dates in a modal.
+		if (cycle.start_date && cycle.end_date) {
+			do_start({});
+			return;
+		}
+
+		const d = new frappe.ui.Dialog({
+			title: __("Start Sprint"),
+			fields: [
+				{ fieldname: "start_date", label: __("Start Date"), fieldtype: "Date", reqd: 1, default: cycle.start_date || frappe.datetime.now_date() },
+				{ fieldname: "end_date", label: __("End Date"), fieldtype: "Date", reqd: 1, default: cycle.end_date || frappe.datetime.add_days(frappe.datetime.now_date(), 7) },
+			],
+			primary_action_label: __("Start"),
+			primary_action: (values) => {
+				d.hide();
+				do_start(values);
 			},
 		});
+		d.show();
 	}
 
-	complete_cycle(cycle_name) {
-		frappe.confirm(
-			__("Complete this sprint? Tasks will remain in the sprint but it will be marked as done."),
-			() => {
-				frappe.call({
-					method: "frappe.client.set_value",
-					args: {
-						doctype: "Cycle",
-						name: cycle_name,
-						fieldname: { status: "Completed", actual_end_date: frappe.datetime.now_date() },
-					},
-					callback: (r) => {
-						if (r.message) {
-							frappe.show_alert({ message: __("Sprint completed"), indicator: "green" });
-							this.fetch_data();
-						}
-					},
-				});
-			}
-		);
+	handle_active_cycle_conflict(msg) {
+		const d = new frappe.ui.Dialog({
+			title: __("Another Sprint is Active"),
+			fields: [
+				{
+					fieldname: "message",
+					fieldtype: "HTML",
+					options: `<p class="mb-0">${frappe.utils.escape_html(msg.message || __("Another sprint is already active."))}</p>`,
+				},
+			],
+			primary_action_label: __("Open Active Sprint"),
+			primary_action: () => {
+				d.hide();
+				if (msg.active_cycle) frappe.set_route("Form", "Cycle", msg.active_cycle);
+			},
+		});
+		d.show();
+	}
+
+	complete_cycle(cycle) {
+		const open_tasks = (cycle.tasks || []).filter((t) => t.status !== "Completed");
+		const completed_count = (cycle.tasks || []).filter((t) => t.status === "Completed").length;
+
+		const do_complete = (move_tasks_to) => {
+			frappe.call({
+				method: "infintrix_atlas.api.cycles.complete_cycle",
+				args: { name: cycle.name, move_tasks_to },
+				callback: (r) => {
+					const msg = r.message || {};
+					if (msg.success) {
+						frappe.show_alert({ message: msg.message || __("Sprint completed"), indicator: "green" });
+						this.fetch_data();
+					} else {
+						frappe.show_alert({ message: msg.message || __("Could not complete sprint"), indicator: "orange" });
+					}
+				},
+			});
+		};
+
+		// No open tasks — just confirm and complete.
+		if (!open_tasks.length) {
+			frappe.confirm(
+				__("Complete this sprint? All tasks in it are completed."),
+				() => do_complete(),
+				() => {}
+			);
+			return;
+		}
+
+		// Open tasks exist — ask where to move them instead of blocking.
+		const planned_cycles = (this.data.cycles || []).filter((c) => c.status === "Planned" && c.name !== cycle.name);
+		const options = planned_cycles.map((c) => ({ label: c.cycle_name, value: c.name }));
+		options.push({ label: __("Backlog (no sprint)"), value: "" });
+
+		const d = new frappe.ui.Dialog({
+			title: __("Complete Sprint"),
+			fields: [
+				{
+					fieldname: "info",
+					fieldtype: "HTML",
+					options: `<p class="mb-0">${__("This sprint has {0} completed and {1} open work items. Where should the open items go?", [completed_count, open_tasks.length])}</p>`,
+				},
+				{ fieldname: "move_tasks_to", label: __("Move open work items to"), fieldtype: "Select", options, reqd: 1 },
+			],
+			primary_action_label: __("Complete Sprint"),
+			primary_action: (values) => {
+				d.hide();
+				do_complete(values.move_tasks_to);
+			},
+		});
+		d.show();
 	}
 
 	delete_cycle(cycle_name) {
@@ -1135,7 +1227,7 @@ class AtlasBacklog {
 		}
 
 		frappe.call({
-			method: "infintrix_atlas.api.v1.set_backlog_position",
+			method: "infintrix_atlas.api.tasks.set_backlog_position",
 			args: {
 				type,
 				task_name: task_id,
@@ -1160,7 +1252,7 @@ class AtlasBacklog {
 			__(`Delete ${task_names.length} selected task(s)? This cannot be undone.`),
 			() => {
 				frappe.call({
-					method: "infintrix_atlas.api.v1.bulk_delete_tasks",
+					method: "infintrix_atlas.api.tasks.bulk_delete_tasks",
 					args: { task_names: JSON.stringify(task_names) },
 					callback: (r) => {
 						const msg = r.message || {};

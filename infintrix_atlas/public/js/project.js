@@ -35,7 +35,7 @@ function switch_execution_mode(frm) {
 		__("Switch this project to {0} mode?", [next]),
 		() => {
 			frappe.call({
-				method: "infintrix_atlas.api.v1.set_project_mode",
+				method: "infintrix_atlas.api.projects.set_project_mode",
 				args: { project: frm.doc.name, mode: next },
 				callback: (r) => {
 					const msg = r.message || {};
@@ -57,7 +57,7 @@ function add_kanban_button(frm) {
 
 	frm.add_custom_button(__("View Kanban"), () => {
 		frappe.call({
-			method: "infintrix_atlas.api.v1.get_project_kanban",
+			method: "infintrix_atlas.api.kanban.get_project_kanban",
 			args: { project: frm.doc.name },
 			callback: (r) => {
 				if (r.message) {

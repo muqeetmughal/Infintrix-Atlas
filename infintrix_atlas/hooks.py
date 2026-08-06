@@ -337,5 +337,5 @@ override_doctype_class = {
 }
 
 override_whitelisted_methods = {
-    "frappe.desk.doctype.kanban_board.kanban_board.get_kanban_boards": "infintrix_atlas.api.v1.get_kanban_boards",
+    "frappe.desk.doctype.kanban_board.kanban_board.get_kanban_boards": "infintrix_atlas.api.kanban.get_kanban_boards",
 }

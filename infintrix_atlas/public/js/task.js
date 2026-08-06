@@ -26,7 +26,7 @@ frappe.ui.form.on("Task", {
 				edit_description(frm);
 			});
 
-			frappe.call("infintrix_atlas.api.v1.current_user_is_watching", {
+			frappe.call("infintrix_atlas.api.watchers.current_user_is_watching", {
 				doctype: "Task",
 				docname: frm.doc.name
 			}).then((r) => {
@@ -66,7 +66,7 @@ function edit_description(frm) {
 }
 
 function toggle_self_watch(frm) {
-	frappe.call("infintrix_atlas.api.v1.toggle_self_watch", {
+	frappe.call("infintrix_atlas.api.watchers.toggle_self_watch", {
 		doctype: "Task",
 		docname: frm.doc.name
 	}).then((r) => {

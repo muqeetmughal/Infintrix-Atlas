@@ -3,7 +3,7 @@
 import frappe
 from frappe import _
 from erpnext.projects.doctype.task.task import Task
-from infintrix_atlas.api.v1 import switch_assignee_of_task
+from infintrix_atlas.api.tasks import switch_assignee_of_task
 from infintrix_atlas.role_utils import has_customer_portal_task_access
 print("ATLAS TASK OVERRIDE LOADED")
 class TaskOverride(Task):
