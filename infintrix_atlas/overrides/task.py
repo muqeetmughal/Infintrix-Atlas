@@ -3,16 +3,14 @@
 import frappe
 from frappe import _
 from erpnext.projects.doctype.task.task import Task
-from infintrix_atlas.api.v1 import switch_assignee_of_task
+from infintrix_atlas.api.tasks import switch_assignee_of_task
 from infintrix_atlas.role_utils import has_customer_portal_task_access
 print("ATLAS TASK OVERRIDE LOADED")
 class TaskOverride(Task):
 
     def validate(self):
         if self.is_new():
-            self._set_default_phase_if_missing()
-            self.validate_cycle_phase()
-            self.validate_task_allowed()
+            self.validate_task_type_hierarchy()
 
         if self.get("status") == "Completed" and self.has_value_changed("status") and not frappe.flags.get("is_review_approval"):
             frappe.throw(
@@ -20,40 +18,6 @@ class TaskOverride(Task):
             )
 
         super().validate()
-
-    
-    def _set_default_phase_if_missing(self):
-        if self.custom_phase or not self.project:
-            return
-
-        latest_phase = frappe.db.get_value(
-            "Project Phase",
-            {"project": self.project},
-            "name",
-            order_by="creation desc",
-        )
-        if not latest_phase:
-            frappe.throw(_("Please create a phase before creating a task."))
-
-        self.custom_phase = latest_phase
-        
-    def validate_cycle_phase(self):
-         if self.custom_cycle and self.custom_phase:
-            cycle = frappe.get_doc("Cycle", self.custom_cycle)
-            if cycle.custom_phase != self.custom_phase:
-                frappe.throw(
-                    f"Cycle {self.custom_cycle} belongs to phase {cycle.custom_phase}, "
-                    f"but task is in phase {self.custom_phase}"
-                )
-                
-    def validate_task_allowed(self):
-        if self.custom_phase:
-            phase = frappe.get_doc("Project Phase", self.custom_phase)
-            if phase.status != "Planned":
-                frappe.throw(
-                    f"Tasks can only be created in phases with 'Planned' status. "
-                    f"Phase {self.custom_phase} status: {phase.status}"
-                )
 
     def before_insert(self):
         # Inherit project from parent task if not explicitly set

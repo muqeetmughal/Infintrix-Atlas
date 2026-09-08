@@ -1,0 +1,22 @@
+{
+ "app": "infintrix_atlas",
+ "bg_color": "gray",
+ "creation": "2026-08-06 13:16:56.494835",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "Atlas PMS",
+ "link_to": "Infintrix Atlas",
+ "link_type": "Workspace Sidebar",
+  "logo_url": "/assets/infintrix_atlas/atlas/images/logo.svg",
+ "modified": "2026-08-06 13:16:56.494835",
+ "modified_by": "Administrator",
+ "name": "Atlas PMS",
+ "owner": "Administrator",
+ "restrict_removal": 0,
+ "roles": [],
+ "sidebar": "Infintrix Atlas",
+ "standard": 1
+}

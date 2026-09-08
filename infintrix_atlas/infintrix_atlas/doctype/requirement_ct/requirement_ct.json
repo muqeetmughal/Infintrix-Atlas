@@ -15,7 +15,8 @@
    "in_list_view": 1,
    "label": "Requirement",
    "options": "Requirement",
-   "reqd": 1
+   "reqd": 1,
+   "description": "The requirement included in the scope snapshot."
   }
  ],
  "grid_page_length": 50,

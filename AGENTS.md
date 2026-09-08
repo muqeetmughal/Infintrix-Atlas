@@ -3,12 +3,13 @@
 ## Architecture
 
 - **Backend**: Frappe/ERPNext app (`infintrix_atlas/`), modifies standard `Project` & `Task` via custom fields + custom doc types (Cycle, Project Phase, Requirement, etc.)
-- **Frontend**: React SPA (`atlas/`), served via `www/atlas.html` + `www/atlas.py` with boot context. Routes: Dashboard, Tasks, Projects, Team, Profile, AI Architect, Customer Portal
-- **Frontend port**: `8080` (Vite dev server proxies to Frappe)
+- **Frontend (legacy)**: React SPA (`atlas/`), served via `www/atlas.html` + `www/atlas.py` with boot context. Routes: Dashboard, Tasks, Projects, Team, Profile, AI Architect, Customer Portal. **Being deprecated** — new internal features must be built as native Frappe Desk pages (`page/`) instead.
+- **Frontend (current)**: Native Frappe Desk pages and forms. Example: `project_backlog` Desk page replaces the React `/atlas` backlog view.
+- **Frontend port**: `8080` (Vite dev server proxies to Frappe) — only for legacy React dev
 - **Customer portal access**: based on `Customer.portal_users` membership, not a `Client` role
 - **Core modeling**:
-  - Phase = lifecycle
-  - Cycle = execution planning
+  - Cycle = execution planning (primary unit)
+  - Project Phase = deprecated / being removed
   - Task status = execution state
   - Backlog is derived, not stored
 
@@ -23,7 +24,7 @@ yarn build                # builds to infintrix_atlas/public/atlas/, then copies
 
 # Backend
 bench migrate             # loads fixtures after python changes
-bench --site sitename clear-cache
+bench --site sitename clear-cache   # required after JS/CSS changes in page/ or public/
 bench watch               # auto-compile assets
 
 # Lint
@@ -52,7 +53,9 @@ pre-commit run --all-files
 - Backend: `permissions.py` provides `permission_query_conditions` for project-linked lifecycle doctypes as well as Project/Task/Fathom
 - `TaskOverride.has_permission` in `overrides/task.py`: admin, task owner, ToDo assignee, project owner, project member, or eligible customer portal user can view task detail
 
-## React frontend conventions
+## React frontend conventions (Deprecated)
+
+> **Do not build new features in the React SPA.** The `atlas/` React app is being deprecated. New UI work must be implemented as native Frappe Desk pages (`page/`) or standard DocType views.
 
 - **Framework**: React 19 + React Router v7 + Antd v6 + `frappe-react-sdk` + Tailwind v4
 - **React hooks must be unconditional**: No hooks after early return (e.g. `if (isLoading) return <Spin />`) — causes error #310
@@ -96,10 +99,14 @@ pre-commit run --all-files
 
 ## Custom DocTypes (with project link)
 
-Project Phase, Cycle, Requirement, Scope Snapshot, Project Resource, Project Action Request, Change Request, AI Task Session, AI Task Draft — all have a `project` Link field.
+Cycle, Requirement, Scope Snapshot, Project Resource, Project Action Request, Change Request, AI Task Session, AI Task Draft — all have a `project` Link field.
+- **Project Phase**: deprecated. Remaining references in the React SPA (`atlas/`) and a few legacy DocType link fields are pending cleanup.
 
 ## Current product reality
 
+- Desk-native **Backlog View** (`project_backlog`) now replaces the React `/atlas` backlog view. It supports Scrum/Kanban modes, drag-and-drop between cycles and backlog, and cycle CRUD.
+- Tailwind CSS has been removed from Desk pages. Use Frappe semantic classes (`btn`, `form-control`, `ellipsis`, `hidden`) plus inline styles for layout and colors.
+- SortableJS is used for drag-and-drop on Desk pages (loaded via CDN).
 - Some lifecycle doctypes now have meaningful validation and APIs
 - The custom frontend still does **not** provide a full internal CRUD/governance UI for every Atlas doctype
 - For many internal workflows, Frappe Desk is still part of the supported operator experience
@@ -128,4 +135,5 @@ Project Phase, Cycle, Requirement, Scope Snapshot, Project Resource, Project Act
 - Scope snapshot diff/comparison tooling does not yet exist
 - AI executor workflow is still incomplete
 - `notify_status_changed` referenced in `events/task.py` but not defined in `api/v1.py`
+- Legacy `Project Phase` references still exist in the React SPA (`atlas/`) and some DocType JSONs; needs final cleanup
 - See `ISSUES.md` for the current actionable audit list

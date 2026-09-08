@@ -24,23 +24,13 @@ class AtlasProject(EmployeeProject):
   
 	  
   
-	def create_default_phase(self):
-		phase = frappe.new_doc("Project Phase")
-		phase.project = self.name
-		phase.phase_name = "Execution"
-		phase.sequence = 1
-		phase.status = "Active"
-		phase.insert()
 	def after_insert(self):
 		super().after_insert()
-		print("Creating default phase for new project...")
-		self.create_default_phase()
-  
 	def send_welcome_email(self):
 		# label = f"{self.project_name} ({self.name})"
 		# url = get_link_to_form(self.doctype, self.name, label)
 
-		url = get_url() + "/atlas/tasks/kanban?project=" + self.name
+		url = get_url() + "/app/project_backlog/" + self.name
 
 		print("URl:", url)
 

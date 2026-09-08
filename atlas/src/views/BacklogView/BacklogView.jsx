@@ -2,7 +2,6 @@ import React, {
   useState,
   useMemo,
   useCallback,
-  use,
   useRef,
   useEffect,
 } from "react";
@@ -30,11 +29,13 @@ import {
   useFrappeUpdateDoc,
   useSWRConfig,
 } from "frappe-react-sdk";
-import { useParams } from "react-router-dom";
-import { Button, Input, message, Select, Space, Spin, Tooltip } from "antd";
+import { Button, Input, message, Modal, Select, Space, Spin, Tooltip } from "antd";
 import { useQueryParams } from "../../hooks/useQueryParams";
 import { useProjectDetailsQuery } from "../../hooks/query";
 import PhasesHeader from "./PhasesHeader";
+import PhaseCopilot from "./PhaseCopilot";
+import usePhaseArchitect from "../../store/usePhaseArchitect";
+import useBacklogStore from "../../store/useBacklogStore";
 import DroppableZone from "./DroppableZone";
 import Badge from "./Badge";
 import TaskCard from "./TaskCard";
@@ -54,16 +55,12 @@ const TASK_STATUS_COLORS = {
 
 const BacklogView = () => {
   // const [tasks, setTasks] = useState(initialTasks);
-  const params = useParams();
   const qp = useQueryParams();
   const custom_phase = qp.get("custom_phase") || null;
   // const [selectedPhase, setSelectedPhase] = useState(null);
-  const [showBacklogCreator, setShowBacklogCreator] = useState(false);
-  const [cycleModal, setCycleModal] = useState(null);
-  // edit button logic
-const [isEditingPhase, setIsEditingPhase] = useState(false);
-const [phaseTitle, setPhaseTitle] = useState("");
-const phaseInputRef = useRef(null);
+  const phaseInputRef = useRef(null);
+  const [isEditingPhase, setIsEditingPhase] = useState(false);
+  const [phaseTitle, setPhaseTitle] = useState("");
 
   const { mutate } = useSWRConfig();
   const project_id = qp.get("project") || null;
@@ -79,25 +76,20 @@ const phaseInputRef = useRef(null);
   const complete_cycle_mutation = useFrappePostCall(
     "infintrix_atlas.api.v1.complete_cycle",
   );
+  const bulkDeleteTasks = useFrappePostCall(
+    "infintrix_atlas.api.v1.bulk_delete_tasks",
+  );
   const [activeId, setActiveId] = useState(null);
-  const [selectedTasks, setSelectedTasks] = useState(new Set());
-  const [isBacklogExpanded, setIsBacklogExpanded] = useState(true);
+  const phaseArchitectPhase = usePhaseArchitect((s) => s.phase);
+  const openPhaseArchitect = usePhaseArchitect((s) => s.open);
+  const closePhaseArchitect = usePhaseArchitect((s) => s.close);
 
-  const toggleTaskSelection = useCallback((taskId, ctrlKey) => {
-    if (!ctrlKey) {
-      setSelectedTasks(new Set());
-      return;
-    }
-    setSelectedTasks(prev => {
-      const next = new Set(prev);
-      if (next.has(taskId)) {
-        next.delete(taskId);
-      } else {
-        next.add(taskId);
-      }
-      return next;
-    });
-  }, []);
+  const selectedTasks = useBacklogStore((s) => s.selectedTasks);
+  const isBacklogExpanded = useBacklogStore((s) => s.isBacklogExpanded);
+  const showBacklogCreator = useBacklogStore((s) => s.showBacklogCreator);
+  const clearTaskSelection = useBacklogStore((s) => s.clearTaskSelection);
+  const toggleBacklogExpanded = useBacklogStore((s) => s.toggleBacklogExpanded);
+  const setShowBacklogCreator = useBacklogStore((s) => s.setShowBacklogCreator);
   const project_query = useProjectDetailsQuery(project_id);
 
   const cycles_query3 = useFrappeGetCall(
@@ -134,18 +126,22 @@ const phaseInputRef = useRef(null);
   const phases = useMemo(() => {
     return cycles_query3?.data?.message?.phases || [];
   }, [cycles_query3.data]);
+  const prevCustomPhase = useRef(custom_phase);
+
+  useEffect(() => {
+    if (custom_phase && custom_phase !== prevCustomPhase.current && phases.length) {
+      const phase = phases.find(p => p.name === custom_phase);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (phase) openPhaseArchitect(phase);
+    }
+    prevCustomPhase.current = custom_phase;
+  }, [custom_phase, phases]);
 
   const defaultPhase = useMemo(() => {
     const active = cycles_query3?.data?.message?.active_phase || null;
     if (active) return active
     return phases.length > 0 ? phases[phases.length - 1] : null
   }, [cycles_query3.data, phases]);
-
-  useEffect(() => {
-    if (!custom_phase && defaultPhase) {
-      qp.set("custom_phase", defaultPhase.name);
-    }
-  }, [defaultPhase, custom_phase]);
 
   const all_tasks = useMemo(() => {
     return cycles_query3?.data?.message?.all_tasks || [];
@@ -157,7 +153,7 @@ const phaseInputRef = useRef(null);
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
     if (!selectedTasks.has(event.active.id)) {
-      setSelectedTasks(new Set());
+      clearTaskSelection();
     }
   };
 
@@ -176,7 +172,7 @@ const phaseInputRef = useRef(null);
       handleMoveTask(taskIds, over.id, type);
     }
     setActiveId(null);
-    setSelectedTasks(new Set());
+    clearTaskSelection();
   };
 
   const handleMoveTask = useCallback(
@@ -249,6 +245,11 @@ const phaseInputRef = useRef(null);
     return phases.find((p) => p.name === custom_phase) || defaultPhase;
   }, [phases, custom_phase, defaultPhase]);
 
+  const selectedTaskRecords = useMemo(
+    () => all_tasks.filter((task) => selectedTasks.has(task.id)),
+    [all_tasks, selectedTasks],
+  );
+
 
 
 
@@ -274,6 +275,40 @@ const handlePhaseUpdate = async () => {
   }
 };
 
+  const handleBulkDelete = useCallback(() => {
+    const taskIds = Array.from(selectedTasks);
+    if (!taskIds.length) return;
+
+    Modal.confirm({
+      title: `Delete ${taskIds.length} selected task(s)?`,
+      content: "This action cannot be undone.",
+      okText: "Delete",
+      okType: "danger",
+      onOk: async () => {
+        try {
+          const response = await bulkDeleteTasks.call({
+            task_names: JSON.stringify(taskIds),
+          });
+          const result = response?.message || {};
+
+          if (result.success) {
+            if (result.failed?.length) {
+              message.warning(result.message || "Some tasks could not be deleted");
+            } else {
+              message.success(result.message || "Tasks deleted successfully");
+            }
+            clearTaskSelection();
+            await Promise.all([cycles_query3.mutate(), project_query.mutate()]);
+          } else {
+            message.error(result.message || "Failed to delete tasks");
+          }
+        } catch (error) {
+          message.error(error?.message || "Failed to delete tasks");
+        }
+      },
+    });
+  }, [selectedTasks, bulkDeleteTasks, cycles_query3, project_query]);
+
 
 
 
@@ -292,200 +327,66 @@ const handlePhaseUpdate = async () => {
             await updateMutation.updateDoc("Project Phase", phaseName, { title: newTitle })
             await cycles_query3.mutate()
           }}
+          onStatusChange={async (phaseName, status) => {
+            await updateMutation.updateDoc("Project Phase", phaseName, { status })
+            await cycles_query3.mutate()
+          }}
         />
 
         {phases.length !== 0 && selectedPhase && (
           <div className="flex flex-col lg:flex-row gap-6 p-4 sm:p-6 h-full">
-            {/* Left Panel - Phase Details */}
-            <div className="w-full lg:w-80 shrink-0">
-              <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
-                <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40">
-                  <div className="min-w-0">
-                    <Badge
-                      variant={
-                        selectedPhase?.status === "Completed"
-                          ? "success"
-                          : selectedPhase?.status === "Active"
-                            ? "info"
-                            : "neutral"
-                      }
-                    >
-                      Phase {selectedPhase?.sequence}
-                    </Badge>
-
-
-                    <div className="flex items-center justify-between mt-2">
-                      {isEditingPhase ? (
-                        <Input
-                          ref={phaseInputRef}
-                          size="small"
-                          value={phaseTitle}
-                          onChange={(e) => setPhaseTitle(e.target.value)}
-                          onPressEnter={handlePhaseUpdate}
-                          onBlur={handlePhaseUpdate}
-                          className="text-lg font-black tracking-tight"
-                        />
-                      ) : (
-                        <>
-                          <h3 className="text-lg sm:text-xl font-black tracking-tight truncate">
-                            {selectedPhase?.title}
-                          </h3>
-                          <Button
-                            type="text"
-                            size="small"
-                            className="text-slate-400 hover:text-indigo-600 transition-colors"
-                            icon={<Edit2 size={14} />}
-                            onClick={() => {
-                              setPhaseTitle(selectedPhase?.title || "");
-                              setIsEditingPhase(true);
-                            }}
-                          />
-                        </>
-                      )}
-                    </div>
-
-
-
-                  </div>
-                </div>
-
-                <div className="p-4 sm:p-6 space-y-4">
-                  <Space size={8} className="w-full">
-                    <Button
-                      type="text"
-                      size="small"
-                      onClick={() => {
-                        window.open(
-                          `/app/project-phase/${selectedPhase.name}`,
-                          "_blank",
-                        );
-                      }}
-                    >
-                      <ArrowUpRight size={16} />
-                    </Button>
-                    <Tooltip
-                      title={
-                        !deleteMutation.loading && (backlogTasks.length > 0 || cycles.length > 0)
-                          ? "Remove all tasks and cycles before deleting"
-                          : undefined
-                      }
-                    >
-                      <Button
-                        disabled={
-                          deleteMutation.loading ||
-                          backlogTasks.length > 0 ||
-                          cycles.length > 0
-                        }
-                        type="text"
-                        size="small"
-                        danger
-                        icon={<Trash size={16} />}
-                        onClick={() => {
-                          const previousPhase = phases.find(
-                            (p) =>
-                              phases.indexOf(p) ===
-                              phases.indexOf(selectedPhase) - 1,
-                          );
-
-                          deleteMutation
-                            .deleteDoc("Project Phase", selectedPhase.name)
-                            .then(() => {
-                              cycles_query3.mutate().then(() => {
-                                if (previousPhase) {
-                                  qp.set("custom_phase", previousPhase.name);
-                                }
-                              });
-                            });
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </Tooltip>
-                      <Select
-                        value={selectedPhase?.status || "Planned"}
-                      variant="borderless"
-                      size="small"
-                      popupMatchSelectWidth={false}
-                      style={{ width: "100%" }}
-                      options={[
-                        { value: "Planned", label: "Planned" },
-                        { value: "Active", label: "Active" },
-                        { value: "Completed", label: "Completed" },
-                      ]}
-                      onChange={(value) => {
-                        updateMutation
-                          .updateDoc("Project Phase", selectedPhase.name, {
-                            status: value,
-                          })
-                          .then(() => {
-                            cycles_query3.mutate();
-                          });
-                      }}
-                    />
-                  </Space>
-
-                  {/* Phase Progress */}
-                  <div className="bg-slate-900 dark:bg-slate-800 rounded-2xl p-4 text-white relative overflow-hidden">
-                    <div className="relative">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2">
-                        Phase Progress
-                      </div>
-                      <div className="flex items-end justify-between mb-3 gap-2">
-                        <span className="text-3xl sm:text-4xl font-black tracking-tighter">
-                          {0}%
-                        </span>
-                        <span className="text-xs font-bold text-slate-400 mb-1">
-                          {0} Tasks
-                        </span>
-                      </div>
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-indigo-500 transition-all duration-1000"
-                          style={{ width: `${0}%` }}
-                        />
-                      </div>
-                    </div>
-                    <TrendingUp
-                      className="absolute -right-2 -bottom-2 text-white/5"
-                      size={80}
-                    />
-                  </div>
-
-                  {/* Dates Grid */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
-                      <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">
-                        Start Date
-                      </div>
-                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {selectedPhase?.start_date || "-"}
-                      </div>
-                    </div>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
-                      <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase mb-1">
-                        End Date
-                      </div>
-                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {selectedPhase?.end_date || "-"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button className="w-full py-2 bg-slate-900 dark:bg-slate-800 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider hover:bg-indigo-600 transition-all">
-                    Phase Report
-                  </button>
+            {/* Left Panel - AI Architect */}
+            {phaseArchitectPhase && (
+              <div className="w-full lg:w-[480px] xl:w-[560px] shrink-0">
+                <div className="phase-ai-architect">
+                  <PhaseCopilot
+                    phase={phaseArchitectPhase}
+                    project={project_id}
+                    onClose={closePhaseArchitect}
+                  />
                 </div>
               </div>
-            </div>
-
+            )}
+      
             {/* Right Panel - Tasks */}
             <div className="flex-1 min-w-0">
+              {selectedTasks.size > 0 && (
+                <div className="mb-4 rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-red-800">
+                      {selectedTasks.size} task{selectedTasks.size === 1 ? "" : "s"} selected
+                    </p>
+                    <p className="text-xs text-red-600 truncate">
+                      {selectedTaskRecords.slice(0, 3).map((task) => task.subject).join(", ")}
+                      {selectedTaskRecords.length > 3 ? ` +${selectedTaskRecords.length - 3} more` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="small"
+                      onClick={() => clearTaskSelection()}
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      danger
+                      size="small"
+                      icon={<Trash size={14} />}
+                      loading={bulkDeleteTasks.loading}
+                      onClick={handleBulkDelete}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid gap-4 overflow-y-auto pr-2 custom-scrollbar max-h-[calc(100vh-200px)]">
                 {/* Cycles */}
                 {isScrum && (
                   <div className="space-y-3">
                     {cycles.map((cycle) => (
-                      <Cycle key={cycle.name} cycle={cycle} deleteMutation={deleteMutation} cycles_query3={cycles_query3} setCycleModal={setCycleModal} selectedTasks={selectedTasks} toggleTaskSelection={toggleTaskSelection} />
+                      <Cycle key={cycle.name} cycle={cycle} deleteMutation={deleteMutation} cycles_query3={cycles_query3} />
                     ))}
                   </div>
                 )}
@@ -500,7 +401,7 @@ const handlePhaseUpdate = async () => {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3 flex-1">
                       <ChevronRight
-                        onClick={() => setIsBacklogExpanded(!isBacklogExpanded)}
+                        onClick={toggleBacklogExpanded}
                         size={18}
                         className={`text-slate-400 dark:text-slate-500 transition-transform cursor-pointer ${
                           isBacklogExpanded ? "rotate-90" : ""
@@ -529,11 +430,7 @@ const handlePhaseUpdate = async () => {
                         <InlineTaskCreator
                           project_id={project_id}
                           phase_id={custom_phase}
-                          onCreated={() => {
-                            setShowBacklogCreator(false);
-                            cycles_query3.mutate();
-                          }}
-                          onCancel={() => setShowBacklogCreator(false)}
+                          onCreated={() => cycles_query3.mutate()}
                         />
                       ) : (
                         <button
@@ -548,7 +445,7 @@ const handlePhaseUpdate = async () => {
                       )}
 
                       {backlogTasks.map((t) => (
-                        <TaskCard key={t.id} task={t} selectedTasks={selectedTasks} toggleTaskSelection={toggleTaskSelection} />
+                        <TaskCard key={t.id} task={t} />
                       ))}
                     </div>
                   )}

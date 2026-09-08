@@ -4,23 +4,23 @@ app_publisher = "Muqeet Mughal"
 app_description = "A Project Management Software Built Specifically for the Software Development Teams"
 app_email = "muqeetmughal786@gmail.com"
 app_license = "mit"
-app_icon_url = "/assets/infintrix_atlas/atlas/images/logo.svg"
-app_icon_title = "Atlas"
-app_icon_route = "/atlas"
-add_to_apps_screen = [
-    {
-        "name": "atlas",
-        "logo": "/assets/infintrix_atlas/atlas/images/logo.svg",
-        "title": "Atlas",
-        "route": "/atlas",
-        "has_permission": "infintrix_atlas.api.check_app_permission",
-    }
-]
+# app_icon_url = "/assets/infintrix_atlas/atlas/images/logo.svg"
+# app_icon_title = "Atlas"
+# app_icon_route = "/atlas"
+# add_to_apps_screen = [
+#     {
+#         "name": "atlas",
+#         "logo": "/assets/infintrix_atlas/atlas/images/logo.svg",
+#         "title": "Atlas",
+#         "route": "/desk/atlas",
+#         "has_permission": "infintrix_atlas.api.check_app_permission",
+#     }
+# ]
 
 # Apps
 # ------------------
 
-required_apps = ["erpnext", "hrms"]
+required_apps = ["hrms"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -38,7 +38,7 @@ required_apps = ["erpnext", "hrms"]
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/infintrix_atlas/css/infintrix_atlas.css"
-# app_include_js = "/assets/infintrix_atlas/js/infintrix_atlas.js"
+app_include_js = ["/assets/infintrix_atlas/js/atlas_backlog.js", "/assets/infintrix_atlas/js/user_avatar_in_link.js"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/infintrix_atlas/css/infintrix_atlas.css"
@@ -55,7 +55,10 @@ required_apps = ["erpnext", "hrms"]
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {
+    "Project": ["public/js/project.js", "public/js/project_cycles.js", "public/js/project_team.js"],
+    "Task": ["public/js/task.js", "public/js/task_assignment_history.js"],
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -156,7 +159,12 @@ doc_events = {
     "Project": {
         "after_insert": "infintrix_atlas.events.project.after_insert",
         "before_insert": "infintrix_atlas.events.project.before_insert",
+        "before_validate": "infintrix_atlas.events.project.before_validate",
+        "on_update": "infintrix_atlas.events.project.on_update",
         "validate": "infintrix_atlas.events.project.validate",
+    },
+    "ToDo": {
+        "after_insert": "infintrix_atlas.events.todo.enforce_single_assignee",
     },
 }
 
@@ -183,7 +191,7 @@ doc_events = {
 
 scheduler_events = {
     "hourly": [
-        "infintrix_atlas.fathom_integration.api.sync_accounts",
+        "infintrix_atlas.fathom_integration.api.enqueue_sync_all_accounts",
     ]
 }
 
@@ -270,11 +278,9 @@ override_doctype_dashboards = {
 
 
 fixtures = [
-    {"dt": "Custom Field", "filters": [["module", "in", ["Infintrix Atlas"]]]},
-    {"dt": "Property Setter", "filters": [
-        ["module", "in", ["Infintrix Atlas"]]]},
+ 
     {"dt": "Task Type"},
-    {"dt": "Phase Template"},
+    {"dt": "Client Script"},
     {
         "dt": "Custom DocPerm",
         "filters": [
@@ -283,13 +289,11 @@ fixtures = [
                 "in",
                 [
                     "Task",
-                    "Phase Template",
                     "Cycle",
                     "Customer",
                     "Comment",
                     "Version",
                     "User",
-                    "Project Phase"
                 ],
             ]
         ],
@@ -310,7 +314,6 @@ permission_query_conditions = {
     "Change Request": "infintrix_atlas.permissions.change_request_permission_query",
     "Project Resource": "infintrix_atlas.permissions.project_resource_permission_query",
     "Project Action Request": "infintrix_atlas.permissions.project_action_request_permission_query",
-    "Project Phase": "infintrix_atlas.permissions.project_phase_permission_query",
     "Cycle": "infintrix_atlas.permissions.cycle_permission_query",
     "Fathom Meeting": "infintrix_atlas.permissions.fathom_meeting_permission_query_conditions",
     "Fathom Account": "infintrix_atlas.permissions.fathom_account_permission_query_conditions",
@@ -322,7 +325,6 @@ has_permission = {
     "Change Request": "infintrix_atlas.permissions.change_request_has_permission",
     "Project Resource": "infintrix_atlas.permissions.project_resource_has_permission",
     "Project Action Request": "infintrix_atlas.permissions.project_action_request_has_permission",
-    "Project Phase": "infintrix_atlas.permissions.project_phase_has_permission",
     "Cycle": "infintrix_atlas.permissions.cycle_has_permission",
     "Fathom Meeting": "infintrix_atlas.permissions.fathom_meeting_has_permission",
     "Fathom Account": "infintrix_atlas.permissions.fathom_account_has_permission",
@@ -334,4 +336,8 @@ has_permission = {
 
 override_doctype_class = {
     "Task": "infintrix_atlas.overrides.task.TaskOverride",
+}
+
+override_whitelisted_methods = {
+    "frappe.desk.doctype.kanban_board.kanban_board.get_kanban_boards": "infintrix_atlas.api.kanban.get_kanban_boards",
 }

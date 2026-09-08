@@ -23,7 +23,8 @@
    "in_list_view": 1,
    "label": "Session",
    "options": "AI Task Session",
-   "reqd": 1
+   "reqd": 1,
+   "description": "The AI Task Session this draft belongs to."
   },
   {
    "fieldname": "project",
@@ -31,50 +32,59 @@
    "in_list_view": 1,
    "label": "Project",
    "options": "Project",
-   "reqd": 1
+   "reqd": 1,
+   "description": "The project this document belongs to."
   },
   {
    "fieldname": "subject",
    "fieldtype": "Data",
-   "label": "Subject"
+   "label": "Subject",
+   "description": "Proposed subject/title for the task."
   },
   {
    "fieldname": "priority",
    "fieldtype": "Select",
    "label": "Priority",
-   "options": "Low\nMedium\nHigh\nUrgent"
+   "options": "Low\nMedium\nHigh\nUrgent",
+   "description": "Suggested priority for the task."
   },
   {
    "fieldname": "weight",
    "fieldtype": "Int",
-   "label": "Weight"
+   "label": "Weight",
+   "description": "Relative weight/importance of the task."
   },
   {
    "fieldname": "confidence",
    "fieldtype": "Float",
-   "label": "Confidence"
+   "label": "Confidence",
+   "description": "Model confidence score (0-1) for the draft."
   },
   {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nApproved\nRejected\nCreated\nFailed"
+   "options": "Draft\nApproved\nRejected\nCreated\nFailed",
+   "description": "Lifecycle status of the session."
   },
   {
    "fieldname": "validation_errors",
    "fieldtype": "Long Text",
-   "label": "Validation Errors"
+   "label": "Validation Errors",
+   "description": "Errors found when validating the draft against project rules."
   },
   {
    "fieldname": "created_task",
    "fieldtype": "Link",
    "label": "Created Task",
-   "options": "Task"
+   "options": "Task",
+   "description": "The Task created once the draft is accepted."
   },
   {
    "fieldname": "raw_ai_payload",
    "fieldtype": "Long Text",
-   "label": "Raw AI Payload"
+   "label": "Raw AI Payload",
+   "description": "Raw AI response used to generate this draft."
   }
  ],
  "grid_page_length": 50,

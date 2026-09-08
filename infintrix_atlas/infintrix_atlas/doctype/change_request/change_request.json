@@ -16,13 +16,13 @@
   "impact_hours",
   "impact_cost",
   "impact_days",
-   "approval_date",
-   "apprived_by",
-   "rejection_date",
-   "rejected_by",
-   "implemented_date",
-   "implemented_by"
-  ],
+  "approval_date",
+  "apprived_by",
+  "rejection_date",
+  "rejected_by",
+  "implemented_date",
+  "implemented_by"
+ ],
  "fields": [
   {
    "fieldname": "project",
@@ -30,29 +30,34 @@
    "in_list_view": 1,
    "label": "Project",
    "options": "Project",
-   "reqd": 1
+   "reqd": 1,
+   "description": "The project this document belongs to."
   },
   {
    "fieldname": "title",
    "fieldtype": "Data",
-   "label": "Title"
+   "label": "Title",
+   "description": "Short summary of the requested change."
   },
   {
    "fieldname": "description",
    "fieldtype": "Small Text",
-   "label": "Description"
+   "label": "Description",
+   "description": "Detailed description of the change."
   },
   {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nUnder Review\nApproved\nRejected\nImplemented"
+   "options": "Draft\nUnder Review\nApproved\nRejected\nImplemented",
+   "description": "Lifecycle status of the session."
   },
   {
    "fieldname": "related_requirement",
    "fieldtype": "Link",
    "label": "Related Requirement",
-   "options": "Requirement"
+   "options": "Requirement",
+   "description": "The requirement affected by this change."
   },
   {
    "fieldname": "column_break_isok",
@@ -62,60 +67,71 @@
    "fieldname": "requested_by",
    "fieldtype": "Link",
    "label": "Requested By",
-   "options": "User"
+   "options": "User",
+   "description": "User who submitted the change request."
   },
   {
    "fieldname": "request_date",
    "fieldtype": "Datetime",
-   "label": "Request Date"
+   "label": "Request Date",
+   "description": "Date the change request was submitted."
   },
   {
    "fieldname": "impact_hours",
    "fieldtype": "Float",
-   "label": "Impact Hours"
+   "label": "Impact Hours",
+   "description": "Estimated effort impact in hours."
   },
   {
    "fieldname": "impact_cost",
    "fieldtype": "Float",
-   "label": "Impact Cost"
+   "label": "Impact Cost",
+   "description": "Estimated cost impact."
   },
   {
    "fieldname": "impact_days",
    "fieldtype": "Float",
-   "label": "Impact Days"
+   "label": "Impact Days",
+   "description": "Estimated schedule impact in days."
   },
   {
    "fieldname": "approval_date",
    "fieldtype": "Datetime",
-   "label": "Approval Date"
+   "label": "Approval Date",
+   "description": "Date the change was approved."
   },
   {
    "fieldname": "apprived_by",
    "fieldtype": "Link",
    "label": "Apprived By",
-   "options": "User"
+   "options": "User",
+   "description": "User who approved the change."
   },
   {
    "fieldname": "rejection_date",
    "fieldtype": "Datetime",
-   "label": "Rejection Date"
+   "label": "Rejection Date",
+   "description": "Date the action was rejected."
   },
   {
    "fieldname": "rejected_by",
    "fieldtype": "Link",
    "label": "Rejected By",
-   "options": "User"
+   "options": "User",
+   "description": "User who rejected the action."
   },
   {
    "fieldname": "implemented_date",
    "fieldtype": "Datetime",
-   "label": "Implemented Date"
+   "label": "Implemented Date",
+   "description": "Date the change was implemented."
   },
   {
    "fieldname": "implemented_by",
    "fieldtype": "Link",
    "label": "Implemented By",
-   "options": "User"
+   "options": "User",
+   "description": "User who implemented the change."
   }
  ],
  "grid_page_length": 50,

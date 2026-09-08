@@ -5,7 +5,5 @@ import frappe
 from frappe.model.document import Document
 
 
-class PhaseTemplateCT(Document):
-    def validate(self):
-        if not self.phase_name:
-            frappe.throw("Phase name is required.")
+class AIChatMessage(Document):
+    pass

@@ -78,7 +78,7 @@ def validate_tasks(drafts):
 
 
 @frappe.whitelist()
-def create_from_ai(project, tasks):
+def create_from_ai(project, tasks, phase=None):
     if isinstance(tasks, str):
         tasks = json.loads(tasks)
 
@@ -88,25 +88,81 @@ def create_from_ai(project, tasks):
 
     for t in tasks:
         try:
+            draft_id = t.get("id")
+            subject = t["subject"]
+
+            # Dedup: skip if same subject already exists
+            duplicate = frappe.db.exists("Task", {
+                "subject": subject,
+                "project": project,
+                "status": ["!=", "Cancelled"],
+            })
+            if duplicate:
+                if draft_id and frappe.db.exists("AI Task Draft", draft_id):
+                    frappe.db.set_value(
+                        "AI Task Draft",
+                        draft_id,
+                        {
+                            "status": "Created",
+                            "created_task": duplicate,
+                            "raw_ai_payload": json.dumps({"creation_status": "DUPLICATE", "task": duplicate}),
+                        },
+                        update_modified=True,
+                    )
+                results.append({
+                    "id": draft_id,
+                    "subject": subject,
+                    "status": "DUPLICATE",
+                    "task": duplicate,
+                })
+                continue
+
             doc = frappe.get_doc({
                 "doctype": "Task",
-                "subject": t["subject"],
+                "subject": subject,
                 "project": project,
                 "priority": t["priority"],
                 "status": "Open",
                 "custom_weight": t["weight"],
-                "custom_created_by": "AI",
-                "description": t.get("description", "")
+                "description": t.get("description", ""),
+                "custom_created_by_ai": 1,
+                "custom_ai_session": t.get("session"),
+                "custom_ai_confidence": t.get("confidence"),
             })
             doc.insert(ignore_permissions=True)
 
+            if draft_id and frappe.db.exists("AI Task Draft", draft_id):
+                frappe.db.set_value(
+                    "AI Task Draft",
+                    draft_id,
+                    {
+                        "status": "Created",
+                        "created_task": doc.name,
+                        "raw_ai_payload": json.dumps({"creation_status": "SUCCESS", "task": doc.name}),
+                    },
+                    update_modified=True,
+                )
+
             results.append({
+                "id": draft_id,
                 "subject": t["subject"],
                 "status": "SUCCESS",
                 "task": doc.name
             })
         except Exception as e:
+            draft_id = t.get("id")
+            if draft_id and frappe.db.exists("AI Task Draft", draft_id):
+                frappe.db.set_value(
+                    "AI Task Draft",
+                    draft_id,
+                    {
+                        "status": "Failed",
+                        "raw_ai_payload": json.dumps({"creation_status": "FAILED", "error": str(e)}),
+                    },
+                    update_modified=True,
+                )
             results.append({
+                "id": draft_id,
                 "subject": t["subject"],
                 "status": "FAILED",
                 "error": str(e)

@@ -2,13 +2,15 @@ import { Input, Spin } from "antd";
 import { useFrappeCreateDoc } from "frappe-react-sdk";
 import { useEffect, useRef, useState } from "react";
 
+import useBacklogStore from "../../store/useBacklogStore";
+
 const InlineTaskCreator = ({
   project_id,
   phase_id,
   cycle = null,
   onCreated,
-  onCancel,
 }) => {
+  const setShowBacklogCreator = useBacklogStore((s) => s.setShowBacklogCreator);
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
@@ -50,7 +52,7 @@ const InlineTaskCreator = ({
         onChange={(e) => setValue(e.target.value)}
         onPressEnter={createTask}
         onKeyDown={(e) => {
-          if (e.key === "Escape") onCancel();
+          if (e.key === "Escape") setShowBacklogCreator(false);
         }}
         suffix={loading ? <Spin size="small" /> : null}
         variant="borderless"

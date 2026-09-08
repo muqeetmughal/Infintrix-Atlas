@@ -8,6 +8,9 @@
   "project",
   "execution_mode",
   "cycle",
+  "phase",
+  "resource_context",
+  "chat_messages",
   "prompt",
   "status",
   "blocked_reason",
@@ -21,45 +24,73 @@
    "in_list_view": 1,
    "label": "Project",
    "options": "Project",
-   "reqd": 1
+   "reqd": 1,
+   "description": "The project this document belongs to."
   },
   {
    "fieldname": "execution_mode",
    "fieldtype": "Select",
    "label": "Execution Mode",
-   "options": "Scrum\nKanban"
+   "options": "Scrum\nKanban",
+   "description": "Execution mode (Scrum or Kanban) for task generation."
   },
   {
    "fieldname": "cycle",
    "fieldtype": "Link",
    "label": "Cycle",
-   "options": "Cycle"
+   "options": "Cycle",
+   "description": "Target sprint/cycle for generated tasks (Scrum)."
+  },
+  {
+   "fieldname": "phase",
+   "fieldtype": "Link",
+   "label": "Phase",
+   "options": "Project Phase",
+   "description": "Target phase for generated tasks."
+  },
+  {
+   "fieldname": "resource_context",
+   "fieldtype": "Long Text",
+   "label": "Resource Context",
+   "description": "Project resources/knowledge provided as context to the model."
+  },
+  {
+   "fieldname": "chat_messages",
+   "fieldtype": "Table",
+   "label": "Chat Messages",
+   "options": "AI Chat Message",
+   "description": "Conversation history between the user and the assistant."
   },
   {
    "fieldname": "prompt",
    "fieldtype": "Long Text",
-   "label": "Prompt"
+   "label": "Prompt",
+   "description": "The instruction sent to the model."
   },
   {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nDecomposing\nGuarding\nBlocked\nReviewing\nCreating\nCompleted\nPartial Success\nFailed"
+   "options": "Draft\nDecomposing\nGuarding\nBlocked\nReviewing\nCreating\nCompleted\nPartial Success\nFailed",
+   "description": "Lifecycle status of the session."
   },
   {
    "fieldname": "blocked_reason",
-   "fieldtype": "Data",
-   "label": "Blocked Reason"
+   "fieldtype": "Small Text",
+   "label": "Blocked Reason",
+   "description": "Reason the session is blocked, if applicable."
   },
   {
    "fieldname": "started_on",
    "fieldtype": "Datetime",
-   "label": "Started On"
+   "label": "Started On",
+   "description": "Timestamp when the session started."
   },
   {
    "fieldname": "completed_on",
    "fieldtype": "Datetime",
-   "label": "Completed On"
+   "label": "Completed On",
+   "description": "Timestamp when the session finished."
   }
  ],
  "grid_page_length": 50,

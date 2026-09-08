@@ -1,19 +1,19 @@
 {
  "content": null,
- "creation": "2026-01-09 16:01:18.350185",
+ "creation": "2026-07-31 00:00:00.000000",
  "docstatus": 0,
  "doctype": "Page",
  "idx": 0,
- "modified": "2026-01-09 16:01:18.350185",
+ "modified": "2026-07-31 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Infintrix Atlas",
- "name": "atlas",
+ "name": "project_backlog",
  "owner": "Administrator",
- "page_name": "atlas",
+ "page_name": "project_backlog",
  "roles": [],
  "script": null,
  "standard": "Yes",
  "style": null,
  "system_page": 0,
- "title": "atlas"
+ "title": "Backlog View"
 }

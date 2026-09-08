@@ -6,15 +6,22 @@ from infintrix_atlas.role_utils import (
 )
 
 
+def _administrator_can_bypass():
+    """Whether Administrator/System Manager bypass project membership filters."""
+    return bool(
+        frappe.db.get_single_value("Atlas Settings", "allow_administrator_bypass")
+    )
+
+
 def project_permission_query(user):
     # 1. Full access users
-    if user == "Administrator":
+    if user == "Administrator" and _administrator_can_bypass():
         return ""
 
     user_roles = frappe.get_roles(user)
 
     # System Manager: see everything
-    if "System Manager" in user_roles:
+    if "System Manager" in user_roles and _administrator_can_bypass():
         return ""
 
     escaped_user = frappe.db.escape(user)
@@ -53,13 +60,7 @@ def project_permission_query(user):
 
 
 def task_permission_query(user):
-        if user == "Administrator":
-            return ""
-
         roles = frappe.get_roles(user)
-
-        if "System Manager" in roles:
-            return ""
 
         escaped_user = frappe.db.escape(user)
         portal_customers = get_customer_portal_customers(user) or []
@@ -74,9 +75,32 @@ def task_permission_query(user):
                     )
                 """
 
-        # Projects Manager logic
+        # Scrum projects only show tasks that belong to an Active cycle;
+        # Kanban projects show all tasks of the user. Applies to everyone.
+        scrum_condition = f"""
+            (
+                `tabTask`.project IN (
+                    SELECT name
+                    FROM `tabProject`
+                    WHERE custom_execution_mode IS NULL
+                       OR custom_execution_mode != "Scrum"
+                )
+                OR `tabTask`.custom_cycle IN (
+                    SELECT name
+                    FROM `tabCycle`
+                    WHERE status = "Active"
+                )
+            )
+        """
+
+        # Everyone (including Administrator / System Manager) only sees tasks
+        # from projects they own or are a member of, unless the Administrator
+        # bypass is enabled in Atlas Settings.
+        if (user == "Administrator" or "System Manager" in roles) and _administrator_can_bypass():
+            return scrum_condition
+
         if has_projects_manager_role(roles=roles):
-            return f"""
+            project_condition = f"""
                     (
                         `tabTask`.owner = {escaped_user}
                         OR `tabTask`.project IN (
@@ -86,9 +110,9 @@ def task_permission_query(user):
                         )
                     )
                 """
-        
         # Regular Project User - see only tasks from projects where user is in Project User child table
-        return f"""
+        else:
+            project_condition = f"""
                 (
                 `tabTask`.project IN (
                     SELECT parent
@@ -99,15 +123,14 @@ def task_permission_query(user):
                 )
             """
 
+        return f"({project_condition}) AND {scrum_condition}"
+
 
 def _project_linked_permission_query(user, table, project_field="project"):
-    if user == "Administrator":
+    if (user == "Administrator" or "System Manager" in frappe.get_roles(user)) and _administrator_can_bypass():
         return ""
 
     roles = frappe.get_roles(user)
-
-    if "System Manager" in roles:
-        return ""
 
     escaped_user = frappe.db.escape(user)
     portal_customers = get_customer_portal_customers(user) or []
@@ -154,12 +177,10 @@ def _project_linked_permission_query(user, table, project_field="project"):
 
 
 def _project_linked_has_permission(doc, user, project_field="project"):
-    if user == "Administrator":
+    if (user == "Administrator" or "System Manager" in frappe.get_roles(user)) and _administrator_can_bypass():
         return True
 
     roles = frappe.get_roles(user)
-    if "System Manager" in roles:
-        return True
 
     project = getattr(doc, project_field, None)
     if not project:
@@ -211,14 +232,6 @@ def project_action_request_permission_query(user):
 
 
 def project_action_request_has_permission(doc, user):
-    return _project_linked_has_permission(doc, user)
-
-
-def project_phase_permission_query(user):
-    return _project_linked_permission_query(user, "Project Phase")
-
-
-def project_phase_has_permission(doc, user):
     return _project_linked_has_permission(doc, user)
 
 

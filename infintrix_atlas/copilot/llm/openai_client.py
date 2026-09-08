@@ -51,17 +51,18 @@ def call_openai(
 
     settings = frappe.get_single("Atlas Settings")
 
-    if settings.llm_provider != "OpenAI":
-        raise RuntimeError("OpenAI provider not enabled")
-
     api_key = settings.get_password(
-        fieldname="openai_api_key",
+        fieldname="api_key",
         raise_exception=True
     )
 
-    model = settings.openai_model or "gpt-4o-2024-08-06"
+    model = settings.openai_model or "openai/gpt-4o-mini"
 
-    client = OpenAI(api_key=api_key)
+    client_kwargs = {"api_key": api_key}
+    base_url = settings.api_base or "https://openrouter.ai/api/v1"
+    client_kwargs["base_url"] = base_url
+
+    client = OpenAI(**client_kwargs)
 
     # history = get_chat_history(session) if session else []
 
@@ -73,9 +74,6 @@ def call_openai(
         ] + [
             {"role": "user", "content": user_prompt}
         ],
-        # messages=[{"role": "system", "content": system_prompt}]
-        # + history
-        # + [{"role": "user", "content": user_prompt}],
         response_format={
             "type": "json_schema",
             "json_schema": _openai_json_schema(response_model),

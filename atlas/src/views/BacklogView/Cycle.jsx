@@ -7,7 +7,12 @@ import Badge from "./Badge";
 import TaskCard from "./TaskCard";
 import { Button, Dropdown } from "antd";
 
-const Cycle = ({ cycle, deleteMutation, cycles_query3, setCycleModal, selectedTasks, toggleTaskSelection }) => {
+import useBacklogStore from "../../store/useBacklogStore";
+
+const Cycle = ({ cycle, deleteMutation, cycles_query3 }) => {
+  const selectedTasks = useBacklogStore((s) => s.selectedTasks);
+  const toggleTaskSelection = useBacklogStore((s) => s.toggleTaskSelection);
+  const setCycleModal = useBacklogStore((s) => s.setCycleModal);
   const [searchParams, setSearchParams] = useSearchParams();
   const [isExpanded, setIsExpanded] = useState(false);
   const cycle_tasks = cycle?.tasks || [];

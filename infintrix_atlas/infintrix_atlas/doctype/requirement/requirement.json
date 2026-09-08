@@ -21,46 +21,53 @@
    "in_list_view": 1,
    "label": "Project",
    "options": "Project",
-   "reqd": 1
+   "reqd": 1,
+   "description": "The project this document belongs to."
   },
   {
    "fieldname": "title",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Title"
+   "label": "Title",
+   "description": "Short summary of the requested change."
   },
   {
    "fieldname": "description",
    "fieldtype": "Small Text",
    "in_list_view": 1,
-   "label": "Description"
+   "label": "Description",
+   "description": "Detailed description of the change."
   },
   {
    "fieldname": "acceptance_criteria",
    "fieldtype": "Small Text",
    "in_list_view": 1,
-   "label": "Acceptance Criteria"
+   "label": "Acceptance Criteria",
+   "description": "Conditions that define the requirement as done."
   },
   {
    "fieldname": "priority",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Priority",
-   "options": "Low\nMedium\nHigh"
+   "options": "Low\nMedium\nHigh",
+   "description": "Suggested priority for the task."
   },
   {
    "fieldname": "source",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Source",
-   "options": "Email\nFiverr\nWhatsApp\nMeeting"
+   "options": "Email\nFiverr\nWhatsApp\nMeeting",
+   "description": "Where the requirement originated (e.g., Meeting, Portal)."
   },
   {
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Draft\nApproved\nRejected\nImplemented"
+   "options": "Draft\nApproved\nRejected\nImplemented",
+   "description": "Lifecycle status of the session."
   }
  ],
  "grid_page_length": 50,

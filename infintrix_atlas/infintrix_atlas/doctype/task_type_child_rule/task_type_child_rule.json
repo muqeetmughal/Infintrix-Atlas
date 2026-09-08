@@ -15,7 +15,8 @@
    "in_list_view": 1,
    "label": "Task Type",
    "options": "Task Type",
-   "reqd": 1
+   "reqd": 1,
+   "description": "Task type allowed as a child in the hierarchy."
   }
  ],
  "grid_page_length": 50,

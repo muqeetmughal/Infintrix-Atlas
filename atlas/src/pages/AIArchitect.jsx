@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Sparkles,
   ShieldCheck,
@@ -664,48 +664,74 @@ const handleExtractIntents = async () => {
   const isTaskPhase = [UI_STATES.DRAFTING, UI_STATES.VALIDATING].includes(
     uiState,
   );
+  const [chatMessages, setChatMessages] = useState([
+    { role: "assistant", text: "Describe what you need built. I'll break it down into tasks, validate it, and generate ready-to-use work items." },
+  ]);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  const handleChatSubmit = () => {
+    if (!prompt.trim()) return;
+    setChatMessages((prev) => [...prev, { role: "user", text: prompt }]);
+    setTimeout(() => handleExtractIntents(), 300);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 p-4 lg:p-12">
       <div className="max-w-7xl mx-auto">
-        {/* IDLE STATE */}
+        {/* IDLE STATE - Chat Interface */}
         {uiState === UI_STATES.IDLE && (
-          <div className="mt-12 lg:mt-24 max-w-2xl mx-auto space-y-12 animate-in fade-in slide-in-from-top-4 duration-700">
-            <div className="text-center space-y-4">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-full">
-                <Activity size={12} className="text-indigo-600" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
-                  Architect Engine v4.6 Stage-Stepped
-                </span>
-              </div>
-              <h1 className="text-5xl font-black tracking-tighter leading-none">
-                Turn Ideas into <span className="text-indigo-600">Logic.</span>
-              </h1>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 rounded-[40px] p-10 shadow-2xl border border-slate-100 dark:border-slate-800">
-              <div className="space-y-3 mb-10">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                  Requirement Prompt
-                </label>
-                <textarea
-                  className="w-full h-44 bg-slate-50 dark:bg-slate-700/50 border-2 border-slate-100 dark:border-slate-700 rounded-[24px] p-6 text-base font-medium focus:ring-4 focus:ring-indigo-500 transition-all resize-none"
-                  placeholder="Describe your technical vision..."
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                />
+          <div className="mt-8 max-w-3xl mx-auto animate-in fade-in slide-in-from-top-4 duration-700">
+            <div className="bg-white dark:bg-slate-800 rounded-[32px] shadow-2xl border border-slate-100 dark:border-slate-700 flex flex-col h-[600px]">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+                  <BrainCircuit size={16} className="text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">AI Architect</p>
+                  <p className="text-[10px] font-medium text-slate-400">v4.6 Stage-Stepped</p>
+                </div>
               </div>
 
-              <button
-                onClick={handleExtractIntents}
-                className="group w-full py-6 bg-slate-900 dark:bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest flex items-center justify-center gap-4 hover:scale-[1.01] transition-all shadow-2xl"
-              >
-                <BrainCircuit
-                  size={20}
-                  className="group-hover:rotate-12 transition-transform"
-                />
-                Start Synthesis (Step 1)
-              </button>
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+                {chatMessages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[80%] rounded-[20px] px-5 py-3 text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-indigo-600 text-white rounded-br-[4px]"
+                        : "bg-slate-100 dark:bg-slate-700/50 text-slate-800 dark:text-slate-200 rounded-bl-[4px]"
+                    }`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex gap-3 items-end">
+                  <textarea
+                    className="flex-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-[16px] px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+                    rows={2}
+                    placeholder="Describe your technical vision..."
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleChatSubmit(); } }}
+                  />
+                  <button
+                    onClick={handleChatSubmit}
+                    className="h-10 w-10 rounded-full bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition-colors shadow-lg shrink-0"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

@@ -5,46 +5,63 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "llm_provider",
-  "gemini_api_key",
-  "openai_api_key",
+  "api_key",
+  "api_base",
+  "openai_model",
+  "refresh_models",
   "enable_ai_architect",
-  "openai_model"
+  "section_break_permissions",
+  "allow_administrator_bypass"
  ],
  "fields": [
   {
-   "default": "Gemini",
-   "fieldname": "llm_provider",
-   "fieldtype": "Select",
-   "label": "LLM Provider",
-   "options": "Gemini\nOpenAI"
+   "fieldname": "api_key",
+   "fieldtype": "Password",
+   "label": "API Key",
+   "description": "Your OpenRouter API key"
   },
   {
-   "depends_on": "eval:doc.llm_provider===\"Gemini\"",
-   "fieldname": "gemini_api_key",
-   "fieldtype": "Password",
-   "label": "Gemini API Key"
+   "default": "https://openrouter.ai/api/v1",
+   "fieldname": "api_base",
+   "fieldtype": "Data",
+   "label": "API Base URL",
+   "description": "OpenRouter endpoint"
   },
   {
-   "depends_on": "eval:doc.llm_provider===\"OpenAI\"",
-   "fieldname": "openai_api_key",
-   "fieldtype": "Password",
-   "label": "OpenAI API Key"
+   "default": "openai/gpt-4o-mini",
+   "fieldname": "openai_model",
+   "fieldtype": "Data",
+   "label": "Model Name",
+   "description": "Any OpenRouter model ID. Click Refresh Models to fetch the latest list."
+  },
+  {
+   "depends_on": "eval:doc.api_key",
+   "fieldname": "refresh_models",
+   "fieldtype": "Button",
+   "label": "\ud83d\udd04 Refresh Models",
+   "description": "Fetch the latest model list from OpenRouter."
   },
   {
    "default": 1,
    "fieldname": "enable_ai_architect",
    "fieldtype": "Check",
-   "label": "Enable AI Architect"
+   "label": "Enable AI Architect",
+   "description": "Toggle the AI Architect feature for this site."
   },
   {
-   "default": "gpt-4o-mini",
-   "fieldname": "openai_model",
-   "fieldtype": "Select",
-   "label": "OpenAI Model",
-   "options": "gpt-4o-mini"
-  }
- ],
+   "fieldname": "section_break_permissions",
+   "fieldtype": "Section Break",
+   "label": "Permissions"
+  },
+   {
+    "default": 1,
+    "fieldname": "allow_administrator_bypass",
+    "fieldtype": "Check",
+    "label": "Allow Administrator to bypass project permission filters",
+    "description": "When enabled, Administrator and System Manager see all Tasks/Projects regardless of project membership. When disabled, they are filtered like any other user (only tasks/projects they own or are added to).",
+    "permlevel": 1
+   }
+  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
@@ -54,18 +71,26 @@
  "module": "Infintrix Atlas",
  "name": "Atlas Settings",
  "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "print": 1,
-   "read": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  }
- ],
+  "permissions": [
+   {
+    "create": 1,
+    "delete": 1,
+    "email": 1,
+    "export": 1,
+    "print": 1,
+    "read": 1,
+    "report": 1,
+    "role": "System Manager",
+    "share": 1,
+    "write": 1
+   },
+   {
+    "permlevel": 1,
+    "read": 1,
+    "role": "System Manager",
+    "write": 1
+   }
+  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",

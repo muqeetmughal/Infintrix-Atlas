@@ -14,9 +14,6 @@
  {
   "custom_allowed_child_type": [
    {
-    "parent": "Feature",
-    "parentfield": "custom_allowed_child_type",
-    "parenttype": "Task Type",
     "task_type": "Task"
    }
   ],
@@ -45,15 +42,9 @@
  {
   "custom_allowed_child_type": [
    {
-    "parent": "Epic",
-    "parentfield": "custom_allowed_child_type",
-    "parenttype": "Task Type",
     "task_type": "Feature"
    },
    {
-    "parent": "Epic",
-    "parentfield": "custom_allowed_child_type",
-    "parenttype": "Task Type",
     "task_type": "Task"
    }
   ],

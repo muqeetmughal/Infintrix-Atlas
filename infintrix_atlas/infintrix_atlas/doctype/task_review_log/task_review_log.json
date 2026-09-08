@@ -20,14 +20,16 @@
    "in_list_view": 1,
    "label": "Reviewer",
    "options": "User",
-   "reqd": 1
+   "reqd": 1,
+   "description": "User who reviewed the task."
   },
   {
    "fieldname": "reviewed_on",
    "fieldtype": "Datetime",
    "in_list_view": 1,
    "label": "Reviewed On",
-   "reqd": 1
+   "reqd": 1,
+   "description": "When the review happened."
   },
   {
    "fieldname": "decision",
@@ -35,25 +37,29 @@
    "in_list_view": 1,
    "label": "Decision",
    "options": "Approved\nChanges Requested",
-   "reqd": 1
+   "reqd": 1,
+   "description": "Outcome of the review (Approve/Reject/Request Changes)."
   },
   {
    "fieldname": "comments",
    "fieldtype": "Small Text",
    "in_list_view": 1,
-   "label": "Comments"
+   "label": "Comments",
+   "description": "Reviewer feedback."
   },
   {
    "fieldname": "from_status",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "From Status"
+   "label": "From Status",
+   "description": "Status before the change."
   },
   {
    "fieldname": "to_status",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "To Status"
+   "label": "To Status",
+   "description": "Status after the change."
   }
  ],
  "grid_page_length": 50,

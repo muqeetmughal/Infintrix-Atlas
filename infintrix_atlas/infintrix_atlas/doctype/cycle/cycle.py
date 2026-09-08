@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 
@@ -20,20 +21,12 @@ class Cycle(Document):
 	def validate(self):
 		if self.status not in ["Planned", "Active", "Completed", "Archived"]:
 			frappe.throw("Status must be one of: Planned, Active, Completed, Archived")
-		
-		if not self.phase:
-			frappe.throw("Cycle must belong to a Project Phase")
 
-		phase = frappe.get_doc("Project Phase", self.phase)
-		if phase.project != self.project:
-			frappe.throw("Cycle phase must belong to the same project.")
-		if self.status == "Active" and phase.status != "Active":
-			frappe.throw(
-				f"Active cycles can only exist in an Active phase. Current phase status: {phase.status}"
-			)
-		
 		if self.status == "Active" and (not self.start_date or not self.end_date):
-			frappe.throw("Cycle cannot be active without start and end date")
+			frappe.throw(
+				_("Please set start and end dates before activating the cycle."),
+				title=_("Dates Required"),
+			)
 		if self.start_date and self.end_date and self.start_date > self.end_date:
 			frappe.throw("End date cannot be before start date")
 
@@ -49,7 +42,7 @@ class Cycle(Document):
 				"name",
 			)
 			if active_cycle and self.status == "Active" and project.custom_execution_mode == "Scrum":
-				frappe.throw(f"Phase already has an active cycle: {active_cycle}")
+				frappe.throw(f"Project already has an active cycle: {active_cycle}")
 
 	def on_update(self):
 		if self.status == "Completed" and not self.actual_end_date:
