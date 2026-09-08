@@ -15,6 +15,7 @@ class AtlasBacklog {
 		this._backlog_expanded = true;
 		this.sortables = [];
 		this.search_query = "";
+		this.filter_mine = false;
 		this._dragging = false;
 
 		this.inject_styles();
@@ -307,6 +308,23 @@ class AtlasBacklog {
 				padding: 0 10px 6px;
 			}
 			.atlas-creator .new-task-input { flex: 1; }
+			.atlas-drag-handle {
+				display: inline-flex;
+				align-items: center;
+				color: var(--text-light);
+				cursor: grab;
+				flex-shrink: 0;
+			}
+			.atlas-task-card:active .atlas-drag-handle { cursor: grabbing; }
+			.atlas-toggle-btn.is-active {
+				background: var(--blue-500) !important;
+				border-color: var(--blue-500) !important;
+				color: #fff !important;
+			}
+			.atlas-task-avatar.atlas-avatar-overflow {
+				background: var(--gray-600);
+				font-size: 8px;
+			}
 			.atlas-new-sprint-strip {
 				text-align: center;
 				padding: 18px;
@@ -452,6 +470,7 @@ class AtlasBacklog {
 		if (!this.project_name) {
 			this.$body.html(`
 				<div class="atlas-error">
+					<div style="color: var(--text-light); margin-bottom: 10px;">${frappe.utils.icon("folder-open", "lg")}</div>
 					<h4 style="font-size: var(--text-md); font-weight: 500; color: var(--text-color); margin-bottom: 8px;">${__("No Project Selected")}</h4>
 					<p>${__("Open a project and click Backlog View from the Project form.")}</p>
 				</div>
@@ -524,7 +543,7 @@ class AtlasBacklog {
 			this.render_cycles();
 		}
 		this.render_backlog();
-		this.apply_search();
+		this.apply_filters();
 		this.ensure_sortable(() => this.init_sortables());
 	}
 
@@ -537,14 +556,17 @@ class AtlasBacklog {
 			? `<span class="indicator-pill orange">${__("Active")}: ${frappe.utils.escape_html(this.data.active_cycle_name)}</span>`
 			: "";
 
+		const mine_btn = this._my_tasks_toggle_html();
+		const expand_all_btn = this._expand_all_html();
+
 		if (this.embedded) {
 			this.$toolbar.html(`
 				<div class="atlas-toolbar-card">
 					<div class="atlas-toolbar-badges">${mode_badge}${active_badge}</div>
-					<div class="atlas-toolbar-right">${this._search_html()}</div>
+					<div class="atlas-toolbar-right">${this._search_html()}${mine_btn}${expand_all_btn}</div>
 				</div>
 			`);
-			this._bind_search();
+			this._bind_toolbar();
 			return;
 		}
 
@@ -563,15 +585,34 @@ class AtlasBacklog {
 				</div>
 				<div class="atlas-toolbar-right">
 					${this._search_html()}
+					${mine_btn}
+					${expand_all_btn}
 					${sprint_btn}
 					<button class="btn btn-default btn-xs refresh-backlog-btn">${frappe.utils.icon("refresh-cw", "xs")} ${__("Refresh")}</button>
 				</div>
 			</div>
 		`);
 
-		this._bind_search();
-		this.$toolbar.find(".refresh-backlog-btn").on("click", () => this.fetch_data());
+		this._bind_toolbar();
 		this.$toolbar.find(".new-sprint-btn").on("click", () => this.show_new_cycle_dialog());
+	}
+
+	_my_tasks_toggle_html() {
+		return `
+			<button class="btn btn-default btn-xs atlas-toggle-btn filter-mine-btn ${this.filter_mine ? 'is-active' : ''}" title="${__("Show only tasks assigned to me")}">
+				${frappe.utils.icon("user", "xs")} ${__("My Tasks")}
+			</button>
+		`;
+	}
+
+	_expand_all_html() {
+		if (!this.is_scrum || !(this.data.cycles || []).length) return "";
+		const all_expanded = this._all_cycles_expanded();
+		return `
+			<button class="btn btn-default btn-xs expand-all-btn" title="${all_expanded ? __("Collapse all sprints") : __("Expand all sprints")}">
+				${frappe.utils.icon(all_expanded ? "chevrons-up" : "chevrons-down", "xs")} ${all_expanded ? __("Collapse All") : __("Expand All")}
+			</button>
+		`;
 	}
 
 	_search_html() {
@@ -584,35 +625,63 @@ class AtlasBacklog {
 		`;
 	}
 
-	_bind_search() {
+	_bind_toolbar() {
 		const me = this;
 		this.$toolbar.find(".atlas-search-input").off("input").on("input", function () {
 			me.search_query = this.value.trim();
 			me.$toolbar.find(".atlas-search-clear").toggleClass("hide", !me.search_query);
-			me.apply_search();
+			me.apply_filters();
 		});
 		this.$toolbar.find(".atlas-search-clear").off("click").on("click", () => {
 			me.search_query = "";
 			me.$toolbar.find(".atlas-search-input").val("").trigger("focus");
 			me.$toolbar.find(".atlas-search-clear").addClass("hide");
-			me.apply_search();
+			me.apply_filters();
 		});
 		this.$toolbar.find(".atlas-search-input").off("keydown").on("keydown", function (e) {
 			if (e.key === "Escape") {
 				me.search_query = "";
 				$(this).val("");
 				me.$toolbar.find(".atlas-search-clear").addClass("hide");
-				me.apply_search();
+				me.apply_filters();
 			}
+		});
+		this.$toolbar.find(".filter-mine-btn").off("click").on("click", () => this.toggle_filter_mine());
+		this.$toolbar.find(".expand-all-btn").off("click").on("click", () => this.toggle_all_cycles());
+		this.$toolbar.find(".refresh-backlog-btn").off("click").on("click", () => this.fetch_data());
+	}
+
+	apply_filters() {
+		const q = this.search_query.toLowerCase();
+		const me = this;
+		const current_user = (frappe.session.user || "").toLowerCase();
+		this.$body.find(".atlas-task-card").each(function () {
+			const subject = ($(this).attr("data-subject") || "").toLowerCase();
+			const matches_search = q === "" || subject.indexOf(q) !== -1;
+			const assignees = ($(this).attr("data-assignee") || "").toLowerCase();
+			const matches_mine = !me.filter_mine || assignees.split(",").includes(current_user);
+			$(this).toggle(matches_search && matches_mine);
 		});
 	}
 
-	apply_search() {
-		const q = this.search_query.toLowerCase();
-		this.$body.find(".atlas-task-card").each(function () {
-			const subject = ($(this).attr("data-subject") || "").toLowerCase();
-			$(this).toggle(q === "" || subject.indexOf(q) !== -1);
-		});
+	toggle_filter_mine() {
+		this.filter_mine = !this.filter_mine;
+		this.render();
+	}
+
+	_all_cycles_expanded() {
+		const cycles = this.data.cycles || [];
+		return cycles.length > 0 && cycles.every((c) => this.expanded_cycles.has(c.name));
+	}
+
+	toggle_all_cycles() {
+		const cycles = this.data.cycles || [];
+		if (this._all_cycles_expanded()) {
+			cycles.forEach((c) => this.expanded_cycles.delete(c.name));
+		} else {
+			cycles.forEach((c) => this.expanded_cycles.add(c.name));
+		}
+		this.render();
 	}
 
 	show_new_cycle_dialog() {
@@ -757,6 +826,8 @@ class AtlasBacklog {
 				Archived: "gray",
 			};
 			const status_badge = `<span class="indicator-pill ${cycle_indicator[cycle.status] || "gray"}">${frappe.utils.escape_html(cycle.status)}</span>`;
+			const fmt_date = (d) => (d ? frappe.datetime.str_to_user(d) : __("TBD"));
+			const date_range = `${fmt_date(cycle.start_date)} → ${fmt_date(cycle.end_date)}`;
 
 			const $cycle = $(`
 				<div class="atlas-section-card atlas-cycle-card ${is_active ? 'is-active' : ''}" data-cycle-id="${cycle.name}">
@@ -773,7 +844,7 @@ class AtlasBacklog {
 							</div>
 						</div>
 						<div class="atlas-section-header-right">
-							<span class="atlas-task-meta">${cycle.start_date || "TBD"} - ${cycle.end_date || "TBD"}</span>
+							<span class="atlas-task-meta">${date_range}</span>
 							<button class="btn btn-default btn-xs cycle-menu-btn" style="padding: 4px;">
 								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="4" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="12" r="1.5"/></svg>
 							</button>
@@ -1133,13 +1204,26 @@ class AtlasBacklog {
 			"High": "orange",
 			"Urgent": "red",
 		};
+		const priority_accent = {
+			"Low": "var(--gray-400)",
+			"Medium": "var(--yellow-500)",
+			"High": "var(--orange-500)",
+			"Urgent": "var(--red-500)",
+		};
 		const s = status_indicator[task.status] || "gray";
 		const p = priority_indicator[task.priority] || "gray";
+		const accent = priority_accent[task.priority] || "var(--gray-400)";
 		const is_selected = this.selected_tasks.has(task.id);
 		const assignees = task.assignee ? task.assignee.split(",").map((a) => a.trim()).filter(Boolean) : [];
+		const visible_assignees = assignees.slice(0, 3);
+		const overflow_count = assignees.length - visible_assignees.length;
+		const overflow_badge = overflow_count > 0
+			? `<span class="atlas-task-avatar atlas-avatar-overflow" title="${frappe.utils.escape_html(assignees.slice(3).join(", "))}">+${overflow_count}</span>`
+			: "";
 
 		return $(`
-			<div class="atlas-task-card task-card ${is_selected ? 'selected' : ''}" data-task="${task.id}" data-subject="${frappe.utils.escape_html(task.subject)}">
+			<div class="atlas-task-card task-card ${is_selected ? 'selected' : ''}" data-task="${task.id}" data-subject="${frappe.utils.escape_html(task.subject)}" data-assignee="${frappe.utils.escape_html(assignees.join(','))}" style="border-left: 3px solid ${accent};">
+				<span class="atlas-drag-handle" title="${__("Drag to move")}">${frappe.utils.icon("grip-vertical", "xs")}</span>
 				<input type="checkbox" class="task-checkbox" data-task="${task.id}" ${is_selected ? 'checked' : ''}>
 				<div class="atlas-task-main">
 					<div class="atlas-task-subject ellipsis">${frappe.utils.escape_html(task.subject)}</div>
@@ -1151,7 +1235,8 @@ class AtlasBacklog {
 					</div>
 				</div>
 				<div class="atlas-task-avatars">
-					${assignees.map((a) => this._avatar_html(a)).join("")}
+					${visible_assignees.map((a) => this._avatar_html(a)).join("")}
+					${overflow_badge}
 					<button class="task-form-link" title="${__("Open in Task form")}">${frappe.utils.icon("pencil", "sm")}</button>
 				</div>
 			</div>
