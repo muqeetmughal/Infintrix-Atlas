@@ -159,6 +159,8 @@ doc_events = {
     "Project": {
         "after_insert": "infintrix_atlas.events.project.after_insert",
         "before_insert": "infintrix_atlas.events.project.before_insert",
+        "before_validate": "infintrix_atlas.events.project.before_validate",
+        "on_update": "infintrix_atlas.events.project.on_update",
         "validate": "infintrix_atlas.events.project.validate",
     },
     "ToDo": {
