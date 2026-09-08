@@ -52,9 +52,6 @@ function switch_execution_mode(frm) {
 }
 
 function add_kanban_button(frm) {
-	if (frm._atlas_kanban_btn_added) return;
-	frm._atlas_kanban_btn_added = true;
-
 	frm.add_custom_button(`${frappe.utils.icon("kanban", "xs")} ${__("View Kanban")}`, () => {
 		frappe.call({
 			method: "infintrix_atlas.api.kanban.get_project_kanban",
@@ -69,9 +66,6 @@ function add_kanban_button(frm) {
 }
 
 function add_backlog_buttons(frm) {
-	if (frm._atlas_buttons_added) return;
-	frm._atlas_buttons_added = true;
-
 	frm.add_custom_button(`${frappe.utils.icon("refresh-cw", "xs")} ${__("Refresh")}`, () => {
 		if (frm._atlas_backlog) frm._atlas_backlog.fetch_data();
 	});
@@ -89,6 +83,11 @@ function add_backlog_buttons(frm) {
 	});
 	$new_sprint_btn.removeClass("btn-default").addClass("btn-primary").addClass("hidden");
 	frm._atlas_new_sprint_btn = $new_sprint_btn;
+
+	// The backlog widget only fires on_loaded on its first fetch per project — on later
+	// refreshes set_project() short-circuits against its cache, so sync from whatever
+	// data it already has instead of waiting on a callback that won't fire again.
+	if (frm._atlas_backlog) sync_scrum_button(frm, frm._atlas_backlog);
 
 	// `.custom-actions` is hidden below the lg breakpoint by default — force it visible
 	// so the backlog form buttons always show.
