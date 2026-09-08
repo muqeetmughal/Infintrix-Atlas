@@ -56,7 +56,7 @@ app_include_js = ["/assets/infintrix_atlas/js/atlas_backlog.js", "/assets/infint
 
 # include js in doctype views
 doctype_js = {
-    "Project": "public/js/project.js",
+    "Project": ["public/js/project.js", "public/js/project_cycles.js"],
     "Task": ["public/js/task.js", "public/js/task_assignment_history.js"],
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}

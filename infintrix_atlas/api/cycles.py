@@ -2,6 +2,39 @@ import frappe
 
 
 @frappe.whitelist()
+def list_project_cycles(project):
+    cycles = frappe.get_all(
+        "Cycle",
+        filters={"project": project},
+        fields=["name", "cycle_name", "status", "start_date", "end_date", "actual_end_date"],
+        order_by="start_date desc, creation desc",
+    )
+    if not cycles:
+        return cycles
+
+    counts = frappe.db.sql(
+        """
+        SELECT custom_cycle,
+            COUNT(*) AS total,
+            SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) AS completed
+        FROM `tabTask`
+        WHERE project = %s AND custom_cycle IS NOT NULL
+        GROUP BY custom_cycle
+        """,
+        (project,),
+        as_dict=True,
+    )
+    counts_by_cycle = {c.custom_cycle: c for c in counts}
+
+    for cycle in cycles:
+        c = counts_by_cycle.get(cycle.name)
+        cycle["total_tasks"] = c.total if c else 0
+        cycle["completed_tasks"] = c.completed if c else 0
+
+    return cycles
+
+
+@frappe.whitelist()
 def start_cycle(name, cycle_name=None, duration=None, start_date=None, end_date=None):
     cycle = frappe.get_doc("Cycle", name)
     project_cycle_belongs_to = cycle.project
