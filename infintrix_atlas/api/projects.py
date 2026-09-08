@@ -418,6 +418,97 @@ def update_users_on_project(project, users):
 
 
 @frappe.whitelist()
+def list_project_team(project):
+    members = frappe.db.sql(
+        """
+        SELECT pu.user, pu.full_name, pu.email, pu.image, pu.project_status
+        FROM `tabProject User` pu
+        WHERE pu.parent = %s
+        ORDER BY pu.idx ASC
+        """,
+        (project,),
+        as_dict=True,
+    )
+    if not members:
+        return members
+
+    users = tuple({m.user for m in members})
+    counts = frappe.db.sql(
+        """
+        SELECT td.allocated_to AS user,
+            COUNT(DISTINCT t.name) AS total,
+            SUM(CASE WHEN t.status NOT IN ('Completed', 'Done', 'Cancelled', 'Closed') THEN 1 ELSE 0 END) AS open_count
+        FROM `tabToDo` td
+        JOIN `tabTask` t ON t.name = td.reference_name
+        WHERE td.reference_type = 'Task'
+            AND td.status = 'Open'
+            AND t.project = %s
+            AND td.allocated_to IN %s
+        GROUP BY td.allocated_to
+        """,
+        (project, users),
+        as_dict=True,
+    )
+    counts_by_user = {c.user: c for c in counts}
+
+    for m in members:
+        c = counts_by_user.get(m.user)
+        m["total_tasks"] = c.total if c else 0
+        m["open_tasks"] = c.open_count if c else 0
+
+    return members
+
+
+@frappe.whitelist()
+def add_team_member(project, user):
+    # Single-row insert — unlike update_users_on_project's delete-and-reinsert-all,
+    # this leaves every other member's row (welcome_email_sent, project_status, ...) untouched.
+    if frappe.db.exists("Project User", {"parent": project, "user": user}):
+        return {"success": False, "message": "User is already on the team"}
+
+    frappe.get_doc({
+        "doctype": "Project User",
+        "parent": project,
+        "parenttype": "Project",
+        "parentfield": "users",
+        "user": user,
+    }).insert()
+    frappe.db.commit()
+
+    project_name = frappe.db.get_value("Project", project, "project_name")
+    send_notification(
+        user=user,
+        subject=f"Added to Project: {project_name}",
+        content=f"You have been added to project '{project_name}'.",
+        document_type="Project",
+        document_name=project,
+        icons='<i class="fa fa-check-circle"></i>',
+    )
+    return {"success": True, "message": "Team member added"}
+
+
+@frappe.whitelist()
+def remove_team_member(project, user):
+    row = frappe.db.get_value("Project User", {"parent": project, "user": user}, "name")
+    if not row:
+        return {"success": False, "message": "User is not on the team"}
+
+    frappe.delete_doc("Project User", row)
+    frappe.db.commit()
+
+    project_name = frappe.db.get_value("Project", project, "project_name")
+    send_notification(
+        user=user,
+        subject=f"Removed from Project: {project_name}",
+        content=f"You have been removed from project '{project_name}'.",
+        document_type="Project",
+        document_name=project,
+        icons='<i class="fa fa-exclamation-triangle"></i>',
+    )
+    return {"success": True, "message": "Team member removed"}
+
+
+@frappe.whitelist()
 def recent_projects_with_activity_of_current_user(limit=5):
     user = frappe.session.user
 
