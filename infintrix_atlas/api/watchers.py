@@ -92,7 +92,7 @@ def add_watcher(doctype, docname, user):
 
         frappe.db.commit()
 
-        if user is not frappe.session.user:
+        if user != frappe.session.user:
             send_notification(
                 user=user,
                 subject=f"Watcher Added",

@@ -70,10 +70,14 @@ function toggle_self_watch(frm) {
 		doctype: "Task",
 		docname: frm.doc.name
 	}).then((r) => {
+		// the endpoint returns {success, message}, not a plain string
+		const res = r.message || {};
 		frappe.show_alert({
-			message: r.message || "Updated",
-			indicator: "green"
+			message: res.message || __("Updated"),
+			indicator: res.success === false ? "red" : "green"
 		});
-		frm.reload_doc();
+		if (res.success !== false) {
+			frm.reload_doc();
+		}
 	});
 }
