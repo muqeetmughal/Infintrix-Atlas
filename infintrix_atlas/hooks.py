@@ -191,7 +191,7 @@ doc_events = {
 
 scheduler_events = {
     "hourly": [
-        "infintrix_atlas.fathom_integration.api.sync_accounts",
+        "infintrix_atlas.fathom_integration.api.enqueue_sync_all_accounts",
     ]
 }
 
