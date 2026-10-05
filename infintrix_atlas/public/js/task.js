@@ -14,14 +14,6 @@ frappe.ui.form.on("Task", {
 	},
 	refresh(frm) {
 		if (!frm.is_new()) {
-			frm.add_custom_button(
-				`${frappe.utils.icon("layout", "xs")} ${__("Detail View")}`,
-				function () {
-					frappe.set_route("task_detail", frm.doc.name);
-				},
-				__("View")
-			);
-
 			frm.add_custom_button(`${frappe.utils.icon("pencil", "xs")} ${__("Edit Description")}`, function () {
 				edit_description(frm);
 			});

@@ -116,8 +116,10 @@ class TaskOverride(Task):
 
         return False
     def set_auto_assignee_when_status_changed(self):
-        # Only auto-assign if status changed to Working, Completed, or Pending Review
-        allowed_statuses = ["Working", "Completed", "Pending Review"]
+        # Only auto-assign if status changed to Working or Pending Review. Not Completed:
+        # ERPNext closes all assignments on completion, so auto-assigning there only
+        # re-assigned the task to whoever approved it.
+        allowed_statuses = ["Working", "Pending Review"]
         if self.status not in allowed_statuses:
             return
         
