@@ -1,4 +1,5 @@
 import frappe
+from frappe.desk.form.assign_to import notify_assignment
 
 
 def enforce_single_assignee(doc, method=None):
@@ -22,8 +23,10 @@ def enforce_single_assignee(doc, method=None):
 			"status": "Open",
 			"name": ["!=", doc.name],
 		},
-		pluck="name",
+		fields=["name", "allocated_to"],
 	)
 
-	for todo_name in other_open:
-		frappe.db.set_value("ToDo", todo_name, "status", "Closed")
+	for todo in other_open:
+		frappe.db.set_value("ToDo", todo.name, "status", "Closed")
+		# Tell the previous assignee; Frappe only notifies the new one.
+		notify_assignment(frappe.session.user, todo.allocated_to, "Task", doc.reference_name, action="CLOSE")

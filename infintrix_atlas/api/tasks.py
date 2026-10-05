@@ -4,9 +4,9 @@ from frappe.query_builder import DocType, functions as fn
 import json
 
 from infintrix_atlas.role_utils import has_projects_manager_role
-from infintrix_atlas.api.utils import send_notification
 from infintrix_atlas.api.access import _ensure_document_read_access
 from frappe.desk.doctype.tag.tag import add_tag
+from frappe.desk.form.assign_to import notify_assignment
 
 
 @frappe.whitelist()
@@ -115,16 +115,7 @@ def switch_assignee_of_task(task_name, new_assignee):
     # Close all existing open ToDos
     for todo in existing_todos:
         frappe.db.set_value("ToDo", todo["name"], "status", "Closed")
-
-        # Notify old assignee
-        send_notification(
-            user=todo["allocated_to"],
-            subject=f"{task_doc.subject}",
-            content=f"The task '<b>{task_doc.subject}</b>' has been removed from you.",
-            document_type="Task",
-            document_name=task_name,
-            icons='<i class="fa fa-trash"></i>',
-        )
+        notify_assignment(frappe.session.user, todo["allocated_to"], "Task", task_name, action="CLOSE")
 
     # Create new ToDo for new assignee only if not unassigned
     if new_assignee:
@@ -141,14 +132,10 @@ def switch_assignee_of_task(task_name, new_assignee):
             }
         ).insert()
 
-        send_notification(
-            user=new_assignee,
-            subject=f"{task_doc.subject}",
-            content=f"You have been assigned to task '<b>{task_doc.subject}</b>'.",
-            document_type="Task",
-            document_name=task_name,
-            icons='<i class="fa fa-tasks"></i>',
-        )
+        # Same notification as Desk "Assign To": an "Assignment" Notification Log, which
+        # also emails per the user's Notification Settings. The old "Alert" type never
+        # emailed. Skips self-assignment and disabled users.
+        notify_assignment(frappe.session.user, new_assignee, "Task", task_name, action="ASSIGN")
 
         # Auto-add assignee to project users if not already present
         if task_doc.project and not frappe.db.exists(
