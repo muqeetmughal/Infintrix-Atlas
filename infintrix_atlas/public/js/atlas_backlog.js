@@ -795,7 +795,7 @@ class AtlasBacklog {
 		});
 		this.$actions.find(".detail-selected").on("click", () => {
 			const first = Array.from(this.selected_tasks)[0];
-			if (first) frappe.set_route("task_detail", first);
+			if (first) frappe.set_route("Form", "Task", first);
 		});
 		this.$actions.find(".delete-selected").on("click", () => this.bulk_delete());
 	}
@@ -1267,7 +1267,7 @@ class AtlasBacklog {
 			if (me._dragging) return;
 			if ($(e.target).is(".task-checkbox, input, button")) return;
 			const task_id = $(this).data("task");
-			frappe.set_route("task_detail", task_id);
+			frappe.set_route("Form", "Task", task_id);
 		});
 
 		this.$body.find(".task-form-link").off("click").on("click", function (e) {
