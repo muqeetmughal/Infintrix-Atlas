@@ -51,8 +51,17 @@ function switch_execution_mode(frm) {
 	);
 }
 
+// Frappe 16.50+ HTML-escapes custom button labels, so icons can't be inlined in the label.
+function add_icon_button(frm, icon, label, action) {
+	const $btn = frm.add_custom_button(label, action);
+	if ($btn && frappe.ui.button && frappe.ui.button.dress) {
+		frappe.ui.button.dress($btn, { icon, label });
+	}
+	return $btn;
+}
+
 function add_kanban_button(frm) {
-	frm.add_custom_button(`${frappe.utils.icon("kanban", "xs")} ${__("View Kanban")}`, () => {
+	add_icon_button(frm, "kanban", __("View Kanban"), () => {
 		frappe.call({
 			method: "infintrix_atlas.api.kanban.get_project_kanban",
 			args: { project: frm.doc.name },
@@ -66,11 +75,11 @@ function add_kanban_button(frm) {
 }
 
 function add_backlog_buttons(frm) {
-	frm.add_custom_button(`${frappe.utils.icon("refresh-cw", "xs")} ${__("Refresh")}`, () => {
+	add_icon_button(frm, "refresh-cw", __("Refresh"), () => {
 		if (frm._atlas_backlog) frm._atlas_backlog.fetch_data();
 	});
 
-	const $new_sprint_btn = frm.add_custom_button(`${frappe.utils.icon("plus", "xs")} ${__("New Sprint")}`, () => {
+	const $new_sprint_btn = add_icon_button(frm, "plus", __("New Sprint"), () => {
 		if (!frm._atlas_backlog) return;
 		if (!frm._atlas_backlog.is_scrum) {
 			frappe.show_alert({

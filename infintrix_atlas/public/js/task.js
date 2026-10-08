@@ -14,7 +14,7 @@ frappe.ui.form.on("Task", {
 	},
 	refresh(frm) {
 		if (!frm.is_new()) {
-			frm.add_custom_button(`${frappe.utils.icon("pencil", "xs")} ${__("Edit Description")}`, function () {
+			add_icon_button(frm, "pencil", __("Edit Description"), function () {
 				edit_description(frm);
 			});
 
@@ -22,14 +22,25 @@ frappe.ui.form.on("Task", {
 				doctype: "Task",
 				docname: frm.doc.name
 			}).then((r) => {
-				frm.add_custom_button(
-					r.message ? `<i class="fa fa-eye-slash"></i> Stop Watching` : `<i class="fa fa-eye"></i> Start Watching`,
+				add_icon_button(
+					frm,
+					r.message ? "eye-off" : "eye",
+					r.message ? __("Stop Watching") : __("Start Watching"),
 					() => toggle_self_watch(frm)
 				);
 			});
 		}
 	},
 });
+
+// Frappe 16.50+ HTML-escapes custom button labels, so icons can't be inlined in the label.
+function add_icon_button(frm, icon, label, action) {
+	const $btn = frm.add_custom_button(label, action);
+	if ($btn && frappe.ui.button && frappe.ui.button.dress) {
+		frappe.ui.button.dress($btn, { icon, label });
+	}
+	return $btn;
+}
 
 function edit_description(frm) {
 	const d = new frappe.ui.Dialog({
